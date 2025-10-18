@@ -1502,6 +1502,17 @@
                     document.getElementById('updateProxy').value = data.settings.update_proxy || '';
                     document.getElementById('updateProxyEnabled').checked = data.settings.update_proxy_enabled || false;
                     document.getElementById('autoRestartAfterUpdate').checked = data.settings.auto_restart_after_update !== false;
+                    
+                    // 加载115网盘Cookie（显示为已配置状态，不显示实际内容）
+                    if (data.settings.cloud_115_cookie) {
+                        document.getElementById('cloud115Cookie').value = ''; // 不显示加密的Cookie
+                        document.getElementById('cloud115Cookie').placeholder = '已配置（重新输入可更新）';
+                        // 更新状态显示
+                        const statusEl = document.getElementById('cloud115Status');
+                        statusEl.innerHTML = '✅ 已配置<br><small>刷新页面后请重新验证以查看详细信息</small>';
+                        statusEl.style.background = '#d4edda';
+                        statusEl.style.color = '#155724';
+                    }
                 }
             } catch (error) {
                 console.error('加载设置失败:', error);
