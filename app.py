@@ -1241,11 +1241,15 @@ class MediaHandler(SimpleHTTPRequestHandler):
             super().do_GET()
     
     def do_POST(self):
+        print(f"\n[POST DEBUG] 收到POST请求: {self.path}")
         content_length = int(self.headers['Content-Length'])
+        print(f"[POST DEBUG] Content-Length: {content_length}")
         post_data = self.rfile.read(content_length)
+        print(f"[POST DEBUG] 原始数据: {post_data[:200]}")
         
         try:
             data = json.loads(post_data.decode('utf-8'))
+            print(f"[POST DEBUG] 解析后的JSON: {data}")
             
             if self.path == '/api/scan':
                 self.handle_scan(data)
@@ -1278,12 +1282,16 @@ class MediaHandler(SimpleHTTPRequestHandler):
             elif self.path == '/api/update-history':
                 self.handle_update_history(data)
             elif self.path == '/api/cloud/verify-cookie':
+                print(f"[POST DEBUG] 路由到 handle_cloud_verify_cookie")
                 self.handle_cloud_verify_cookie(data)
             elif self.path == '/api/cloud/list-files':
                 self.handle_cloud_list_files(data)
             else:
                 self.send_error(404)
         except Exception as e:
+            print(f"[POST DEBUG] 异常: {type(e).__name__}: {str(e)}")
+            import traceback
+            traceback.print_exc()
             self.send_json_response({'error': str(e)}, 500)
     
     def handle_scan(self, data):
