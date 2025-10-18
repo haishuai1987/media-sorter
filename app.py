@@ -567,13 +567,8 @@ class Cloud115API:
     
     def verify_cookie(self):
         """验证Cookie有效性并获取用户信息"""
-        import sys
-        print(f"\n[115 API] 验证Cookie开始", flush=True)
-        sys.stdout.flush()
         try:
             if not self.session:
-                print(f"[115 API] requests库未安装", flush=True)
-                sys.stdout.flush()
                 return False, None, "requests库未安装"
             
             # 尝试多个API端点
@@ -584,31 +579,13 @@ class Cloud115API:
             
             for endpoint, name in endpoints:
                 url = f'{self.BASE_URL}{endpoint}'
-                print(f"\n[115 API] 尝试端点: {name}", flush=True)
-                sys.stdout.flush()
-                print(f"[115 API] 请求URL: {url}", flush=True)
-                sys.stdout.flush()
-                print(f"[115 API] Cookie前20字符: {self.cookie[:20]}...", flush=True)
-                sys.stdout.flush()
-                
                 response = self.session.get(url, timeout=10)
-                
-                print(f"[115 API] 响应状态码: {response.status_code}", flush=True)
-                sys.stdout.flush()
-                print(f"[115 API] 响应内容: {response.text[:500]}", flush=True)
-                sys.stdout.flush()
                 
                 if response.status_code == 200:
                     data = response.json()
-                    print(f"[115 API] JSON数据: {json.dumps(data, ensure_ascii=False)[:500]}", flush=True)
-                    sys.stdout.flush()
                     
                     if data.get('state'):
                         # 成功获取数据
-                        print(f"[115 API] ✅ 端点 {name} 验证成功", flush=True)
-                        sys.stdout.flush()
-                        
-                        # 提取用户信息
                         user_data = data.get('data', {})
                         user_info = {
                             'user_id': user_data.get('user_id', user_data.get('uid', '')),
@@ -618,24 +595,13 @@ class Cloud115API:
                         }
                         return True, user_info, None
                     else:
-                        error_msg = data.get('error', 'Cookie无效或已过期')
-                        print(f"[115 API] ❌ 端点 {name} 验证失败: {error_msg}", flush=True)
-                        sys.stdout.flush()
                         # 继续尝试下一个端点
                         continue
-                else:
-                    print(f"[115 API] HTTP错误: {response.status_code}", flush=True)
-                    sys.stdout.flush()
-                    continue
             
             # 所有端点都失败
-            return False, None, "所有API端点验证失败，Cookie可能无效或已过期"
+            return False, None, "Cookie无效或已过期"
             
         except Exception as e:
-            print(f"[115 API] 异常: {str(e)}", flush=True)
-            sys.stdout.flush()
-            import traceback
-            traceback.print_exc()
             return False, None, str(e)
     
     def list_files(self, folder_id='0', offset=0, limit=1000):
@@ -1277,20 +1243,11 @@ class MediaHandler(SimpleHTTPRequestHandler):
             super().do_GET()
     
     def do_POST(self):
-        import sys
-        print(f"\n[POST DEBUG] 收到POST请求: {self.path}", flush=True)
-        sys.stdout.flush()
         content_length = int(self.headers['Content-Length'])
-        print(f"[POST DEBUG] Content-Length: {content_length}", flush=True)
-        sys.stdout.flush()
         post_data = self.rfile.read(content_length)
-        print(f"[POST DEBUG] 原始数据: {post_data[:200]}", flush=True)
-        sys.stdout.flush()
         
         try:
             data = json.loads(post_data.decode('utf-8'))
-            print(f"[POST DEBUG] 解析后的JSON: {data}", flush=True)
-            sys.stdout.flush()
             
             if self.path == '/api/scan':
                 self.handle_scan(data)
@@ -1323,18 +1280,12 @@ class MediaHandler(SimpleHTTPRequestHandler):
             elif self.path == '/api/update-history':
                 self.handle_update_history(data)
             elif self.path == '/api/cloud/verify-cookie':
-                import sys
-                print(f"[POST DEBUG] 路由到 handle_cloud_verify_cookie", flush=True)
-                sys.stdout.flush()
                 self.handle_cloud_verify_cookie(data)
             elif self.path == '/api/cloud/list-files':
                 self.handle_cloud_list_files(data)
             else:
                 self.send_error(404)
         except Exception as e:
-            print(f"[POST DEBUG] 异常: {type(e).__name__}: {str(e)}")
-            import traceback
-            traceback.print_exc()
             self.send_json_response({'error': str(e)}, 500)
     
     def handle_scan(self, data):
@@ -2792,36 +2743,16 @@ class MediaHandler(SimpleHTTPRequestHandler):
     
     def handle_cloud_verify_cookie(self, data):
         """验证115网盘Cookie"""
-        import sys
-        print(f"\n[115 DEBUG] 收到验证请求", flush=True)
-        sys.stdout.flush()
-        print(f"[115 DEBUG] 请求数据类型: {type(data)}", flush=True)
-        sys.stdout.flush()
-        print(f"[115 DEBUG] 请求数据内容: {data}", flush=True)
-        sys.stdout.flush()
-        
         try:
             cookie = data.get('cookie', '').strip()
-            print(f"[115 DEBUG] 提取的Cookie长度: {len(cookie) if cookie else 0}", flush=True)
-            sys.stdout.flush()
             
             if not cookie:
-                import sys
-                print(f"[115 DEBUG] Cookie为空，返回400错误", flush=True)
-                sys.stdout.flush()
                 self.send_json_response({'error': 'Cookie不能为空'}, 400)
                 return
             
             # 创建API实例并验证
-            import sys
-            print(f"[115 DEBUG] 开始创建Cloud115API实例", flush=True)
-            sys.stdout.flush()
             api = Cloud115API(cookie)
-            print(f"[115 DEBUG] API实例创建成功，开始验证Cookie", flush=True)
-            sys.stdout.flush()
             valid, user_info, error = api.verify_cookie()
-            print(f"[115 DEBUG] 验证完成 - valid={valid}, error={error}", flush=True)
-            sys.stdout.flush()
             
             if valid:
                 # 加密存储Cookie
@@ -2842,11 +2773,6 @@ class MediaHandler(SimpleHTTPRequestHandler):
                     'error': error or 'Cookie验证失败'
                 }, 400)
         except Exception as e:
-            import sys
-            import traceback
-            print(f"\n[115 DEBUG] 捕获到异常: {type(e).__name__}: {str(e)}", flush=True)
-            sys.stdout.flush()
-            traceback.print_exc()
             self.send_json_response({'error': str(e)}, 500)
     
     def handle_cloud_list_files(self, data):
