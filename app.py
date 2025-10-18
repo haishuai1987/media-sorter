@@ -542,6 +542,10 @@ class Cloud115API:
     
     BASE_URL = 'https://webapi.115.com'
     
+    # 文件列表缓存（5分钟TTL）
+    _file_cache = {}
+    _cache_ttl = 300  # 5分钟
+    
     def __init__(self, cookie):
         self.cookie = cookie
         self.session = self._create_session()
@@ -604,25 +608,43 @@ class Cloud115API:
         except Exception as e:
             return False, None, str(e)
     
-    def list_files(self, folder_id='0', offset=0, limit=1000):
-        """列出文件夹内容"""
+    def list_files(self, folder_id='0', offset=0, limit=1000, use_cache=True):
+        """列出文件夹内容
+        
+        Args:
+            folder_id: 文件夹ID，'0'表示根目录
+            offset: 偏移量
+            limit: 返回数量限制
+            use_cache: 是否使用缓存
+        
+        Returns:
+            (result: dict, error: str)
+            result包含: files, count, folder_id
+        """
         try:
             if not self.session:
                 return None, "requests库未安装"
+            
+            # 检查缓存
+            cache_key = f"{folder_id}_{offset}_{limit}"
+            if use_cache and cache_key in self._file_cache:
+                cached_data, cached_time = self._file_cache[cache_key]
+                if time.time() - cached_time < self._cache_ttl:
+                    return cached_data, None
             
             url = f'{self.BASE_URL}/files'
             params = {
                 'aid': 1,
                 'cid': folder_id,
-                'o': 'user_ptime',
-                'asc': 0,
+                'o': 'user_ptime',  # 按修改时间排序
+                'asc': 0,  # 降序
                 'offset': offset,
-                'show_dir': 1,
+                'show_dir': 1,  # 显示文件夹
                 'limit': limit,
                 'code': '',
                 'scid': '',
                 'snap': 0,
-                'natsort': 1,
+                'natsort': 1,  # 自然排序
                 'record_open_time': 1,
                 'source': '',
                 'format': 'json',
@@ -636,28 +658,46 @@ class Cloud115API:
                 if data.get('state'):
                     files = []
                     for item in data.get('data', []):
+                        # 判断是否为文件夹
+                        is_directory = item.get('fid', '').endswith('d') or item.get('fc', 0) > 0
+                        
                         file_info = {
                             'fid': item.get('fid', ''),
                             'cid': item.get('cid', ''),
                             'name': item.get('n', ''),
                             'size': item.get('s', 0),
-                            'is_dir': item.get('fid', '').endswith('d') or item.get('fc', 0) > 0,
+                            'is_dir': is_directory,
                             'time': item.get('t', ''),
-                            'pick_code': item.get('pc', '')
+                            'pick_code': item.get('pc', ''),
+                            'sha1': item.get('sha', ''),
+                            'file_count': item.get('fc', 0) if is_directory else 0
                         }
                         files.append(file_info)
                     
-                    return {
+                    result = {
                         'files': files,
                         'count': data.get('count', 0),
-                        'folder_id': folder_id
-                    }, None
+                        'folder_id': folder_id,
+                        'offset': offset,
+                        'limit': limit
+                    }
+                    
+                    # 缓存结果
+                    if use_cache:
+                        self._file_cache[cache_key] = (result, time.time())
+                    
+                    return result, None
                 else:
-                    return None, "获取文件列表失败"
+                    error_msg = data.get('error', '获取文件列表失败')
+                    return None, error_msg
             else:
                 return None, f"HTTP错误: {response.status_code}"
         except Exception as e:
             return None, str(e)
+    
+    def clear_cache(self):
+        """清除文件列表缓存"""
+        self._file_cache.clear()
 
 # ============================================
 
