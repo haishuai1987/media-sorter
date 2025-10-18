@@ -39,6 +39,21 @@ git config user.email "%email%"
 echo ✅ Git用户信息已配置
 echo.
 
+REM 递增版本号
+echo 🔢 递增版本号...
+python increment_version.py
+if errorlevel 1 (
+    echo ⚠️  版本号递增失败，继续上传...
+) else (
+    echo ✅ 版本号已更新
+)
+echo.
+
+REM 读取新版本号
+set /p NEW_VERSION=<version.txt
+echo 当前版本: %NEW_VERSION%
+echo.
+
 REM 添加文件
 echo 📝 添加文件到Git...
 git add .
@@ -47,7 +62,7 @@ echo.
 
 REM 提交
 echo 💾 提交更改...
-git commit -m "Initial commit: 媒体库文件管理器 v1.4"
+git commit -m "Update to %NEW_VERSION%"
 echo ✅ 更改已提交
 echo.
 

@@ -1,6 +1,6 @@
-# 媒体库文件管理器 v1.4
+# 媒体库文件管理器 v1.0.0
 
-> 智能媒体文件整理工具 - 自动重命名、智能分类、去重、中文标题识别
+> 智能媒体文件整理工具 - 自动重命名、智能分类、去重、中文标题识别、一键更新
 
 [![Python](https://img.shields.io/badge/Python-3.6+-blue.svg)](https://www.python.org/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
@@ -38,6 +38,13 @@
 - 8步进度跟踪
 - 实时日志显示
 - 完成通知
+
+### 🔄 一键更新
+- Web界面一键更新
+- 自动版本管理
+- 代理支持
+- 自动重启服务
+- 更新历史记录
 
 ---
 

@@ -27,7 +27,10 @@ DEFAULT_CONFIG = {
     'tmdb_api_key': '',  # 请在Web界面的"设置"中配置你的TMDB API Key
     'tmdb_proxy': '',    # 可选：如果需要代理访问TMDB，在"设置"中配置
     'tmdb_proxy_type': 'http',  # http 或 socks5
-    'douban_cookie': ''  # 请在Web界面的"设置"中配置你的豆瓣Cookie
+    'douban_cookie': '',  # 请在Web界面的"设置"中配置你的豆瓣Cookie
+    'update_proxy': '',  # 系统更新代理地址（如：http://127.0.0.1:7890）
+    'update_proxy_enabled': False,  # 是否启用更新代理
+    'auto_restart_after_update': True  # 更新后是否自动重启
 }
 
 # 加载配置
@@ -124,6 +127,365 @@ CATEGORY_CONFIG = {
 # 重命名模板
 MOVIE_TEMPLATE = "{{title}}{% if year %} ({{year}}){% endif %}/{{title}}{% if year %} ({{year}}){% endif %}{% if part %}-{{part}}{% endif %}{% if videoFormat %} - {{videoFormat}}{% endif %}{{language}}{{fileExt}}"
 TV_TEMPLATE = "{{title}}{% if year %} ({{year}}){% endif %}/Season {{season_no_zero}}/{{title}} - {{season_episode}}{% if part %}-{{part}}{% endif %}{% if episode %} - 第 {{episode}} 集{% endif %}{{language}}{{fileExt}}"
+
+# ============ 版本管理 ============
+
+class VersionManager:
+    """版本号管理器"""
+    
+    VERSION_FILE = 'version.txt'
+    
+    @staticmethod
+    def get_current_version():
+        """获取当前版本号"""
+        try:
+            if os.path.exists(VersionManager.VERSION_FILE):
+                with open(VersionManager.VERSION_FILE, 'r', encoding='utf-8') as f:
+                    version = f.read().strip()
+                    return version if version else 'v1.0.0'
+        except Exception as e:
+            print(f"读取版本号失败: {e}")
+        return 'v1.0.0'
+    
+    @staticmethod
+    def parse_version(version_str):
+        """解析版本号字符串为元组 (major, minor, patch)"""
+        try:
+            # 移除 'v' 前缀
+            version_str = version_str.lstrip('v')
+            parts = version_str.split('.')
+            if len(parts) == 3:
+                return tuple(int(p) for p in parts)
+        except:
+            pass
+        return (1, 0, 0)
+    
+    @staticmethod
+    def compare_versions(v1, v2):
+        """比较两个版本号
+        返回: -1 (v1<v2), 0 (v1==v2), 1 (v1>v2)
+        """
+        v1_tuple = VersionManager.parse_version(v1)
+        v2_tuple = VersionManager.parse_version(v2)
+        
+        if v1_tuple < v2_tuple:
+            return -1
+        elif v1_tuple > v2_tuple:
+            return 1
+        else:
+            return 0
+    
+    @staticmethod
+    def increment_version(version_str, level='patch'):
+        """递增版本号
+        level: 'major', 'minor', 'patch'
+        """
+        major, minor, patch = VersionManager.parse_version(version_str)
+        
+        if level == 'major':
+            major += 1
+            minor = 0
+            patch = 0
+        elif level == 'minor':
+            minor += 1
+            patch = 0
+        else:  # patch
+            patch += 1
+        
+        return f"v{major}.{minor}.{patch}"
+    
+    @staticmethod
+    def save_version(version_str):
+        """保存版本号到文件"""
+        try:
+            with open(VersionManager.VERSION_FILE, 'w', encoding='utf-8') as f:
+                f.write(version_str)
+            return True
+        except Exception as e:
+            print(f"保存版本号失败: {e}")
+            return False
+    
+    @staticmethod
+    def get_git_info():
+        """获取Git信息（提交哈希和分支）"""
+        import subprocess
+        try:
+            # 获取当前提交哈希
+            result = subprocess.run(
+                ['git', 'rev-parse', '--short', 'HEAD'],
+                capture_output=True,
+                text=True,
+                timeout=5
+            )
+            commit_hash = result.stdout.strip() if result.returncode == 0 else 'unknown'
+            
+            # 获取当前分支
+            result = subprocess.run(
+                ['git', 'rev-parse', '--abbrev-ref', 'HEAD'],
+                capture_output=True,
+                text=True,
+                timeout=5
+            )
+            branch = result.stdout.strip() if result.returncode == 0 else 'unknown'
+            
+            return {
+                'commit': commit_hash,
+                'branch': branch
+            }
+        except Exception as e:
+            print(f"获取Git信息失败: {e}")
+            return {
+                'commit': 'unknown',
+                'branch': 'unknown'
+            }
+
+# ============================================
+
+class UpdateManager:
+    """系统更新管理器"""
+    
+    def __init__(self, script_dir=None, config=None):
+        self.script_dir = script_dir or os.path.dirname(os.path.abspath(__file__))
+        self.config = config or USER_CONFIG
+        self.update_lock = False  # 更新锁，防止并发更新
+    
+    def check_git_repository(self):
+        """检查是否是Git仓库"""
+        git_dir = os.path.join(self.script_dir, '.git')
+        return os.path.exists(git_dir)
+    
+    def execute_git_command(self, cmd, use_proxy=False, timeout=30):
+        """执行Git命令
+        
+        Args:
+            cmd: Git命令列表，如 ['git', 'fetch']
+            use_proxy: 是否使用代理
+            timeout: 超时时间（秒）
+        
+        Returns:
+            (success, stdout, stderr)
+        """
+        import subprocess
+        
+        try:
+            # 获取代理配置
+            proxy_url = self.config.get('update_proxy', '')
+            
+            # 构建环境变量
+            env = os.environ.copy()
+            
+            if use_proxy and proxy_url:
+                # 设置Git代理
+                env['http_proxy'] = proxy_url
+                env['https_proxy'] = proxy_url
+                print(f"  使用代理: {proxy_url}")
+            
+            # 禁用SSL验证（针对某些网络环境）
+            cmd_with_config = cmd.copy()
+            if 'git' in cmd[0]:
+                cmd_with_config.insert(1, '-c')
+                cmd_with_config.insert(2, 'http.sslVerify=false')
+            
+            # 执行命令
+            result = subprocess.run(
+                cmd_with_config,
+                cwd=self.script_dir,
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+                env=env
+            )
+            
+            success = result.returncode == 0
+            return success, result.stdout, result.stderr
+            
+        except subprocess.TimeoutExpired:
+            return False, '', '命令执行超时'
+        except Exception as e:
+            return False, '', str(e)
+    
+    def fetch_remote(self, use_proxy=False):
+        """获取远程更新"""
+        print("正在获取远程更新...")
+        success, stdout, stderr = self.execute_git_command(
+            ['git', 'fetch', 'origin'],
+            use_proxy=use_proxy,
+            timeout=60
+        )
+        
+        if success:
+            print("✓ 远程更新获取成功")
+        else:
+            print(f"✗ 获取失败: {stderr}")
+        
+        return success, stderr
+    
+    def check_for_updates(self, use_proxy=False):
+        """检查是否有可用更新
+        
+        Returns:
+            dict: {
+                'has_update': bool,
+                'current_version': str,
+                'latest_version': str,
+                'commits_behind': int,
+                'error': str or None
+            }
+        """
+        if not self.check_git_repository():
+            return {
+                'has_update': False,
+                'error': '当前不是Git仓库，无法检查更新'
+            }
+        
+        # 获取当前版本
+        current_version = VersionManager.get_current_version()
+        
+        # 获取远程更新
+        success, error = self.fetch_remote(use_proxy)
+        if not success:
+            # 如果直连失败且未使用代理，尝试使用代理
+            if not use_proxy and self.config.get('update_proxy'):
+                print("  直连失败，尝试使用代理...")
+                success, error = self.fetch_remote(use_proxy=True)
+            
+            if not success:
+                return {
+                    'has_update': False,
+                    'current_version': current_version,
+                    'error': f'无法连接到GitHub: {error}'
+                }
+        
+        # 检查本地和远程的差异
+        success, stdout, stderr = self.execute_git_command(
+            ['git', 'rev-list', 'HEAD...origin/main', '--count'],
+            timeout=10
+        )
+        
+        if not success:
+            return {
+                'has_update': False,
+                'current_version': current_version,
+                'error': f'无法比较版本: {stderr}'
+            }
+        
+        try:
+            commits_behind = int(stdout.strip() or 0)
+        except:
+            commits_behind = 0
+        
+        return {
+            'has_update': commits_behind > 0,
+            'current_version': current_version,
+            'commits_behind': commits_behind,
+            'error': None
+        }
+    
+    def pull_updates(self, use_proxy=False):
+        """拉取更新
+        
+        Returns:
+            (success, message)
+        """
+        print("正在拉取更新...")
+        
+        # 检查是否有本地修改
+        success, stdout, stderr = self.execute_git_command(
+            ['git', 'status', '--porcelain'],
+            timeout=10
+        )
+        
+        if success and stdout.strip():
+            return False, '检测到本地有未提交的修改，请先提交或重置'
+        
+        # 执行pull
+        success, stdout, stderr = self.execute_git_command(
+            ['git', 'pull', 'origin', 'main'],
+            use_proxy=use_proxy,
+            timeout=60
+        )
+        
+        if success:
+            print("✓ 更新成功")
+            return True, '更新成功'
+        else:
+            print(f"✗ 更新失败: {stderr}")
+            
+            # 如果直连失败且未使用代理，尝试使用代理
+            if not use_proxy and self.config.get('update_proxy'):
+                print("  直连失败，尝试使用代理...")
+                success, stdout, stderr = self.execute_git_command(
+                    ['git', 'pull', 'origin', 'main'],
+                    use_proxy=True,
+                    timeout=60
+                )
+                
+                if success:
+                    print("✓ 使用代理更新成功")
+                    return True, '使用代理更新成功'
+            
+            return False, f'更新失败: {stderr}'
+    
+    def restart_service(self):
+        """重启服务"""
+        import subprocess
+        import threading
+        
+        def do_restart():
+            try:
+                time.sleep(3)  # 延迟3秒，让响应返回给前端
+                
+                # 查找并终止当前进程
+                pid_file = os.path.join(self.script_dir, 'media-renamer.pid')
+                if os.path.exists(pid_file):
+                    try:
+                        with open(pid_file, 'r') as f:
+                            pid = int(f.read().strip())
+                        os.kill(pid, 15)  # SIGTERM
+                    except:
+                        pass
+                
+                # 启动新进程
+                log_file = os.path.join(self.script_dir, 'media-renamer.log')
+                subprocess.Popen(
+                    ['python3', 'app.py'],
+                    cwd=self.script_dir,
+                    stdout=open(log_file, 'a'),
+                    stderr=subprocess.STDOUT,
+                    start_new_session=True
+                )
+                print("✓ 服务重启成功")
+            except Exception as e:
+                print(f"✗ 服务重启失败: {e}")
+        
+        # 在后台线程中重启
+        threading.Thread(target=do_restart, daemon=True).start()
+        return True
+    
+    def rollback(self, steps=1):
+        """回滚到之前的版本
+        
+        Args:
+            steps: 回滚步数，默认1（回滚到上一个提交）
+        
+        Returns:
+            (success, message)
+        """
+        print(f"正在回滚 {steps} 个版本...")
+        
+        success, stdout, stderr = self.execute_git_command(
+            ['git', 'reset', '--hard', f'HEAD~{steps}'],
+            timeout=30
+        )
+        
+        if success:
+            print("✓ 回滚成功")
+            return True, f'成功回滚 {steps} 个版本'
+        else:
+            print(f"✗ 回滚失败: {stderr}")
+            return False, f'回滚失败: {stderr}'
+
+# ============================================
 
 class DoubanHelper:
     """豆瓣API辅助类"""
@@ -733,6 +1095,16 @@ class MediaHandler(SimpleHTTPRequestHandler):
                 self.handle_get_settings(data)
             elif self.path == '/api/save-settings':
                 self.handle_save_settings(data)
+            elif self.path == '/api/get-version':
+                self.handle_get_version(data)
+            elif self.path == '/api/check-update':
+                self.handle_check_update(data)
+            elif self.path == '/api/update':
+                self.handle_update(data)
+            elif self.path == '/api/rollback':
+                self.handle_rollback(data)
+            elif self.path == '/api/update-history':
+                self.handle_update_history(data)
             else:
                 self.send_error(404)
         except Exception as e:
@@ -1903,7 +2275,10 @@ class MediaHandler(SimpleHTTPRequestHandler):
                 'tmdb_api_key': USER_CONFIG.get('tmdb_api_key', ''),
                 'tmdb_proxy': USER_CONFIG.get('tmdb_proxy', ''),
                 'tmdb_proxy_type': USER_CONFIG.get('tmdb_proxy_type', 'http'),
-                'douban_cookie': USER_CONFIG.get('douban_cookie', '')
+                'douban_cookie': USER_CONFIG.get('douban_cookie', ''),
+                'update_proxy': USER_CONFIG.get('update_proxy', ''),
+                'update_proxy_enabled': USER_CONFIG.get('update_proxy_enabled', False),
+                'auto_restart_after_update': USER_CONFIG.get('auto_restart_after_update', True)
             }
             self.send_json_response({'success': True, 'settings': settings})
         except Exception as e:
@@ -1935,6 +2310,23 @@ class MediaHandler(SimpleHTTPRequestHandler):
                 USER_CONFIG['douban_cookie'] = settings['douban_cookie']
                 DOUBAN_COOKIE = settings['douban_cookie']
             
+            # 更新代理配置
+            if 'update_proxy' in settings:
+                # 验证代理地址格式
+                proxy_url = settings['update_proxy'].strip()
+                if proxy_url and not (proxy_url.startswith('http://') or proxy_url.startswith('https://')):
+                    self.send_json_response({
+                        'error': '代理地址格式错误，应以 http:// 或 https:// 开头'
+                    }, 400)
+                    return
+                USER_CONFIG['update_proxy'] = proxy_url
+            
+            if 'update_proxy_enabled' in settings:
+                USER_CONFIG['update_proxy_enabled'] = bool(settings['update_proxy_enabled'])
+            
+            if 'auto_restart_after_update' in settings:
+                USER_CONFIG['auto_restart_after_update'] = bool(settings['auto_restart_after_update'])
+            
             # 保存到文件
             if save_config(USER_CONFIG):
                 self.send_json_response({
@@ -1947,6 +2339,229 @@ class MediaHandler(SimpleHTTPRequestHandler):
                 }, 500)
         except Exception as e:
             self.send_json_response({'error': str(e)}, 500)
+    
+    def handle_get_version(self, data):
+        """获取当前版本信息"""
+        try:
+            current_version = VersionManager.get_current_version()
+            git_info = VersionManager.get_git_info()
+            
+            self.send_json_response({
+                'success': True,
+                'current_version': current_version,
+                'git_commit': git_info['commit'],
+                'git_branch': git_info['branch']
+            })
+        except Exception as e:
+            self.send_json_response({'error': str(e)}, 500)
+    
+    def handle_check_update(self, data):
+        """检查是否有可用更新"""
+        try:
+            use_proxy = data.get('use_proxy', False)
+            
+            # 创建UpdateManager实例
+            update_manager = UpdateManager()
+            
+            # 检查更新
+            result = update_manager.check_for_updates(use_proxy=use_proxy)
+            
+            if result.get('error'):
+                self.send_json_response({
+                    'success': False,
+                    'error': result['error']
+                }, 400)
+                return
+            
+            self.send_json_response({
+                'success': True,
+                'has_update': result['has_update'],
+                'current_version': result['current_version'],
+                'commits_behind': result['commits_behind']
+            })
+        except Exception as e:
+            self.send_json_response({'error': str(e)}, 500)
+    
+    def handle_update(self, data):
+        """处理系统更新（增强版）"""
+        try:
+            use_proxy = data.get('use_proxy', False)
+            auto_restart = data.get('auto_restart', True)
+            
+            # 创建UpdateManager实例
+            update_manager = UpdateManager()
+            
+            # 检查是否是Git仓库
+            if not update_manager.check_git_repository():
+                self.send_json_response({
+                    'error': '当前不是Git仓库，无法自动更新。请手动更新或重新使用git clone安装。'
+                }, 400)
+                return
+            
+            # 检查更新锁
+            if update_manager.update_lock:
+                self.send_json_response({
+                    'error': '已有更新操作正在进行中，请稍后再试'
+                }, 400)
+                return
+            
+            # 设置更新锁
+            update_manager.update_lock = True
+            
+            try:
+                # 获取当前版本
+                current_version = VersionManager.get_current_version()
+                
+                # 检查是否有更新
+                check_result = update_manager.check_for_updates(use_proxy=use_proxy)
+                
+                if check_result.get('error'):
+                    self.send_json_response({
+                        'error': check_result['error']
+                    }, 400)
+                    return
+                
+                if not check_result['has_update']:
+                    self.send_json_response({
+                        'updated': False,
+                        'message': '已是最新版本，无需更新',
+                        'current_version': current_version
+                    })
+                    return
+                
+                commits_behind = check_result['commits_behind']
+                
+                # 执行更新
+                success, message = update_manager.pull_updates(use_proxy=use_proxy)
+                
+                if not success:
+                    self.send_json_response({
+                        'error': message
+                    }, 500)
+                    return
+                
+                # 更新成功，读取新版本号
+                new_version = VersionManager.get_current_version()
+                
+                # 记录更新历史
+                self.save_update_history({
+                    'version': new_version,
+                    'timestamp': time.strftime('%Y-%m-%d %H:%M:%S'),
+                    'status': 'success',
+                    'commits': commits_behind,
+                    'user': 'admin',  # 可以从session获取
+                    'ip': self.client_address[0]
+                })
+                
+                # 发送成功响应
+                response = {
+                    'updated': True,
+                    'new_version': new_version,
+                    'commits_updated': commits_behind,
+                    'message': f'成功更新 {commits_behind} 个版本'
+                }
+                
+                if auto_restart:
+                    response['message'] += '，服务将在3秒后重启'
+                    self.send_json_response(response)
+                    
+                    # 重启服务
+                    update_manager.restart_service()
+                else:
+                    response['message'] += '，请手动重启服务使更新生效'
+                    self.send_json_response(response)
+                
+            finally:
+                # 释放更新锁
+                update_manager.update_lock = False
+                
+        except Exception as e:
+            self.send_json_response({'error': str(e)}, 500)
+    
+    def handle_rollback(self, data):
+        """处理版本回滚"""
+        try:
+            steps = data.get('steps', 1)
+            
+            # 创建UpdateManager实例
+            update_manager = UpdateManager()
+            
+            # 检查是否是Git仓库
+            if not update_manager.check_git_repository():
+                self.send_json_response({
+                    'error': '当前不是Git仓库，无法回滚'
+                }, 400)
+                return
+            
+            # 执行回滚
+            success, message = update_manager.rollback(steps=steps)
+            
+            if success:
+                # 获取回滚后的版本
+                new_version = VersionManager.get_current_version()
+                
+                self.send_json_response({
+                    'success': True,
+                    'message': message,
+                    'new_version': new_version
+                })
+            else:
+                self.send_json_response({
+                    'error': message
+                }, 500)
+                
+        except Exception as e:
+            self.send_json_response({'error': str(e)}, 500)
+    
+    def handle_update_history(self, data):
+        """获取更新历史"""
+        try:
+            history = self.load_update_history()
+            self.send_json_response({
+                'success': True,
+                'history': history
+            })
+        except Exception as e:
+            self.send_json_response({'error': str(e)}, 500)
+    
+    def save_update_history(self, record):
+        """保存更新历史记录"""
+        try:
+            history_file = 'update_history.json'
+            history = []
+            
+            # 读取现有历史
+            if os.path.exists(history_file):
+                with open(history_file, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    history = data.get('updates', [])
+            
+            # 添加新记录
+            history.insert(0, record)
+            
+            # 只保留最近10条
+            history = history[:10]
+            
+            # 保存
+            with open(history_file, 'w', encoding='utf-8') as f:
+                json.dump({'updates': history}, f, ensure_ascii=False, indent=2)
+            
+            return True
+        except Exception as e:
+            print(f"保存更新历史失败: {e}")
+            return False
+    
+    def load_update_history(self):
+        """加载更新历史记录"""
+        try:
+            history_file = 'update_history.json'
+            if os.path.exists(history_file):
+                with open(history_file, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    return data.get('updates', [])
+        except Exception as e:
+            print(f"加载更新历史失败: {e}")
+        return []
     
     def send_json_response(self, data, status=200):
         self.send_response(status)

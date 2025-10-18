@@ -702,6 +702,9 @@
             <button onclick="showSettingsModal()" style="font-size: 16px; padding: 14px 36px; background: linear-gradient(135deg, #ff9800 0%, #ff5722 100%); box-shadow: 0 4px 15px rgba(255, 152, 0, 0.4); border: none; border-radius: 8px; color: white; cursor: pointer; transition: transform 0.2s; font-weight: 500;">
                 ⚙️ 设置
             </button>
+            <button onclick="checkUpdate()" style="font-size: 16px; padding: 14px 36px; background: linear-gradient(135deg, #6c757d 0%, #495057 100%); box-shadow: 0 4px 15px rgba(108, 117, 125, 0.4); border: none; border-radius: 8px; color: white; cursor: pointer; transition: transform 0.2s; font-weight: 500;">
+                🔄 更新
+            </button>
         </div>
 
         <!-- 功能说明（可折叠） -->
@@ -933,6 +936,39 @@
                         <label>Cookie:</label>
                         <textarea id="doubanCookie" rows="3" placeholder="输入豆瓣Cookie"></textarea>
                         <small>获取方法: 登录豆瓣 → F12开发者工具 → Network → 复制Cookie</small>
+                    </div>
+                </div>
+                
+                <!-- 系统更新设置 -->
+                <div class="settings-section">
+                    <h3>🔄 系统更新配置</h3>
+                    <div class="form-group">
+                        <label>当前版本:</label>
+                        <div style="padding: 10px; background: #f0f4ff; border-radius: 6px; font-weight: 600; color: #667eea;" id="currentVersion">
+                            加载中...
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="updateProxyEnabled" style="width: auto; margin-right: 8px;">
+                            启用更新代理
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label>更新代理地址:</label>
+                        <input type="text" id="updateProxy" placeholder="例如: http://127.0.0.1:7890">
+                        <small>用于访问GitHub，直连失败时自动切换代理</small>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="autoRestartAfterUpdate" style="width: auto; margin-right: 8px;" checked>
+                            更新后自动重启服务
+                        </label>
+                    </div>
+                    <div style="margin-top: 15px;">
+                        <button onclick="checkForUpdates()" style="width: 100%; padding: 12px; background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500;">
+                            🔍 检查更新
+                        </button>
                     </div>
                 </div>
                 
@@ -1291,10 +1327,16 @@
                     document.getElementById('tmdbProxy').value = data.settings.tmdb_proxy || '';
                     document.getElementById('tmdbProxyType').value = data.settings.tmdb_proxy_type || 'http';
                     document.getElementById('doubanCookie').value = data.settings.douban_cookie || '';
+                    document.getElementById('updateProxy').value = data.settings.update_proxy || '';
+                    document.getElementById('updateProxyEnabled').checked = data.settings.update_proxy_enabled || false;
+                    document.getElementById('autoRestartAfterUpdate').checked = data.settings.auto_restart_after_update !== false;
                 }
             } catch (error) {
                 console.error('加载设置失败:', error);
             }
+            
+            // 加载当前版本
+            loadCurrentVersion();
         }
         
         function closeSettingsModal() {
@@ -1307,7 +1349,10 @@
                 tmdb_api_key: document.getElementById('tmdbApiKey').value.trim(),
                 tmdb_proxy: document.getElementById('tmdbProxy').value.trim(),
                 tmdb_proxy_type: document.getElementById('tmdbProxyType').value,
-                douban_cookie: document.getElementById('doubanCookie').value.trim()
+                douban_cookie: document.getElementById('doubanCookie').value.trim(),
+                update_proxy: document.getElementById('updateProxy').value.trim(),
+                update_proxy_enabled: document.getElementById('updateProxyEnabled').checked,
+                auto_restart_after_update: document.getElementById('autoRestartAfterUpdate').checked
             };
             
             try {
@@ -2033,6 +2078,167 @@
                 localStorage.setItem('tvOutputPath', currentBrowsePath);
             }
             closeFolderBrowser();
+        }
+        
+        // 加载当前版本
+        async function loadCurrentVersion() {
+            try {
+                const response = await fetch('/api/get-version', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    const versionEl = document.getElementById('currentVersion');
+                    if (versionEl) {
+                        versionEl.textContent = `${data.current_version} (${data.git_commit})`;
+                    }
+                }
+            } catch (error) {
+                console.error('加载版本失败:', error);
+            }
+        }
+        
+        // 检查更新（在设置中）
+        async function checkForUpdates() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.textContent = '🔍 检查中...';
+            
+            try {
+                const useProxy = document.getElementById('updateProxyEnabled').checked;
+                
+                const response = await fetch('/api/check-update', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ use_proxy: useProxy })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    if (data.has_update) {
+                        const msg = `发现新版本！\n\n当前版本: ${data.current_version}\n落后提交: ${data.commits_behind} 个\n\n是否立即更新？`;
+                        if (confirm(msg)) {
+                            executeUpdate();
+                        }
+                    } else {
+                        alert('✅ 已是最新版本\n\n当前版本: ' + data.current_version);
+                    }
+                } else {
+                    throw new Error(data.error || '检查更新失败');
+                }
+            } catch (error) {
+                alert('❌ 检查更新失败\n\n' + error.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🔍 检查更新';
+            }
+        }
+        
+        // 执行更新
+        async function executeUpdate() {
+            const useProxy = document.getElementById('updateProxyEnabled').checked;
+            const autoRestart = document.getElementById('autoRestartAfterUpdate').checked;
+            
+            // 关闭设置弹窗
+            closeSettingsModal();
+            
+            showStatus('正在更新系统...', 'info');
+            
+            try {
+                const response = await fetch('/api/update', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        use_proxy: useProxy,
+                        auto_restart: autoRestart
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    if (data.updated) {
+                        showStatus('✅ ' + data.message, 'success');
+                        if (autoRestart) {
+                            alert('✅ 更新成功！\n\n' + data.message + '\n\n页面将在5秒后自动刷新...');
+                            setTimeout(() => {
+                                window.location.reload();
+                            }, 5000);
+                        } else {
+                            alert('✅ 更新成功！\n\n' + data.message);
+                        }
+                    } else {
+                        showStatus(data.message, 'info');
+                        alert('ℹ️ ' + data.message);
+                    }
+                } else {
+                    throw new Error(data.error || '更新失败');
+                }
+            } catch (error) {
+                showStatus('更新失败: ' + error.message, 'error');
+                alert('❌ 更新失败\n\n' + error.message + '\n\n请检查网络连接或在设置中配置代理。');
+            }
+        }
+        
+        // 系统更新功能（快捷按钮）
+        async function checkUpdate() {
+            if (!confirm('确定要检查并更新系统吗？\n\n更新过程中服务会短暂中断。')) {
+                return;
+            }
+            
+            showStatus('正在检查更新...', 'info');
+            
+            try {
+                // 先检查更新
+                const checkResponse = await fetch('/api/check-update', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ use_proxy: false })
+                });
+                
+                const checkData = await checkResponse.json();
+                
+                if (checkData.success) {
+                    if (checkData.has_update) {
+                        const msg = `发现新版本！\n\n当前版本: ${checkData.current_version}\n落后提交: ${checkData.commits_behind} 个\n\n正在更新...`;
+                        showStatus(msg, 'info');
+                        
+                        // 执行更新
+                        const updateResponse = await fetch('/api/update', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                use_proxy: false,
+                                auto_restart: true
+                            })
+                        });
+                        
+                        const updateData = await updateResponse.json();
+                        
+                        if (updateResponse.ok && updateData.updated) {
+                            showStatus('✅ ' + updateData.message, 'success');
+                            alert('✅ 更新成功！\n\n' + updateData.message + '\n\n页面将在5秒后自动刷新...');
+                            setTimeout(() => {
+                                window.location.reload();
+                            }, 5000);
+                        } else {
+                            throw new Error(updateData.error || '更新失败');
+                        }
+                    } else {
+                        showStatus('✅ 已是最新版本', 'success');
+                        alert('✅ 已是最新版本\n\n当前版本: ' + checkData.current_version);
+                    }
+                } else {
+                    throw new Error(checkData.error || '检查更新失败');
+                }
+            } catch (error) {
+                showStatus('更新失败: ' + error.message, 'error');
+                alert('❌ 更新失败\n\n' + error.message + '\n\n请在设置中配置代理后重试。');
+            }
         }
     </script>
 </body>
