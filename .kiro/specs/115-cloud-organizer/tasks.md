@@ -10,10 +10,12 @@
   - 更新API路由支持/api/local/*和/api/cloud/*
 
 
+
   - _需求: 9.1, 9.2, 9.3_
 
 - [ ] 2. 实现Cookie加密存储
   - 安装cryptography依赖
+
   - 创建CookieEncryption类实现AES-256加密
   - 生成并保存加密密钥到.encryption_key文件
   - 实现encrypt和decrypt方法
@@ -101,6 +103,7 @@
 
 - [ ] 13. 实现前端模块切换界面
   - 在index.html添加模块切换选项卡（本地/115网盘）
+
   - 实现switchModule函数切换模块
   - 保存用户选择的模块到localStorage
   - 根据模块显示不同的配置选项

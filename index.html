@@ -939,6 +939,27 @@
                     </div>
                 </div>
                 
+                <!-- 115网盘设置 -->
+                <div class="settings-section">
+                    <h3>☁️ 115网盘配置</h3>
+                    <div class="form-group">
+                        <label>登录状态:</label>
+                        <div id="cloud115Status" style="padding: 10px; background: #f8f9fa; border-radius: 6px; color: #6c757d;">
+                            未配置
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Cookie:</label>
+                        <textarea id="cloud115Cookie" rows="3" placeholder="输入115网盘Cookie"></textarea>
+                        <small>获取方法: 登录115网盘 → F12开发者工具 → Application → Cookies → 复制所有Cookie</small>
+                    </div>
+                    <div style="margin-top: 15px;">
+                        <button onclick="verifyCloud115Cookie()" style="width: 100%; padding: 12px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500;">
+                            🔍 验证Cookie
+                        </button>
+                    </div>
+                </div>
+                
                 <!-- 系统更新设置 -->
                 <div class="settings-section">
                     <h3>🔄 系统更新配置</h3>
@@ -1366,6 +1387,66 @@
         function closeSettingsModal() {
             const modal = document.getElementById('settingsModal');
             modal.style.display = 'none';
+        }
+        
+        // 115网盘Cookie验证
+        async function verifyCloud115Cookie() {
+            const cookie = document.getElementById('cloud115Cookie').value.trim();
+            
+            if (!cookie) {
+                alert('请先输入115网盘Cookie');
+                return;
+            }
+            
+            const btn = event.target;
+            btn.disabled = true;
+            btn.textContent = '🔍 验证中...';
+            
+            const statusEl = document.getElementById('cloud115Status');
+            statusEl.textContent = '验证中...';
+            statusEl.style.background = '#fff3cd';
+            statusEl.style.color = '#856404';
+            
+            try {
+                const response = await fetch('/api/cloud/verify-cookie', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ cookie })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    const userInfo = data.user_info;
+                    const spaceUsed = (userInfo.space_used / (1024**3)).toFixed(2);
+                    const spaceTotal = (userInfo.space_total / (1024**3)).toFixed(2);
+                    
+                    statusEl.innerHTML = `
+                        ✅ 已登录<br>
+                        <small>用户: ${userInfo.username || userInfo.user_id}</small><br>
+                        <small>空间: ${spaceUsed}GB / ${spaceTotal}GB</small>
+                    `;
+                    statusEl.style.background = '#d4edda';
+                    statusEl.style.color = '#155724';
+                    
+                    alert('✅ Cookie验证成功！\n\n用户: ' + (userInfo.username || userInfo.user_id) + '\n空间: ' + spaceUsed + 'GB / ' + spaceTotal + 'GB');
+                } else {
+                    statusEl.textContent = '❌ ' + (data.error || 'Cookie无效');
+                    statusEl.style.background = '#f8d7da';
+                    statusEl.style.color = '#721c24';
+                    
+                    alert('❌ Cookie验证失败\n\n' + (data.error || 'Cookie无效或已过期'));
+                }
+            } catch (error) {
+                statusEl.textContent = '❌ 验证失败';
+                statusEl.style.background = '#f8d7da';
+                statusEl.style.color = '#721c24';
+                
+                alert('❌ 验证失败\n\n' + error.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🔍 验证Cookie';
+            }
         }
         
         async function saveSettings() {
