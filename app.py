@@ -555,7 +555,10 @@ class Cloud115API:
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                 'Cookie': self.cookie,
                 'Accept': 'application/json, text/javascript, */*; q=0.01',
-                'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8'
+                'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+                'Referer': 'https://115.com/',
+                'Origin': 'https://115.com',
+                'X-Requested-With': 'XMLHttpRequest'
             })
             return session
         except ImportError:
@@ -573,42 +576,61 @@ class Cloud115API:
                 sys.stdout.flush()
                 return False, None, "requests库未安装"
             
-            # 获取用户信息
-            url = f'{self.BASE_URL}/user/info'
-            print(f"[115 API] 请求URL: {url}", flush=True)
-            sys.stdout.flush()
-            print(f"[115 API] Cookie前20字符: {self.cookie[:20]}...", flush=True)
-            sys.stdout.flush()
+            # 尝试多个API端点
+            endpoints = [
+                ('/files/index_info', 'index_info'),  # 首页信息API
+                ('/user/info', 'user_info'),  # 用户信息API
+            ]
             
-            response = self.session.get(url, timeout=10)
-            
-            print(f"[115 API] 响应状态码: {response.status_code}", flush=True)
-            sys.stdout.flush()
-            print(f"[115 API] 响应内容: {response.text[:500]}", flush=True)
-            sys.stdout.flush()
-            
-            if response.status_code == 200:
-                data = response.json()
-                print(f"[115 API] JSON数据: {json.dumps(data, ensure_ascii=False)[:500]}", flush=True)
+            for endpoint, name in endpoints:
+                url = f'{self.BASE_URL}{endpoint}'
+                print(f"\n[115 API] 尝试端点: {name}", flush=True)
+                sys.stdout.flush()
+                print(f"[115 API] 请求URL: {url}", flush=True)
+                sys.stdout.flush()
+                print(f"[115 API] Cookie前20字符: {self.cookie[:20]}...", flush=True)
                 sys.stdout.flush()
                 
-                if data.get('state'):
-                    user_info = {
-                        'user_id': data.get('data', {}).get('user_id', ''),
-                        'username': data.get('data', {}).get('user_name', ''),
-                        'space_used': data.get('data', {}).get('space_info', {}).get('all_use', {}).get('size', 0),
-                        'space_total': data.get('data', {}).get('space_info', {}).get('all_total', {}).get('size', 0)
-                    }
-                    return True, user_info, None
-                else:
-                    error_msg = data.get('error', 'Cookie无效或已过期')
-                    print(f"[115 API] 验证失败: {error_msg}", flush=True)
-                    sys.stdout.flush()
-                    return False, None, error_msg
-            else:
-                print(f"[115 API] HTTP错误: {response.status_code}", flush=True)
+                response = self.session.get(url, timeout=10)
+                
+                print(f"[115 API] 响应状态码: {response.status_code}", flush=True)
                 sys.stdout.flush()
-                return False, None, f"HTTP错误: {response.status_code}"
+                print(f"[115 API] 响应内容: {response.text[:500]}", flush=True)
+                sys.stdout.flush()
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    print(f"[115 API] JSON数据: {json.dumps(data, ensure_ascii=False)[:500]}", flush=True)
+                    sys.stdout.flush()
+                    
+                    if data.get('state'):
+                        # 成功获取数据
+                        print(f"[115 API] ✅ 端点 {name} 验证成功", flush=True)
+                        sys.stdout.flush()
+                        
+                        # 提取用户信息
+                        user_data = data.get('data', {})
+                        user_info = {
+                            'user_id': user_data.get('user_id', user_data.get('uid', '')),
+                            'username': user_data.get('user_name', user_data.get('username', '')),
+                            'space_used': user_data.get('space_info', {}).get('all_use', {}).get('size', 0),
+                            'space_total': user_data.get('space_info', {}).get('all_total', {}).get('size', 0)
+                        }
+                        return True, user_info, None
+                    else:
+                        error_msg = data.get('error', 'Cookie无效或已过期')
+                        print(f"[115 API] ❌ 端点 {name} 验证失败: {error_msg}", flush=True)
+                        sys.stdout.flush()
+                        # 继续尝试下一个端点
+                        continue
+                else:
+                    print(f"[115 API] HTTP错误: {response.status_code}", flush=True)
+                    sys.stdout.flush()
+                    continue
+            
+            # 所有端点都失败
+            return False, None, "所有API端点验证失败，Cookie可能无效或已过期"
+            
         except Exception as e:
             print(f"[115 API] 异常: {str(e)}", flush=True)
             sys.stdout.flush()
