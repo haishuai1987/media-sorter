@@ -1248,6 +1248,15 @@ class MediaHandler(SimpleHTTPRequestHandler):
             folder_name = os.path.basename(current_path)
             score = 0
             
+            # 如果是 Season X 文件夹，跳过，继续向上查找
+            if re.match(r'^Season\s+\d+$', folder_name, re.IGNORECASE):
+                # 向上一级
+                parent = os.path.dirname(current_path)
+                if parent == current_path:  # 已到根目录
+                    break
+                current_path = parent
+                continue
+            
             # 包含TMDB ID的文件夹优先级最高
             if '{tmdbid-' in folder_name:
                 score += 100
@@ -1294,9 +1303,22 @@ class MediaHandler(SimpleHTTPRequestHandler):
         # 尝试从父文件夹获取标题和年份
         folder_title = ''
         folder_year = ''
+        season_from_folder = None  # 从文件夹名提取的季数
+        
         if parent_folder:
             folder_name = os.path.basename(parent_folder)
-            folder_title, folder_year = self.parse_folder_name(folder_name)
+            
+            # 检查是否是 Season X 文件夹
+            season_match = re.match(r'^Season\s+(\d+)$', folder_name, re.IGNORECASE)
+            if season_match:
+                season_from_folder = int(season_match.group(1))
+                # 向上一级获取真正的剧集名
+                parent_parent = os.path.dirname(parent_folder)
+                if parent_parent:
+                    parent_parent_name = os.path.basename(parent_parent)
+                    folder_title, folder_year = self.parse_folder_name(parent_parent_name)
+            else:
+                folder_title, folder_year = self.parse_folder_name(folder_name)
         
         metadata = {
             'title': '',
@@ -1397,14 +1419,47 @@ class MediaHandler(SimpleHTTPRequestHandler):
         if folder_year and not metadata['year']:
             metadata['year'] = folder_year
         
-        # 如果标题是英文，尝试从TMDB获取中文标题和分类
+        # 处理标题查询（支持续集智能识别）
         final_title = metadata['title']
+        is_tv = metadata['type'] == 'tv'
+        
+        # 如果是电视剧且从Season文件夹检测到季数 > 1，尝试查找续集
+        search_title = final_title
+        search_year = metadata['year']
+        
+        if is_tv and season_from_folder and season_from_folder > 1:
+            # 尝试添加续集标记查询
+            print(f"检测到Season {season_from_folder}文件夹，尝试查询续集...")
+            
+            # 对于中文标题，尝试添加续集标记
+            if any('\u4e00' <= c <= '\u9fff' for c in final_title):
+                # 中文续集标记
+                if season_from_folder == 2:
+                    search_title = f"{final_title}II"  # 如：我和僵尸有个约会II
+                elif season_from_folder == 3:
+                    search_title = f"{final_title}III"
+                elif season_from_folder == 4:
+                    search_title = f"{final_title}IV"
+                elif season_from_folder == 5:
+                    search_title = f"{final_title}V"
+            else:
+                # 英文续集标记
+                if season_from_folder == 2:
+                    search_title = f"{final_title} II"
+                elif season_from_folder == 3:
+                    search_title = f"{final_title} III"
+                elif season_from_folder == 4:
+                    search_title = f"{final_title} IV"
+                elif season_from_folder == 5:
+                    search_title = f"{final_title} V"
+            
+            print(f"续集查询标题: {search_title}")
+        
+        # 如果标题是英文，尝试从TMDB获取中文标题和分类
         if final_title and not any('\u4e00' <= c <= '\u9fff' for c in final_title):
-            # 判断是电影还是电视剧
-            is_tv = metadata['type'] == 'tv'
             result = TMDBHelper.get_metadata_with_category(
-                final_title, 
-                metadata['year'], 
+                search_title, 
+                search_year, 
                 is_tv
             )
             metadata['title'] = result['title']
@@ -1412,6 +1467,9 @@ class MediaHandler(SimpleHTTPRequestHandler):
             if result['year'] and not metadata['year']:
                 metadata['year'] = result['year']
         else:
+            # 中文标题，如果检测到续集，更新标题
+            if search_title != final_title:
+                metadata['title'] = search_title
             # 中文标题，无法自动分类
             metadata['category'] = None
         
