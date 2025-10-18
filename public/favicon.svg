@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea"/>
+      <stop offset="100%" style="stop-color:#764ba2"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- 背景 -->
+  <rect width="32" height="32" rx="6" fill="url(#bg)"/>
+  
+  <!-- 文件夹 -->
+  <path d="M 6 10 L 6 22 Q 6 23 7 23 L 25 23 Q 26 23 26 22 L 26 10 Z" fill="#ffd700" opacity="0.9"/>
+  <path d="M 6 10 L 10 8 L 16 8 L 18 10 Z" fill="#ffd700"/>
+  
+  <!-- 胶片 -->
+  <rect x="10" y="13" width="12" height="6" rx="1" fill="#ffffff" opacity="0.9"/>
+  <rect x="11" y="14" width="2" height="1" fill="#667eea" opacity="0.5"/>
+  <rect x="14" y="14" width="2" height="1" fill="#764ba2" opacity="0.5"/>
+  <rect x="17" y="14" width="2" height="1" fill="#667eea" opacity="0.5"/>
+  
+  <!-- 星星 -->
+  <circle cx="24" cy="10" r="3" fill="#ffd700"/>
+  <path d="M 24 8 L 24.5 9.5 L 26 10 L 24.5 10.5 L 24 12 L 23.5 10.5 L 22 10 L 23.5 9.5 Z" fill="#ffffff"/>
+</svg>

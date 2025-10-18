@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>媒体和字幕文件管理器</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>📁 媒体和字幕文件管理器</h1>
+        
+        <div class="scan-section">
+            <input type="text" id="folderPath" placeholder="输入文件夹路径，例如：/media/videos" />
+            <button onclick="scanFolder()">扫描文件夹</button>
+        </div>
+
+        <div id="status" class="status"></div>
+
+        <div class="filter-section">
+            <button class="filter-btn active" onclick="filterFiles('all')">全部</button>
+            <button class="filter-btn" onclick="filterFiles('media')">媒体文件</button>
+            <button class="filter-btn" onclick="filterFiles('subtitle')">字幕文件</button>
+        </div>
+
+        <div id="fileList" class="file-list"></div>
+    </div>
+
+    <script>
+        let currentFiles = [];
+        let currentFilter = 'all';
+        let currentFolder = '';
+
+        async function scanFolder() {
+            const folderPath = document.getElementById('folderPath').value.trim();
+            if (!folderPath) {
+                showStatus('请输入文件夹路径', 'error');
+                return;
+            }
+
+            showStatus('正在扫描...', 'info');
+
+            try {
+                const response = await fetch('/api/scan', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ folderPath })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error);
+                }
+
+                currentFiles = data.files;
+                currentFolder = data.folderPath;
+                showStatus(`找到 ${currentFiles.length} 个文件`, 'success');
+                displayFiles();
+            } catch (error) {
+                showStatus('错误: ' + error.message, 'error');
+            }
+        }
+
+        function filterFiles(type) {
+            currentFilter = type;
+            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            displayFiles();
+        }
+
+        function displayFiles() {
+            const fileList = document.getElementById('fileList');
+            const filtered = currentFilter === 'all' 
+                ? currentFiles 
+                : currentFiles.filter(f => f.type === currentFilter);
+
+            if (filtered.length === 0) {
+                fileList.innerHTML = '<p class="no-files">没有找到文件</p>';
+                return;
+            }
+
+            fileList.innerHTML = filtered.map(file => `
+                <div class="file-item ${file.type}">
+                    <div class="file-icon">${file.type === 'media' ? '🎬' : '📝'}</div>
+                    <div class="file-info">
+                        <div class="file-name" id="name-${file.path}">${file.name}</div>
+                        <div class="file-meta">${formatSize(file.size)} · ${formatDate(file.modified)}</div>
+                    </div>
+                    <button class="rename-btn" onclick="renameFile('${escapeHtml(file.path)}', '${escapeHtml(file.name)}')">重命名</button>
+                </div>
+            `).join('');
+        }
+
+        async function renameFile(filePath, oldName) {
+            const newName = prompt('输入新文件名:', oldName);
+            if (!newName || newName === oldName) return;
+
+            showStatus('正在重命名...', 'info');
+
+            try {
+                const response = await fetch('/api/rename', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ oldPath: filePath, newName })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error);
+                }
+
+                showStatus('重命名成功', 'success');
+                scanFolder(); // 重新扫描
+            } catch (error) {
+                showStatus('错误: ' + error.message, 'error');
+            }
+        }
+
+        function showStatus(message, type) {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = `status ${type}`;
+            status.style.display = 'block';
+        }
+
+        function formatSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+            return (bytes / (1024 * 1024 * 1024)).toFixed(1) + ' GB';
+        }
+
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleString('zh-CN');
+        }
+
+        function escapeHtml(text) {
+            return text.replace(/'/g, "\\'");
+        }
+    </script>
+</body>
+</html>

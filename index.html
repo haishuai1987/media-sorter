@@ -1,0 +1,2039 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>媒体库文件管理器</title>
+    <!-- Favicon - SVG格式 -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='bg' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' style='stop-color:%23667eea'/%3E%3Cstop offset='100%25' style='stop-color:%23764ba2'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='32' height='32' rx='6' fill='url(%23bg)'/%3E%3Cpath d='M 6 10 L 6 22 Q 6 23 7 23 L 25 23 Q 26 23 26 22 L 26 10 Z' fill='%23ffd700' opacity='0.9'/%3E%3Cpath d='M 6 10 L 10 8 L 16 8 L 18 10 Z' fill='%23ffd700'/%3E%3Crect x='10' y='13' width='12' height='6' rx='1' fill='%23ffffff' opacity='0.9'/%3E%3Crect x='11' y='14' width='2' height='1' fill='%23667eea' opacity='0.5'/%3E%3Crect x='14' y='14' width='2' height='1' fill='%23764ba2' opacity='0.5'/%3E%3Crect x='17' y='14' width='2' height='1' fill='%23667eea' opacity='0.5'/%3E%3Ccircle cx='24' cy='10' r='3' fill='%23ffd700'/%3E%3Cpath d='M 24 8 L 24.5 9.5 L 26 10 L 24.5 10.5 L 24 12 L 23.5 10.5 L 22 10 L 23.5 9.5 Z' fill='%23ffffff'/%3E%3C/svg%3E">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .scan-section {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        #folderPath {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        #folderPath:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        #folderPath::placeholder {
+            color: #999;
+        }
+
+        button {
+            padding: 12px 24px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background: #5568d3;
+        }
+
+        .status {
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .status.info {
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+
+        .status.success {
+            background: #e8f5e9;
+            color: #388e3c;
+        }
+
+        .status.error {
+            background: #ffebee;
+            color: #d32f2f;
+        }
+
+        .filter-section {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .filter-btn {
+            padding: 8px 16px;
+            background: #f5f5f5;
+            color: #666;
+            font-size: 13px;
+        }
+
+        .filter-btn.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .file-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .file-item {
+            display: flex;
+            align-items: center;
+            padding: 16px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .file-item:hover {
+            transform: translateX(4px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .file-item.subtitle {
+            border-left-color: #ff9800;
+        }
+
+        .file-icon {
+            font-size: 32px;
+            margin-right: 16px;
+        }
+
+        .file-info {
+            flex: 1;
+        }
+
+        .file-name {
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 4px;
+            word-break: break-all;
+        }
+
+        .file-meta {
+            font-size: 12px;
+            color: #999;
+        }
+
+        .rename-btn {
+            padding: 8px 16px;
+            background: #4caf50;
+            font-size: 13px;
+        }
+
+        .rename-btn:hover {
+            background: #45a049;
+        }
+
+        .no-files {
+            text-align: center;
+            color: #999;
+            padding: 40px;
+        }
+
+        .file-item.unsupported {
+            border-left-color: #f44336;
+            opacity: 0.7;
+        }
+
+        .delete-btn {
+            padding: 8px 16px;
+            background: #f44336;
+            font-size: 13px;
+            margin-left: 8px;
+        }
+
+        .delete-btn:hover {
+            background: #d32f2f;
+        }
+
+        .info-box {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 12px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+            font-size: 13px;
+            color: #856404;
+        }
+
+        .folder-browser-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .folder-browser-overlay.show {
+            display: flex;
+        }
+
+        .folder-browser {
+            background: white;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .folder-browser-header {
+            padding: 20px;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .folder-browser-header h3 {
+            margin: 0;
+            color: #333;
+        }
+
+        .folder-browser-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #999;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+        }
+
+        .folder-browser-close:hover {
+            color: #333;
+        }
+
+        .folder-browser-path {
+            padding: 15px 20px;
+            background: #f5f5f5;
+            border-bottom: 1px solid #e0e0e0;
+            font-family: monospace;
+            font-size: 13px;
+            color: #666;
+            word-break: break-all;
+        }
+
+        .folder-browser-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+
+        .folder-item {
+            padding: 12px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: background 0.2s;
+        }
+
+        .folder-item:hover {
+            background: #f0f4ff;
+        }
+
+        .folder-item-icon {
+            font-size: 20px;
+        }
+
+        .folder-item-name {
+            flex: 1;
+            color: #333;
+        }
+
+        .folder-browser-footer {
+            padding: 15px 20px;
+            border-top: 1px solid #e0e0e0;
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .folder-browser-footer button {
+            padding: 10px 20px;
+        }
+        
+        /* 进度弹窗样式 */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(5px);
+        }
+        
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: modalSlideIn 0.3s ease-out;
+        }
+        
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-50px) scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 25px;
+            border-bottom: 2px solid #f0f0f0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 12px 12px 0 0;
+        }
+        
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            color: white;
+            cursor: pointer;
+            padding: 5px 10px;
+            border-radius: 50%;
+            transition: background 0.2s;
+        }
+        
+        .close-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .modal-body {
+            padding: 25px;
+        }
+        
+        .progress-section {
+            margin-bottom: 25px;
+        }
+        
+        .progress-section h3 {
+            margin: 0 0 15px 0;
+            color: #333;
+            font-size: 16px;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #f0f0f0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            width: 0%;
+            transition: width 0.5s ease;
+            border-radius: 10px;
+        }
+        
+        .progress-text {
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .current-step {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .step-icon {
+            font-size: 24px;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        
+        .step-info {
+            flex: 1;
+        }
+        
+        .step-title {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        
+        .step-detail {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .detail-progress {
+            display: grid;
+            gap: 8px;
+        }
+        
+        .progress-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 15px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            transition: all 0.3s;
+        }
+        
+        .progress-item.active {
+            background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
+            border-left: 3px solid #667eea;
+        }
+        
+        .progress-item.completed {
+            background: linear-gradient(135deg, #28a74515 0%, #20c99715 100%);
+            border-left: 3px solid #28a745;
+        }
+        
+        .progress-icon {
+            font-size: 16px;
+            width: 20px;
+            text-align: center;
+        }
+        
+        .progress-label {
+            flex: 1;
+            font-weight: 500;
+            color: #333;
+        }
+        
+        .progress-status {
+            font-size: 12px;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-weight: 500;
+        }
+        
+        .progress-status.waiting {
+            background: #f8f9fa;
+            color: #6c757d;
+        }
+        
+        .progress-status.active {
+            background: #667eea;
+            color: white;
+            animation: blink 1.5s infinite;
+        }
+        
+        .progress-status.completed {
+            background: #28a745;
+            color: white;
+        }
+        
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        .realtime-log {
+            background: #1e1e1e;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            max-height: 200px;
+            overflow-y: auto;
+            line-height: 1.4;
+        }
+        
+        .log-message {
+            margin-bottom: 5px;
+        }
+        
+        .log-message:last-child {
+            margin-bottom: 0;
+        }
+        
+        /* 按钮悬停效果 */
+        button:hover {
+            transform: translateY(-2px);
+        }
+        
+        /* 设置弹窗样式 */
+        .settings-section {
+            margin-bottom: 25px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        
+        .settings-section h3 {
+            margin: 0 0 15px 0;
+            color: #333;
+            font-size: 16px;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group:last-child {
+            margin-bottom: 0;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+            font-weight: 500;
+            font-size: 14px;
+        }
+        
+        .form-group input[type="text"],
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: inherit;
+            transition: border-color 0.3s;
+        }
+        
+        .form-group input[type="text"]:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .form-group textarea {
+            resize: vertical;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+        
+        .form-group small {
+            display: block;
+            margin-top: 5px;
+            color: #666;
+            font-size: 12px;
+        }
+        
+        .form-group small a {
+            color: #667eea;
+            text-decoration: none;
+        }
+        
+        .form-group small a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 style="display: flex; align-items: center; justify-content: center; gap: 15px;">
+            <img src="/logo.svg" alt="Logo" style="width: 50px; height: 50px;">
+            <span>媒体库文件管理器 V1.3</span>
+        </h1>
+        
+        <div style="margin-bottom: 20px;">
+            <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #333;">
+                📂 扫描路径：
+            </label>
+            <div style="display: flex; gap: 10px;">
+                <input type="text" id="folderPath" placeholder="输入文件夹路径，例如：/vol02/1000-1-b23abde7/待整理" 
+                       style="flex: 1; padding: 12px 16px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px;">
+                <button onclick="openFolderBrowser('scan')" style="padding: 12px 20px; background: #667eea;">
+                    📁 浏览
+                </button>
+            </div>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+            <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #333;">
+                🎬 电影输出路径：
+            </label>
+            <div style="display: flex; gap: 10px;">
+                <input type="text" id="movieOutputPath" placeholder="输入电影输出路径，例如：/vol02/1000-1-b23abde7/电影" 
+                       style="flex: 1; padding: 12px 16px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px;">
+                <button onclick="openFolderBrowser('movie')" style="padding: 12px 20px; background: #667eea;">
+                    📁 浏览
+                </button>
+            </div>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+            <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #333;">
+                📺 电视剧输出路径：
+            </label>
+            <div style="display: flex; gap: 10px;">
+                <input type="text" id="tvOutputPath" placeholder="输入电视剧输出路径，例如：/vol02/1000-1-b23abde7/电视剧" 
+                       style="flex: 1; padding: 12px 16px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px;">
+                <button onclick="openFolderBrowser('tv')" style="padding: 12px 20px; background: #667eea;">
+                    📁 浏览
+                </button>
+            </div>
+        </div>
+
+        <div style="margin-bottom: 20px; padding: 20px; background: #f8f9fa; border-radius: 12px; border: 2px solid #e9ecef;">
+            <div style="display: flex; align-items: center; margin-bottom: 12px;">
+                <span style="font-size: 20px; margin-right: 8px;">⚙️</span>
+                <label style="font-weight: 600; color: #333; font-size: 16px;">
+                    文件冲突处理策略
+                </label>
+            </div>
+            
+            <select id="conflictStrategy" style="width: 100%; padding: 12px 16px; border: 2px solid #dee2e6; border-radius: 8px; font-size: 15px; background: white; cursor: pointer; transition: border-color 0.3s;">
+                <option value="auto">🤖 自动比较（推荐）- 智能评分，保留最佳质量</option>
+                <option value="skip">⏭️ 跳过 - 保留旧文件，不处理新文件</option>
+                <option value="replace">🔄 替换 - 直接用新文件替换旧文件</option>
+                <option value="keep_both">📦 保留两个 - 新文件添加版本号后缀</option>
+            </select>
+            
+            <div style="margin-top: 12px; padding: 12px; background: white; border-radius: 6px; border-left: 4px solid #667eea;">
+                <div style="font-weight: 600; color: #667eea; margin-bottom: 8px;">📊 策略说明：</div>
+                <div style="font-size: 13px; color: #495057; line-height: 1.8;">
+                    <strong>🤖 自动比较</strong>：综合评分系统<br>
+                    <span style="margin-left: 20px;">• 分辨率：4K(2160分) > 1080p(1080分) > 720p(720分)</span><br>
+                    <span style="margin-left: 20px;">• 来源：REMUX(100分) > BluRay(80分) > WEB-DL(60分) > WEBRip(40分)</span><br>
+                    <span style="margin-left: 20px;">• 编码：H.265/HEVC(+10分) > H.264(0分)</span><br>
+                    <span style="margin-left: 20px;">• 大小：评分相同时，文件越大越好（差异<1MB视为相同）</span><br>
+                    <span style="margin-left: 20px; color: #28a745;">✓ 适合：日常使用，自动保留最佳版本</span><br><br>
+                    
+                    <strong>⏭️ 跳过</strong>：保守策略<br>
+                    <span style="margin-left: 20px;">• 保留目标目录中的旧文件</span><br>
+                    <span style="margin-left: 20px;">• 不处理待整理目录中的新文件</span><br>
+                    <span style="margin-left: 20px; color: #28a745;">✓ 适合：增量更新，只添加新集数</span><br><br>
+                    
+                    <strong>🔄 替换</strong>：激进策略<br>
+                    <span style="margin-left: 20px;">• 直接用新文件替换旧文件</span><br>
+                    <span style="margin-left: 20px;">• 不进行质量比较</span><br>
+                    <span style="margin-left: 20px; color: #28a745;">✓ 适合：重新下载更好的版本</span><br><br>
+                    
+                    <strong>📦 保留两个</strong>：收藏策略<br>
+                    <span style="margin-left: 20px;">• 保留旧文件</span><br>
+                    <span style="margin-left: 20px;">• 新文件添加版本号（.v1, .v2...）</span><br>
+                    <span style="margin-left: 20px; color: #28a745;">✓ 适合：多版本对比，不同字幕组</span>
+                </div>
+            </div>
+        </div>
+
+        <div style="text-align: center; margin-bottom: 20px; display: flex; gap: 15px; justify-content: center; align-items: center;">
+            <button onclick="startAutoRename()" style="font-size: 16px; padding: 14px 36px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4); border: none; border-radius: 8px; color: white; cursor: pointer; transition: transform 0.2s; font-weight: 500;">
+                🚀 一键整理入库
+            </button>
+            <button onclick="showProgressModal()" style="font-size: 16px; padding: 14px 36px; background: linear-gradient(135deg, #28a745 0%, #20c997 100%); box-shadow: 0 4px 15px rgba(40, 167, 69, 0.4); border: none; border-radius: 8px; color: white; cursor: pointer; transition: transform 0.2s; font-weight: 500;">
+                📊 整理详情
+            </button>
+            <button onclick="showSettingsModal()" style="font-size: 16px; padding: 14px 36px; background: linear-gradient(135deg, #ff9800 0%, #ff5722 100%); box-shadow: 0 4px 15px rgba(255, 152, 0, 0.4); border: none; border-radius: 8px; color: white; cursor: pointer; transition: transform 0.2s; font-weight: 500;">
+                ⚙️ 设置
+            </button>
+        </div>
+
+        <!-- 功能说明（可折叠） -->
+        <div style="margin-bottom: 20px;">
+            <div onclick="toggleFunctionInfo()" style="cursor: pointer; padding: 15px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 8px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);">
+                <div style="display: flex; align-items: center;">
+                    <span style="font-size: 20px; margin-right: 10px; color: white;">📖</span>
+                    <strong style="font-size: 16px; color: white;">功能说明 - 完整处理流程</strong>
+                </div>
+                <span id="functionInfoToggle" style="color: white; font-size: 20px;">▼</span>
+            </div>
+            
+            <div id="functionInfoContent" class="info-box" style="display: none; margin-top: 10px; padding: 20px; border: 2px solid #667eea; border-radius: 8px;">
+                <div style="background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%); padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                    <strong style="color: #667eea;">📂 步骤1：智能扫描</strong><br>
+                    • 递归扫描待整理目录的所有子文件夹<br>
+                    • 自动识别媒体文件（视频）和字幕文件<br>
+                    • 自动删除不支持的文件格式（如txt、jpg等）<br>
+                    • 支持格式：mp4, mkv, ts, iso, rmvb, avi, mov, mpeg, mpg, wmv, 3gp, asf, m4v, flv, m2ts, tp, f4v, srt, ssa, ass
+                </div>
+
+                <div style="background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%); padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                    <strong style="color: #667eea;">🌐 步骤2：中文标题识别</strong><br>
+                    • <strong>豆瓣优先</strong>：完整标题查询 → 清理标题 → 渐进缩短 → 关键词查询<br>
+                    • <strong>TMDB备用</strong>：完整标题查询 → 不带年份 → 渐进缩短<br>
+                    • <strong>智能缓存</strong>：相同标题不重复查询，提高效率<br>
+                    • <strong>支持超长标题</strong>：如 "Apocalypse Bringer Mynoghra World Conquest..." → "异世界默示录麦诺格拉"<br>
+                    • <strong>获取元数据</strong>：同时获取genre_ids、origin_country、original_language用于后续分类
+                </div>
+
+                <div style="background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%); padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                    <strong style="color: #667eea;">🎯 步骤3：智能去重</strong><br>
+                    • <strong>识别重复</strong>：相同标题+年份+季集 = 同一影片<br>
+                    • <strong>质量评分</strong>：分辨率(4K=2160分) + 来源(REMUX=100分) + 编码(H.265=+10分) + 文件大小<br>
+                    • <strong>自动保留</strong>：保留评分最高的版本<br>
+                    • <strong>自动删除</strong>：删除低质量版本，释放空间<br>
+                    • <strong>减少处理量</strong>：去重后只处理保留的文件，提高效率
+                </div>
+
+                <div style="background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%); padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                    <strong style="color: #667eea;">📝 步骤4：标准化重命名</strong><br>
+                    • <strong>电影格式</strong>：标题 (年份)/标题 (年份) - 分辨率.语言.扩展名<br>
+                      <small style="color: #666;">示例：铃芽之旅 (2022)/铃芽之旅 (2022) - 1080p.chs.mkv</small><br>
+                    • <strong>电视剧格式</strong>：标题 (年份)/Season X/标题 - S0XE0X - 第 X 集.语言.扩展名<br>
+                      <small style="color: #666;">示例：异世界默示录麦诺格拉 (2025)/Season 1/异世界默示录麦诺格拉 - S01E01 - 第 01 集.mkv</small><br>
+                    • <strong>符合规范</strong>：完美兼容Emby、Jellyfin、Plex等媒体服务器<br>
+                    • <strong>生成路径</strong>：根据模板生成标准化的文件名和目录结构
+                </div>
+
+                <div style="background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%); padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                    <strong style="color: #667eea;">📁 步骤5：智能分类</strong><br>
+                    • <strong>基于TMDB元数据</strong>：genre_ids（类型）+ origin_country（国家）+ original_language（语言）<br>
+                    • <strong>电影分类</strong>：动画电影、华语电影、外语电影<br>
+                    • <strong>电视剧分类</strong>：国漫、日番、纪录片、儿童、综艺、国产剧、欧美剧、日韩剧、未分类<br>
+                    • <strong>确定目标</strong>：根据分类确定最终的输出目录路径
+                </div>
+
+                <div style="background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%); padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                    <strong style="color: #667eea;">🚚 步骤6：自动移动</strong><br>
+                    • <strong>电影</strong>：移动到 电影输出路径/分类目录/标题文件夹/<br>
+                    • <strong>电视剧</strong>：移动到 电视剧输出路径/分类目录/标题文件夹/Season X/<br>
+                    • <strong>自动创建</strong>：目标目录结构自动创建<br>
+                    • <strong>网盘优化</strong>：操作间隔和延迟验证，确保网盘同步成功<br>
+                    • <strong>触发冲突检测</strong>：移动时检查目标位置是否已有同名文件
+                </div>
+
+                <div style="background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%); padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                    <strong style="color: #667eea;">⚔️ 步骤7：冲突处理</strong><br>
+                    • <strong>自动比较</strong>：智能评分，保留最佳质量（评分相同且大小差异<1MB视为相同文件）<br>
+                    • <strong>跳过</strong>：保留旧文件，不处理新文件（适合增量更新）<br>
+                    • <strong>替换</strong>：直接用新文件替换旧文件（适合重新下载）<br>
+                    • <strong>保留两个</strong>：新文件添加版本号.v1（适合多版本对比）<br>
+                    • <strong>实时决策</strong>：在移动过程中遇到冲突时立即处理
+                </div>
+
+                <div style="background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%); padding: 15px; border-radius: 8px;">
+                    <strong style="color: #667eea;">🧹 步骤8：自动清理</strong><br>
+                    • <strong>清理跳过的文件</strong>：删除因质量相同或较差而跳过的文件<br>
+                    • <strong>清理空文件夹</strong>：递归删除所有空文件夹（从底层向上）<br>
+                    • <strong>释放空间</strong>：最大化释放磁盘空间<br>
+                    • <strong>保持整洁</strong>：待整理目录处理完成后自动清空
+                </div>
+
+                <div style="margin-top: 15px; padding: 12px; background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px;">
+                    <strong style="color: #856404;">💡 使用提示</strong><br>
+                    <small style="color: #856404;">
+                    • <strong>首次使用</strong>：点击"设置"配置API密钥 → 配置三个路径 → 选择"自动比较"策略 → 点击"一键整理入库"<br>
+                    • <strong>日常使用</strong>：新文件放入待整理目录 → 点击按钮 → 自动完成所有操作<br>
+                    • <strong>增量更新</strong>：使用"跳过"策略，只处理新增文件，不影响已整理的库<br>
+                    • <strong>网盘用户</strong>：处理过程较慢属正常现象，系统已针对网盘优化<br>
+                    • <strong>分享给朋友</strong>：每个用户需要在"设置"中配置自己的TMDB API Key和豆瓣Cookie
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <div id="status" class="status"></div>
+
+        <!-- 整理详情弹窗 -->
+        <div id="progressModal" class="modal-overlay" style="display: none;">
+            <div class="modal-content" style="width: 90%; max-width: 800px; max-height: 80vh; overflow-y: auto;">
+                <div class="modal-header">
+                    <h2 style="margin: 0; display: flex; align-items: center; gap: 10px;">
+                        <span>📊</span>
+                        <span>整理详情</span>
+                    </h2>
+                    <button onclick="closeProgressModal()" class="close-btn">×</button>
+                </div>
+                
+                <div class="modal-body">
+                    <!-- 整体进度 -->
+                    <div class="progress-section">
+                        <h3>🚀 整体进度</h3>
+                        <div class="progress-bar">
+                            <div id="overallProgress" class="progress-fill"></div>
+                        </div>
+                        <div id="overallStatus" class="progress-text">准备开始...</div>
+                    </div>
+                    
+                    <!-- 当前步骤 -->
+                    <div class="progress-section">
+                        <h3>⚡ 当前步骤</h3>
+                        <div id="currentStep" class="current-step">
+                            <div class="step-icon">📂</div>
+                            <div class="step-info">
+                                <div class="step-title">等待开始</div>
+                                <div class="step-detail">点击"一键整理入库"开始处理</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 详细进度 -->
+                    <div class="progress-section">
+                        <h3>📋 详细进度</h3>
+                        <div id="detailProgress" class="detail-progress">
+                            <div class="progress-item">
+                                <span class="progress-icon">📂</span>
+                                <span class="progress-label">智能扫描</span>
+                                <span class="progress-status waiting">等待中</span>
+                            </div>
+                            <div class="progress-item">
+                                <span class="progress-icon">🌐</span>
+                                <span class="progress-label">中文标题识别</span>
+                                <span class="progress-status waiting">等待中</span>
+                            </div>
+                            <div class="progress-item">
+                                <span class="progress-icon">🎯</span>
+                                <span class="progress-label">智能去重</span>
+                                <span class="progress-status waiting">等待中</span>
+                            </div>
+                            <div class="progress-item">
+                                <span class="progress-icon">📝</span>
+                                <span class="progress-label">标准化重命名</span>
+                                <span class="progress-status waiting">等待中</span>
+                            </div>
+                            <div class="progress-item">
+                                <span class="progress-icon">📁</span>
+                                <span class="progress-label">智能分类</span>
+                                <span class="progress-status waiting">等待中</span>
+                            </div>
+                            <div class="progress-item">
+                                <span class="progress-icon">🚚</span>
+                                <span class="progress-label">自动移动</span>
+                                <span class="progress-status waiting">等待中</span>
+                            </div>
+                            <div class="progress-item">
+                                <span class="progress-icon">⚔️</span>
+                                <span class="progress-label">冲突处理</span>
+                                <span class="progress-status waiting">等待中</span>
+                            </div>
+                            <div class="progress-item">
+                                <span class="progress-icon">🧹</span>
+                                <span class="progress-label">自动清理</span>
+                                <span class="progress-status waiting">等待中</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 实时日志 -->
+                    <div class="progress-section">
+                        <h3>📝 实时日志</h3>
+                        <div id="realtimeLog" class="realtime-log">
+                            <div class="log-message">等待开始处理...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 设置弹窗 -->
+    <div id="settingsModal" class="modal-overlay" style="display: none;">
+        <div class="modal-content" style="width: 90%; max-width: 600px;">
+            <div class="modal-header">
+                <h2 style="margin: 0; display: flex; align-items: center; gap: 10px;">
+                    <span>⚙️</span>
+                    <span>系统设置</span>
+                </h2>
+                <button onclick="closeSettingsModal()" class="close-btn">×</button>
+            </div>
+            
+            <div class="modal-body">
+                <!-- TMDB设置 -->
+                <div class="settings-section">
+                    <h3>🎬 TMDB配置</h3>
+                    <div class="form-group">
+                        <label>API Key:</label>
+                        <input type="text" id="tmdbApiKey" placeholder="输入TMDB API Key">
+                        <small>获取地址: <a href="https://www.themoviedb.org/settings/api" target="_blank">TMDB API</a></small>
+                    </div>
+                    <div class="form-group">
+                        <label>代理地址:</label>
+                        <input type="text" id="tmdbProxy" placeholder="例如: http://192.168.1.1:7890">
+                        <small>留空则不使用代理</small>
+                    </div>
+                    <div class="form-group">
+                        <label>代理类型:</label>
+                        <select id="tmdbProxyType">
+                            <option value="http">HTTP/HTTPS</option>
+                            <option value="socks5">SOCKS5</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- 豆瓣设置 -->
+                <div class="settings-section">
+                    <h3>🎭 豆瓣配置</h3>
+                    <div class="form-group">
+                        <label>Cookie:</label>
+                        <textarea id="doubanCookie" rows="3" placeholder="输入豆瓣Cookie"></textarea>
+                        <small>获取方法: 登录豆瓣 → F12开发者工具 → Network → 复制Cookie</small>
+                    </div>
+                </div>
+                
+                <!-- 按钮 -->
+                <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+                    <button onclick="closeSettingsModal()" style="padding: 10px 20px; background: #6c757d; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                        取消
+                    </button>
+                    <button onclick="saveSettings()" style="padding: 10px 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 6px; cursor: pointer;">
+                        保存设置
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 文件夹浏览器弹窗 -->
+    <div id="folderBrowserOverlay" class="folder-browser-overlay" onclick="closeFolderBrowser(event)">
+        <div class="folder-browser" onclick="event.stopPropagation()">
+            <div class="folder-browser-header">
+                <h3>📁 选择文件夹</h3>
+                <button class="folder-browser-close" onclick="closeFolderBrowser()">×</button>
+            </div>
+            <div class="folder-browser-path" id="currentBrowserPath">/</div>
+            <div class="folder-browser-list" id="folderList">
+                <div style="text-align: center; padding: 40px; color: #999;">
+                    加载中...
+                </div>
+            </div>
+            <div class="folder-browser-footer">
+                <button onclick="closeFolderBrowser()" style="background: #999;">取消</button>
+                <button onclick="selectCurrentFolder()" style="background: #4caf50;">选择此文件夹</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentFiles = [];
+        let currentFilter = 'all';
+        let currentFolder = '';
+        let renameLog = [];
+
+        // 页面加载时从localStorage读取路径
+        window.addEventListener('DOMContentLoaded', function() {
+            // 扫描路径
+            const savedPath = localStorage.getItem('scanPath');
+            const folderPathInput = document.getElementById('folderPath');
+            
+            if (savedPath) {
+                folderPathInput.value = savedPath;
+                currentFolder = savedPath;
+            } else {
+                // 默认路径
+                const defaultPath = '/vol02/1000-1-b23abde7/待整理';
+                folderPathInput.value = defaultPath;
+                currentFolder = defaultPath;
+            }
+
+            // 电影输出路径
+            const savedMoviePath = localStorage.getItem('movieOutputPath');
+            const moviePathInput = document.getElementById('movieOutputPath');
+            if (savedMoviePath) {
+                moviePathInput.value = savedMoviePath;
+            } else {
+                moviePathInput.value = '/vol02/1000-1-b23abde7/电影';
+            }
+
+            // 电视剧输出路径
+            const savedTvPath = localStorage.getItem('tvOutputPath');
+            const tvPathInput = document.getElementById('tvOutputPath');
+            if (savedTvPath) {
+                tvPathInput.value = savedTvPath;
+            } else {
+                tvPathInput.value = '/vol02/1000-1-b23abde7/电视剧';
+            }
+        });
+
+        // 保存路径到localStorage
+        function savePath() {
+            const folderPath = document.getElementById('folderPath').value.trim();
+            if (folderPath) {
+                localStorage.setItem('scanPath', folderPath);
+                currentFolder = folderPath;
+            }
+        }
+
+        async function scanFolder() {
+            const folderPath = currentFolder;
+
+            const autoDelete = document.getElementById('autoDelete').checked;
+            const recursive = document.getElementById('recursive').checked;
+
+            showStatus('正在' + (recursive ? '递归' : '') + '扫描网盘文件' + (autoDelete ? '并清理不支持的文件' : '') + '（可能需要较长时间）...', 'info');
+
+            try {
+                const response = await fetch('/api/scan-all', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        folderPath,
+                        autoDelete,
+                        recursive
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error);
+                }
+
+                currentFiles = data.supported;
+                currentFolder = data.folderPath;
+                
+                const supportedCount = data.supported.length;
+                const deletedCount = data.deleted.length;
+                const errorCount = data.deleteErrors.length;
+                
+                let statusMsg = `找到 ${supportedCount} 个支持的文件`;
+                
+                if (autoDelete && deletedCount > 0) {
+                    statusMsg += `，已自动删除 ${deletedCount} 个不支持的文件`;
+                    if (errorCount > 0) {
+                        statusMsg += `（${errorCount} 个删除失败）`;
+                    }
+                } else if (data.unsupported.length > 0) {
+                    statusMsg += `，发现 ${data.unsupported.length} 个不支持的文件`;
+                }
+                
+                showStatus(statusMsg, deletedCount > 0 ? 'success' : 'info');
+                displayFiles();
+            } catch (error) {
+                showStatus('错误: ' + error.message, 'error');
+            }
+        }
+
+        async function deleteFile(filePath, fileName) {
+            if (!confirm(`确定要删除文件 "${fileName}" 吗？此操作不可恢复！`)) {
+                return;
+            }
+
+            showStatus('正在删除...', 'info');
+
+            try {
+                const response = await fetch('/api/delete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ filePath })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error);
+                }
+
+                showStatus('删除成功', 'success');
+                scanFolder();
+            } catch (error) {
+                showStatus('错误: ' + error.message, 'error');
+            }
+        }
+
+        async function deleteUnsupportedFiles() {
+            const unsupported = currentFiles.filter(f => f.type === 'unsupported');
+            
+            if (unsupported.length === 0) {
+                showStatus('没有不支持的文件', 'info');
+                return;
+            }
+
+            const fileList = unsupported.map(f => f.name).join('\n');
+            if (!confirm(`确定要删除以下 ${unsupported.length} 个不支持的文件吗？\n\n${fileList.substring(0, 300)}${fileList.length > 300 ? '\n...' : ''}\n\n此操作不可恢复！`)) {
+                return;
+            }
+
+            showStatus(`正在删除 ${unsupported.length} 个文件...`, 'info');
+
+            let success = 0;
+            let failed = 0;
+
+            for (const file of unsupported) {
+                try {
+                    const response = await fetch('/api/delete', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ filePath: file.path })
+                    });
+
+                    if (response.ok) {
+                        success++;
+                    } else {
+                        failed++;
+                    }
+                } catch (error) {
+                    failed++;
+                }
+            }
+
+            showStatus(`删除完成：成功 ${success} 个，失败 ${failed} 个`, success > 0 ? 'success' : 'error');
+            scanFolder();
+        }
+
+        function filterFiles(type) {
+            currentFilter = type;
+            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            displayFiles();
+        }
+
+        function displayFiles() {
+            const fileList = document.getElementById('fileList');
+            const filtered = currentFilter === 'all' 
+                ? currentFiles 
+                : currentFiles.filter(f => f.type === currentFilter);
+
+            if (filtered.length === 0) {
+                fileList.innerHTML = '<p class="no-files">没有找到文件</p>';
+                return;
+            }
+
+            fileList.innerHTML = filtered.map(file => {
+                const safePath = file.path.replace(/'/g, "\\'");
+                const safeName = file.name.replace(/'/g, "\\'");
+                const icon = file.type === 'media' ? '🎬' : '📝';
+                
+                return `
+                    <div class="file-item ${file.type}">
+                        <div class="file-icon">${icon}</div>
+                        <div class="file-info">
+                            <div class="file-name">${escapeHtml(file.name)}</div>
+                            <div class="file-meta">${formatSize(file.size)} · ${formatDate(file.modified)}</div>
+                        </div>
+                        <button class="rename-btn" onclick="renameFile('${safePath}', '${safeName}')">重命名</button>
+                        <button class="delete-btn" onclick="deleteFile('${safePath}', '${safeName}')">删除</button>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function renameFile(filePath, oldName) {
+            const newName = prompt('输入新文件名:', oldName);
+            if (!newName || newName === oldName) return;
+
+            showStatus('正在重命名...', 'info');
+
+            try {
+                const response = await fetch('/api/rename', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ oldPath: filePath, newName })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error);
+                }
+
+                showStatus('重命名成功', 'success');
+                scanFolder();
+            } catch (error) {
+                showStatus('错误: ' + error.message, 'error');
+            }
+        }
+
+        function showStatus(message, type) {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = `status ${type}`;
+            status.style.display = 'block';
+        }
+
+        function formatSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+            return (bytes / (1024 * 1024 * 1024)).toFixed(1) + ' GB';
+        }
+
+        function formatDate(timestamp) {
+            const date = new Date(timestamp * 1000);
+            return date.toLocaleString('zh-CN');
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // 折叠/展开功能说明
+        function toggleFunctionInfo() {
+            const content = document.getElementById('functionInfoContent');
+            const toggle = document.getElementById('functionInfoToggle');
+            
+            if (content.style.display === 'none') {
+                content.style.display = 'block';
+                toggle.textContent = '▲';
+            } else {
+                content.style.display = 'none';
+                toggle.textContent = '▼';
+            }
+        }
+        
+        // 进度弹窗管理
+        let progressModal = null;
+        let currentStepIndex = 0;
+        let isProcessing = false;
+        
+        const steps = [
+            { icon: '📂', title: '智能扫描', detail: '扫描待整理目录中的所有媒体文件' },
+            { icon: '🌐', title: '中文标题识别', detail: '通过豆瓣和TMDB获取中文标题' },
+            { icon: '🎯', title: '智能去重', detail: '识别重复文件，保留最佳质量版本' },
+            { icon: '📝', title: '标准化重命名', detail: '按照规范格式生成新文件名' },
+            { icon: '📁', title: '智能分类', detail: '根据元数据确定分类目录' },
+            { icon: '🚚', title: '自动移动', detail: '移动文件到目标分类目录' },
+            { icon: '⚔️', title: '冲突处理', detail: '处理同名文件冲突' },
+            { icon: '🧹', title: '自动清理', detail: '清理跳过的文件和空文件夹' }
+        ];
+        
+        function showProgressModal() {
+            progressModal = document.getElementById('progressModal');
+            progressModal.style.display = 'flex';
+            
+            // 如果正在处理，显示当前进度
+            if (isProcessing) {
+                updateProgressDisplay();
+            } else {
+                resetProgressDisplay();
+            }
+        }
+        
+        function closeProgressModal() {
+            if (progressModal) {
+                progressModal.style.display = 'none';
+            }
+        }
+        
+        // 设置弹窗管理
+        async function showSettingsModal() {
+            const modal = document.getElementById('settingsModal');
+            modal.style.display = 'flex';
+            
+            // 加载当前设置
+            try {
+                const response = await fetch('/api/get-settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
+                });
+                
+                const data = await response.json();
+                if (data.success && data.settings) {
+                    document.getElementById('tmdbApiKey').value = data.settings.tmdb_api_key || '';
+                    document.getElementById('tmdbProxy').value = data.settings.tmdb_proxy || '';
+                    document.getElementById('tmdbProxyType').value = data.settings.tmdb_proxy_type || 'http';
+                    document.getElementById('doubanCookie').value = data.settings.douban_cookie || '';
+                }
+            } catch (error) {
+                console.error('加载设置失败:', error);
+            }
+        }
+        
+        function closeSettingsModal() {
+            const modal = document.getElementById('settingsModal');
+            modal.style.display = 'none';
+        }
+        
+        async function saveSettings() {
+            const settings = {
+                tmdb_api_key: document.getElementById('tmdbApiKey').value.trim(),
+                tmdb_proxy: document.getElementById('tmdbProxy').value.trim(),
+                tmdb_proxy_type: document.getElementById('tmdbProxyType').value,
+                douban_cookie: document.getElementById('doubanCookie').value.trim()
+            };
+            
+            try {
+                const response = await fetch('/api/save-settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ settings })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    alert('✅ 设置已保存！\n\n提示：某些设置可能需要重启服务才能生效。');
+                    closeSettingsModal();
+                } else {
+                    alert('❌ 保存失败: ' + (data.error || '未知错误'));
+                }
+            } catch (error) {
+                alert('❌ 保存失败: ' + error.message);
+            }
+        }
+        
+        function resetProgressDisplay() {
+            // 重置整体进度
+            document.getElementById('overallProgress').style.width = '0%';
+            document.getElementById('overallStatus').textContent = '准备开始...';
+            
+            // 重置当前步骤
+            const currentStep = document.getElementById('currentStep');
+            currentStep.innerHTML = `
+                <div class="step-icon">📂</div>
+                <div class="step-info">
+                    <div class="step-title">等待开始</div>
+                    <div class="step-detail">点击"一键整理入库"开始处理</div>
+                </div>
+            `;
+            
+            // 重置详细进度
+            const progressItems = document.querySelectorAll('.progress-item');
+            progressItems.forEach((item, index) => {
+                item.className = 'progress-item';
+                const status = item.querySelector('.progress-status');
+                status.className = 'progress-status waiting';
+                status.textContent = '等待中';
+            });
+            
+            // 重置日志
+            document.getElementById('realtimeLog').innerHTML = '<div class="log-message">等待开始处理...</div>';
+        }
+        
+        function updateProgressDisplay() {
+            // 更新整体进度
+            const progress = Math.round((currentStepIndex / steps.length) * 100);
+            document.getElementById('overallProgress').style.width = progress + '%';
+            document.getElementById('overallStatus').textContent = `正在处理... ${progress}%`;
+            
+            // 更新当前步骤
+            if (currentStepIndex < steps.length) {
+                const step = steps[currentStepIndex];
+                const currentStep = document.getElementById('currentStep');
+                currentStep.innerHTML = `
+                    <div class="step-icon">${step.icon}</div>
+                    <div class="step-info">
+                        <div class="step-title">${step.title}</div>
+                        <div class="step-detail">${step.detail}</div>
+                    </div>
+                `;
+            }
+            
+            // 更新详细进度
+            const progressItems = document.querySelectorAll('.progress-item');
+            progressItems.forEach((item, index) => {
+                const status = item.querySelector('.progress-status');
+                if (index < currentStepIndex) {
+                    item.className = 'progress-item completed';
+                    status.className = 'progress-status completed';
+                    status.textContent = '已完成';
+                } else if (index === currentStepIndex) {
+                    item.className = 'progress-item active';
+                    status.className = 'progress-status active';
+                    status.textContent = '进行中';
+                } else {
+                    item.className = 'progress-item';
+                    status.className = 'progress-status waiting';
+                    status.textContent = '等待中';
+                }
+            });
+        }
+        
+        function addLogMessage(message) {
+            const logContainer = document.getElementById('realtimeLog');
+            const timestamp = new Date().toLocaleTimeString();
+            const logMessage = document.createElement('div');
+            logMessage.className = 'log-message';
+            logMessage.textContent = `[${timestamp}] ${message}`;
+            
+            logContainer.appendChild(logMessage);
+            logContainer.scrollTop = logContainer.scrollHeight;
+            
+            // 限制日志条数
+            const messages = logContainer.querySelectorAll('.log-message');
+            if (messages.length > 50) {
+                messages[0].remove();
+            }
+        }
+        
+        function nextStep(stepName) {
+            if (stepName) {
+                addLogMessage(`✓ ${stepName} 完成`);
+            }
+            currentStepIndex++;
+            updateProgressDisplay();
+        }
+        
+        function completeProcessing() {
+            isProcessing = false;
+            currentStepIndex = steps.length;
+            
+            // 更新为完成状态
+            document.getElementById('overallProgress').style.width = '100%';
+            document.getElementById('overallStatus').textContent = '处理完成！';
+            
+            const currentStep = document.getElementById('currentStep');
+            currentStep.innerHTML = `
+                <div class="step-icon">✅</div>
+                <div class="step-info">
+                    <div class="step-title">处理完成</div>
+                    <div class="step-detail">所有文件已成功整理入库</div>
+                </div>
+            `;
+            
+            // 所有步骤标记为完成
+            const progressItems = document.querySelectorAll('.progress-item');
+            progressItems.forEach(item => {
+                item.className = 'progress-item completed';
+                const status = item.querySelector('.progress-status');
+                status.className = 'progress-status completed';
+                status.textContent = '已完成';
+            });
+            
+            addLogMessage('🎉 整理完成！所有文件已成功入库');
+            
+            // 显示完成通知
+            if (!progressModal || progressModal.style.display === 'none') {
+                showCompletionNotification();
+            }
+        }
+        
+        function showCompletionNotification() {
+            // 创建完成通知
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+                color: white;
+                padding: 20px;
+                border-radius: 12px;
+                box-shadow: 0 10px 30px rgba(40, 167, 69, 0.3);
+                z-index: 1001;
+                animation: slideInRight 0.5s ease-out;
+                cursor: pointer;
+                max-width: 300px;
+            `;
+            
+            notification.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+                    <span style="font-size: 24px;">🎉</span>
+                    <strong>整理完成！</strong>
+                </div>
+                <div style="font-size: 14px; opacity: 0.9;">所有文件已成功整理入库</div>
+                <div style="font-size: 12px; opacity: 0.7; margin-top: 8px;">点击查看详情</div>
+            `;
+            
+            // 添加样式
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes slideInRight {
+                    from {
+                        opacity: 0;
+                        transform: translateX(100%);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: translateX(0);
+                    }
+                }
+            `;
+            document.head.appendChild(style);
+            
+            notification.onclick = () => {
+                showProgressModal();
+                document.body.removeChild(notification);
+            };
+            
+            document.body.appendChild(notification);
+            
+            // 5秒后自动消失
+            setTimeout(() => {
+                if (document.body.contains(notification)) {
+                    notification.style.animation = 'slideInRight 0.5s ease-out reverse';
+                    setTimeout(() => {
+                        if (document.body.contains(notification)) {
+                            document.body.removeChild(notification);
+                        }
+                    }, 500);
+                }
+            }, 5000);
+        }
+        
+        // 点击弹窗外部关闭
+        document.addEventListener('click', function(e) {
+            if (e.target.id === 'progressModal') {
+                closeProgressModal();
+            }
+        });
+        
+        // ESC键关闭弹窗
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && progressModal && progressModal.style.display === 'flex') {
+                closeProgressModal();
+            }
+        });
+
+        async function startAutoRename() {
+            // 开始处理
+            isProcessing = true;
+            currentStepIndex = 0;
+            
+            // 如果弹窗已打开，更新显示
+            if (progressModal && progressModal.style.display === 'flex') {
+                updateProgressDisplay();
+            }
+            
+            addLogMessage('🚀 开始整理入库流程');
+            
+            // 获取并保存路径
+            const folderPath = document.getElementById('folderPath').value.trim();
+            
+            if (!folderPath) {
+                addLogMessage('❌ 错误：未输入扫描路径');
+                showStatus('请输入扫描路径', 'error');
+                isProcessing = false;
+                return;
+            }
+            
+            // 保存路径到localStorage
+            localStorage.setItem('scanPath', folderPath);
+            currentFolder = folderPath;
+            
+            // 步骤1: 智能扫描
+            addLogMessage('📂 开始扫描待整理目录...');
+            showStatus('正在扫描网盘文件（可能需要较长时间）...', 'info');
+            const autoDelete = true;  // 固定开启
+            const recursive = true;   // 固定开启
+
+            try {
+                const response = await fetch('/api/scan-all', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        folderPath,
+                        autoDelete,
+                        recursive
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error);
+                }
+
+                currentFiles = data.supported;
+                currentFolder = data.folderPath;
+                
+                const supportedCount = data.supported.length;
+                const deletedCount = data.deleted.length;
+                
+                if (supportedCount === 0) {
+                    addLogMessage('⚠️ 没有找到支持的媒体或字幕文件');
+                    showStatus('没有找到支持的媒体或字幕文件', 'error');
+                    isProcessing = false;
+                    return;
+                }
+                
+                let statusMsg = `扫描完成：找到 ${supportedCount} 个文件`;
+                if (deletedCount > 0) {
+                    statusMsg += `，已删除 ${deletedCount} 个不支持的文件`;
+                    addLogMessage(`🗑️ 删除了 ${deletedCount} 个不支持的文件`);
+                }
+                addLogMessage(`✓ 扫描完成，找到 ${supportedCount} 个媒体文件`);
+                showStatus(statusMsg, 'success');
+                
+                nextStep('智能扫描');
+                
+                // 延迟1秒后自动开始智能重命名
+                await delay(1000);
+                smartRename();
+                
+            } catch (error) {
+                addLogMessage(`❌ 扫描出错: ${error.message}`);
+                showStatus('错误: ' + error.message, 'error');
+                isProcessing = false;
+            }
+        }
+
+        async function smartRename() {
+            // 步骤2: 中文标题识别 (在API内部完成)
+            addLogMessage('🌐 开始中文标题识别...');
+            nextStep('中文标题识别');
+            
+            const filtered = currentFiles;
+
+            if (filtered.length === 0) {
+                addLogMessage('⚠️ 没有文件可以重命名');
+                showStatus('没有文件可以重命名', 'error');
+                isProcessing = false;
+                return;
+            }
+
+            const autoDedupe = true;  // 固定开启
+
+            addLogMessage('🎯 开始智能去重...');
+            showStatus('正在分析文件名并检测重复版本...', 'info');
+
+            try {
+                // 获取输出路径
+                const movieOutputPath = document.getElementById('movieOutputPath').value.trim();
+                const tvOutputPath = document.getElementById('tvOutputPath').value.trim();
+                
+                // 调用智能重命名API
+                const response = await fetch('/api/smart-rename', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        files: filtered,
+                        basePath: currentFolder,
+                        movieOutputPath: movieOutputPath,
+                        tvOutputPath: tvOutputPath,
+                        autoDedupe
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error);
+                }
+
+                addLogMessage(`✓ 去重完成，将删除 ${data.toDelete.length} 个低质量文件`);
+                addLogMessage(`✓ 将处理 ${data.results.length} 个文件`);
+                
+                // 步骤3: 智能去重完成
+                nextStep('智能去重');
+                
+                // 步骤4: 标准化重命名 (在API内部完成)
+                nextStep('标准化重命名');
+                
+                // 步骤5: 智能分类 (在API内部完成)
+                nextStep('智能分类');
+                
+                // 显示预览
+                showRenamePreview(data.results, data.toDelete);
+            } catch (error) {
+                addLogMessage(`❌ 处理出错: ${error.message}`);
+                showStatus('错误: ' + error.message, 'error');
+                isProcessing = false;
+            }
+        }
+
+        function showRenamePreview(results, toDelete = []) {
+            let message = '';
+            
+            if (toDelete.length > 0) {
+                message += `【将删除 ${toDelete.length} 个低清晰度版本】\n`;
+                toDelete.forEach(d => {
+                    message += `❌ ${d.name}\n   原因: ${d.reason}\n`;
+                });
+                message += '\n';
+            }
+            
+            message += `【将重命名并分类 ${results.length} 个文件】\n`;
+            const preview = results.map(r => {
+                let line = `✓ ${r.oldName}\n  → ${r.newName}`;
+                if (r.category) {
+                    line += `\n  📁 分类: ${r.category}`;
+                }
+                return line;
+            }).join('\n');
+            
+            message += preview.substring(0, 1000);
+            if (preview.length > 1000) {
+                message += '\n...';
+            }
+            
+            message += '\n\n确定继续？';
+
+            const confirmed = confirm(message);
+
+            if (!confirmed) return;
+
+            executeSmartRename(results, toDelete);
+        }
+
+        // 延迟函数，用于网盘操作间隔
+        function delay(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        async function executeSmartRename(results, toDelete = []) {
+            // 步骤6: 自动移动
+            addLogMessage('🚚 开始自动移动文件...');
+            nextStep('自动移动');
+            
+            let totalTasks = results.length + toDelete.length;
+            showStatus(`正在处理 ${totalTasks} 个文件（网盘操作较慢，请耐心等待）...`, 'info');
+
+            let renameSuccess = 0;
+            let renameFailed = 0;
+            let deleteSuccess = 0;
+            let deleteFailed = 0;
+            let skippedFiles = [];  // 记录跳过的文件路径
+            renameLog = [];
+
+            // 先删除低清晰度版本（逐个处理，避免网盘压力）
+            for (let i = 0; i < toDelete.length; i++) {
+                const item = toDelete[i];
+                showStatus(`正在删除 (${i + 1}/${toDelete.length}): ${item.name}`, 'info');
+                
+                try {
+                    const response = await fetch('/api/delete', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ filePath: item.path })
+                    });
+
+                    if (response.ok) {
+                        deleteSuccess++;
+                        renameLog.push({
+                            type: 'delete',
+                            name: item.name,
+                            reason: item.reason
+                        });
+                    } else {
+                        deleteFailed++;
+                        renameLog.push({
+                            type: 'error',
+                            name: item.name,
+                            reason: '删除失败'
+                        });
+                    }
+                } catch (error) {
+                    deleteFailed++;
+                    renameLog.push({
+                        type: 'error',
+                        name: item.name,
+                        reason: '删除失败: ' + error.message
+                    });
+                }
+                
+                // 网盘操作间隔，避免过快操作
+                if (i < toDelete.length - 1) {
+                    await delay(300);
+                }
+            }
+
+            // 再重命名保留的文件（逐个处理）
+            for (let i = 0; i < results.length; i++) {
+                const result = results[i];
+                const statusMsg = result.category ? 
+                    `正在处理 (${i + 1}/${results.length}): ${result.oldName} → ${result.category}` :
+                    `正在重命名 (${i + 1}/${results.length}): ${result.oldName}`;
+                showStatus(statusMsg, 'info');
+                
+                try {
+                    // 获取冲突处理策略
+                    const conflictStrategy = document.getElementById('conflictStrategy').value;
+                    
+                    const response = await fetch('/api/rename', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                            oldPath: result.oldPath, 
+                            newPath: result.newPath,  // 使用完整路径（支持移动+重命名）
+                            conflictStrategy: conflictStrategy  // 传递冲突策略
+                        })
+                    });
+
+                    const responseData = await response.json();
+
+                    if (response.ok) {
+                        if (responseData.skipped) {
+                            // 文件被跳过，记录路径用于后续清理
+                            skippedFiles.push(result.oldPath);
+                            renameLog.push({
+                                type: 'skip',
+                                oldName: result.oldName,
+                                newName: result.newName,
+                                reason: responseData.reason,
+                                category: result.category
+                            });
+                        } else {
+                            // 成功处理
+                            renameSuccess++;
+                            renameLog.push({
+                                type: 'rename',
+                                oldName: result.oldName,
+                                newName: result.newName,
+                                category: result.category
+                            });
+                        }
+                    } else {
+                        renameFailed++;
+                        renameLog.push({
+                            type: 'error',
+                            name: result.oldName,
+                            reason: responseData.error || '处理失败'
+                        });
+                    }
+                } catch (error) {
+                    renameFailed++;
+                    renameLog.push({
+                        type: 'error',
+                        name: result.oldName,
+                        reason: '重命名失败: ' + error.message
+                    });
+                }
+                
+                // 网盘操作间隔
+                if (i < results.length - 1) {
+                    await delay(300);
+                }
+            }
+
+            // 清理跳过的文件和空文件夹
+            let cleanupSuccess = 0;
+            let cleanupFolders = 0;
+            
+            if (skippedFiles.length > 0) {
+                showStatus(`正在清理 ${skippedFiles.length} 个跳过的文件...`, 'info');
+                
+                try {
+                    const cleanupResponse = await fetch('/api/cleanup', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            skippedFiles: skippedFiles,
+                            basePath: currentFolder
+                        })
+                    });
+                    
+                    if (cleanupResponse.ok) {
+                        const cleanupData = await cleanupResponse.json();
+                        cleanupSuccess = cleanupData.deletedFiles.length;
+                        cleanupFolders = cleanupData.deletedFolders.length;
+                        
+                        // 添加清理日志
+                        cleanupData.deletedFiles.forEach(file => {
+                            renameLog.push({
+                                type: 'cleanup',
+                                name: file,
+                                reason: '质量相同或较差，已清理'
+                            });
+                        });
+                        
+                        cleanupData.deletedFolders.forEach(folder => {
+                            renameLog.push({
+                                type: 'cleanup_folder',
+                                name: folder,
+                                reason: '空文件夹，已清理'
+                            });
+                        });
+                    }
+                } catch (error) {
+                    console.error('清理失败:', error);
+                }
+            }
+
+            // 步骤7: 冲突处理 (在移动过程中完成)
+            nextStep('冲突处理');
+            
+            // 步骤8: 自动清理
+            addLogMessage('🧹 开始自动清理...');
+            nextStep('自动清理');
+            
+            let statusMsg = `处理完成：`;
+            if (deleteSuccess > 0) {
+                statusMsg += `删除 ${deleteSuccess} 个低清晰度版本，`;
+                addLogMessage(`✓ 删除了 ${deleteSuccess} 个低清晰度版本`);
+            }
+            statusMsg += `重命名 ${renameSuccess} 个文件`;
+            addLogMessage(`✓ 成功处理 ${renameSuccess} 个文件`);
+            
+            if (cleanupSuccess > 0) {
+                statusMsg += `，清理 ${cleanupSuccess} 个跳过的文件`;
+                addLogMessage(`✓ 清理了 ${cleanupSuccess} 个跳过的文件`);
+            }
+            if (cleanupFolders > 0) {
+                statusMsg += `，清理 ${cleanupFolders} 个空文件夹`;
+                addLogMessage(`✓ 清理了 ${cleanupFolders} 个空文件夹`);
+            }
+            
+            if (deleteFailed > 0 || renameFailed > 0) {
+                statusMsg += `（${deleteFailed + renameFailed} 个失败）`;
+                addLogMessage(`⚠️ ${deleteFailed + renameFailed} 个文件处理失败`);
+            }
+
+            showStatus(statusMsg, (renameSuccess > 0 || deleteSuccess > 0 || cleanupSuccess > 0) ? 'success' : 'error');
+            
+            // 完成处理
+            completeProcessing();
+            
+            scanFolder();
+        }
+
+
+        // 文件夹浏览器
+        let currentBrowsePath = '/';
+        let currentBrowserType = 'scan'; // 'scan', 'movie', 'tv'
+
+        async function openFolderBrowser(type = 'scan') {
+            currentBrowserType = type;
+            const overlay = document.getElementById('folderBrowserOverlay');
+            overlay.classList.add('show');
+            
+            // 根据类型从对应的输入框获取当前路径作为起始路径
+            let inputId = 'folderPath';
+            if (type === 'movie') {
+                inputId = 'movieOutputPath';
+            } else if (type === 'tv') {
+                inputId = 'tvOutputPath';
+            }
+            
+            const currentPath = document.getElementById(inputId).value.trim();
+            if (currentPath && currentPath !== '') {
+                currentBrowsePath = currentPath;
+            } else {
+                currentBrowsePath = '/';
+            }
+            
+            await loadFolders(currentBrowsePath);
+        }
+
+        function closeFolderBrowser(event) {
+            if (event && event.target !== event.currentTarget) return;
+            const overlay = document.getElementById('folderBrowserOverlay');
+            overlay.classList.remove('show');
+        }
+
+        async function loadFolders(path) {
+            const folderList = document.getElementById('folderList');
+            const pathDisplay = document.getElementById('currentBrowserPath');
+            
+            folderList.innerHTML = '<div style="text-align: center; padding: 40px; color: #999;">加载中...</div>';
+            pathDisplay.textContent = path;
+            currentBrowsePath = path;
+            
+            try {
+                const response = await fetch('/api/browse-folders', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ folderPath: path })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error);
+                }
+
+                let html = '';
+                
+                // 添加返回上级目录
+                if (data.parentPath) {
+                    html += `
+                        <div class="folder-item" onclick="loadFolders('${data.parentPath.replace(/'/g, "\\'")}')">
+                            <span class="folder-item-icon">⬆️</span>
+                            <span class="folder-item-name">..</span>
+                        </div>
+                    `;
+                }
+                
+                // 添加子文件夹
+                if (data.folders.length === 0 && !data.parentPath) {
+                    html = '<div style="text-align: center; padding: 40px; color: #999;">此文件夹为空</div>';
+                } else if (data.folders.length === 0) {
+                    // 有父目录但没有子文件夹
+                } else {
+                    data.folders.forEach(folder => {
+                        const safePath = folder.path.replace(/'/g, "\\'");
+                        html += `
+                            <div class="folder-item" onclick="loadFolders('${safePath}')">
+                                <span class="folder-item-icon">📁</span>
+                                <span class="folder-item-name">${escapeHtml(folder.name)}</span>
+                            </div>
+                        `;
+                    });
+                }
+                
+                folderList.innerHTML = html;
+            } catch (error) {
+                folderList.innerHTML = `
+                    <div style="text-align: center; padding: 40px; color: #f44336;">
+                        ❌ 加载失败<br>
+                        <small>${error.message}</small>
+                    </div>
+                `;
+            }
+        }
+
+        function selectCurrentFolder() {
+            // 根据浏览器类型设置对应的输入框
+            if (currentBrowserType === 'scan') {
+                document.getElementById('folderPath').value = currentBrowsePath;
+                localStorage.setItem('scanPath', currentBrowsePath);
+                currentFolder = currentBrowsePath;
+            } else if (currentBrowserType === 'movie') {
+                document.getElementById('movieOutputPath').value = currentBrowsePath;
+                localStorage.setItem('movieOutputPath', currentBrowsePath);
+            } else if (currentBrowserType === 'tv') {
+                document.getElementById('tvOutputPath').value = currentBrowsePath;
+                localStorage.setItem('tvOutputPath', currentBrowsePath);
+            }
+            closeFolderBrowser();
+        }
+    </script>
+</body>
+</html>

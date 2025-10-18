@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <!-- 背景渐变 -->
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
+    </linearGradient>
+    
+    <linearGradient id="folderGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ffd700;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#ffed4e;stop-opacity:1" />
+    </linearGradient>
+    
+    <linearGradient id="filmGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ffffff;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#f0f0f0;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- 发光效果 -->
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- 圆形背景 -->
+  <circle cx="100" cy="100" r="95" fill="url(#bgGradient)" opacity="0.95"/>
+  
+  <!-- 文件夹主体 -->
+  <g transform="translate(100, 100)">
+    <!-- 文件夹背面 -->
+    <path d="M -50 -20 L -50 30 Q -50 35 -45 35 L 45 35 Q 50 35 50 30 L 50 -20 Z" 
+          fill="url(#folderGradient)" opacity="0.9"/>
+    
+    <!-- 文件夹标签 -->
+    <path d="M -50 -20 L -30 -30 L 10 -30 L 20 -20 Z" 
+          fill="url(#folderGradient)" opacity="1"/>
+    
+    <!-- 文件夹边框 -->
+    <path d="M -50 -20 L -50 30 Q -50 35 -45 35 L 45 35 Q 50 35 50 30 L 50 -20 L 20 -20 L 10 -30 L -30 -30 L -50 -20" 
+          fill="none" stroke="#d4a017" stroke-width="2"/>
+    
+    <!-- 胶片元素 -->
+    <g transform="translate(0, 5)">
+      <!-- 胶片主体 -->
+      <rect x="-35" y="-15" width="70" height="30" rx="3" 
+            fill="url(#filmGradient)" stroke="#333" stroke-width="2"/>
+      
+      <!-- 胶片孔 -->
+      <rect x="-33" y="-12" width="4" height="4" fill="#667eea" rx="1"/>
+      <rect x="-33" y="-3" width="4" height="4" fill="#667eea" rx="1"/>
+      <rect x="-33" y="6" width="4" height="4" fill="#667eea" rx="1"/>
+      
+      <rect x="29" y="-12" width="4" height="4" fill="#667eea" rx="1"/>
+      <rect x="29" y="-3" width="4" height="4" fill="#667eea" rx="1"/>
+      <rect x="29" y="6" width="4" height="4" fill="#667eea" rx="1"/>
+      
+      <!-- 胶片画面 -->
+      <rect x="-20" y="-10" width="15" height="20" fill="#764ba2" opacity="0.3" rx="1"/>
+      <rect x="-2" y="-10" width="15" height="20" fill="#667eea" opacity="0.3" rx="1"/>
+      <rect x="16" y="-10" width="15" height="20" fill="#764ba2" opacity="0.3" rx="1"/>
+    </g>
+    
+    <!-- 智能标识 - 魔法星星 -->
+    <g filter="url(#glow)">
+      <circle cx="35" cy="-25" r="8" fill="#ffd700" opacity="0.9"/>
+      <path d="M 35 -33 L 36 -27 L 42 -26 L 37 -22 L 38 -16 L 35 -20 L 32 -16 L 33 -22 L 28 -26 L 34 -27 Z" 
+            fill="#ffffff"/>
+    </g>
+    
+    <!-- 整理箭头 -->
+    <g opacity="0.8">
+      <path d="M -45 -5 Q -40 -10 -35 -5" 
+            fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round"/>
+      <path d="M -35 -5 L -38 -3 L -38 -7 Z" 
+            fill="#ffffff"/>
+    </g>
+  </g>
+  
+  <!-- 外圈装饰 -->
+  <circle cx="100" cy="100" r="95" fill="none" stroke="#ffffff" stroke-width="2" opacity="0.3"/>
+</svg>

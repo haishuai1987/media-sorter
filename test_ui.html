@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>界面测试</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+        }
+        .input-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #333;
+        }
+        .input-wrapper {
+            display: flex;
+            gap: 10px;
+        }
+        input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        button {
+            padding: 12px 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #5568d3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📁 媒体和字幕文件管理器 V1.3</h1>
+        
+        <div class="input-group">
+            <label>📂 扫描路径：</label>
+            <div class="input-wrapper">
+                <input type="text" placeholder="输入文件夹路径，例如：/vol02/1000-1-b23abde7/待整理">
+                <button>📁 浏览</button>
+            </div>
+        </div>
+
+        <div class="input-group">
+            <label>🎬 电影输出路径：</label>
+            <div class="input-wrapper">
+                <input type="text" placeholder="输入电影输出路径，例如：/vol02/1000-1-b23abde7/电影">
+                <button>📁 浏览</button>
+            </div>
+        </div>
+
+        <div class="input-group">
+            <label>📺 电视剧输出路径：</label>
+            <div class="input-wrapper">
+                <input type="text" placeholder="输入电视剧输出路径，例如：/vol02/1000-1-b23abde7/电视剧">
+                <button>📁 浏览</button>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
