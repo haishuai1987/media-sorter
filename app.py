@@ -2494,6 +2494,7 @@ class MediaHandler(SimpleHTTPRequestHandler):
                 'tmdb_proxy': USER_CONFIG.get('tmdb_proxy', ''),
                 'tmdb_proxy_type': USER_CONFIG.get('tmdb_proxy_type', 'http'),
                 'douban_cookie': USER_CONFIG.get('douban_cookie', ''),
+                'cloud_115_cookie': USER_CONFIG.get('cloud_115_cookie', ''),
                 'update_proxy': USER_CONFIG.get('update_proxy', ''),
                 'update_proxy_enabled': USER_CONFIG.get('update_proxy_enabled', False),
                 'auto_restart_after_update': USER_CONFIG.get('auto_restart_after_update', True)
