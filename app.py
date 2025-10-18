@@ -2741,10 +2741,16 @@ class MediaHandler(SimpleHTTPRequestHandler):
     
     def handle_cloud_verify_cookie(self, data):
         """验证115网盘Cookie"""
+        print(f"\n[115 DEBUG] 收到验证请求")
+        print(f"[115 DEBUG] 请求数据类型: {type(data)}")
+        print(f"[115 DEBUG] 请求数据内容: {data}")
+        
         try:
             cookie = data.get('cookie', '').strip()
+            print(f"[115 DEBUG] 提取的Cookie长度: {len(cookie) if cookie else 0}")
             
             if not cookie:
+                print(f"[115 DEBUG] Cookie为空，返回400错误")
                 self.send_json_response({'error': 'Cookie不能为空'}, 400)
                 return
             
