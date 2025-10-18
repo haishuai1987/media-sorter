@@ -487,6 +487,165 @@ class UpdateManager:
 
 # ============================================
 
+# ============ 115网盘模块 ============
+
+class CookieEncryption:
+    """Cookie加密工具"""
+    
+    KEY_FILE = '.encryption_key'
+    
+    def __init__(self):
+        self.key = self._load_or_create_key()
+        try:
+            from cryptography.fernet import Fernet
+            self.cipher = Fernet(self.key)
+        except ImportError:
+            print("警告: cryptography未安装，Cookie将不加密存储")
+            self.cipher = None
+    
+    def _load_or_create_key(self):
+        """加载或创建加密密钥"""
+        try:
+            if os.path.exists(self.KEY_FILE):
+                with open(self.KEY_FILE, 'rb') as f:
+                    return f.read()
+            else:
+                from cryptography.fernet import Fernet
+                key = Fernet.generate_key()
+                with open(self.KEY_FILE, 'wb') as f:
+                    f.write(key)
+                return key
+        except ImportError:
+            return b'dummy_key_for_no_encryption'
+    
+    def encrypt(self, cookie):
+        """加密Cookie"""
+        if self.cipher:
+            try:
+                return self.cipher.encrypt(cookie.encode()).decode()
+            except:
+                return cookie
+        return cookie
+    
+    def decrypt(self, encrypted_cookie):
+        """解密Cookie"""
+        if self.cipher:
+            try:
+                return self.cipher.decrypt(encrypted_cookie.encode()).decode()
+            except:
+                return encrypted_cookie
+        return encrypted_cookie
+
+
+class Cloud115API:
+    """115网盘API封装"""
+    
+    BASE_URL = 'https://webapi.115.com'
+    
+    def __init__(self, cookie):
+        self.cookie = cookie
+        self.session = self._create_session()
+    
+    def _create_session(self):
+        """创建HTTP会话"""
+        try:
+            import requests
+            session = requests.Session()
+            session.headers.update({
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Cookie': self.cookie,
+                'Accept': 'application/json, text/javascript, */*; q=0.01',
+                'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8'
+            })
+            return session
+        except ImportError:
+            print("错误: requests库未安装")
+            return None
+    
+    def verify_cookie(self):
+        """验证Cookie有效性并获取用户信息"""
+        try:
+            if not self.session:
+                return False, None, "requests库未安装"
+            
+            # 获取用户信息
+            url = f'{self.BASE_URL}/user/info'
+            response = self.session.get(url, timeout=10)
+            
+            if response.status_code == 200:
+                data = response.json()
+                if data.get('state'):
+                    user_info = {
+                        'user_id': data.get('data', {}).get('user_id', ''),
+                        'username': data.get('data', {}).get('user_name', ''),
+                        'space_used': data.get('data', {}).get('space_info', {}).get('all_use', {}).get('size', 0),
+                        'space_total': data.get('data', {}).get('space_info', {}).get('all_total', {}).get('size', 0)
+                    }
+                    return True, user_info, None
+                else:
+                    return False, None, "Cookie无效或已过期"
+            else:
+                return False, None, f"HTTP错误: {response.status_code}"
+        except Exception as e:
+            return False, None, str(e)
+    
+    def list_files(self, folder_id='0', offset=0, limit=1000):
+        """列出文件夹内容"""
+        try:
+            if not self.session:
+                return None, "requests库未安装"
+            
+            url = f'{self.BASE_URL}/files'
+            params = {
+                'aid': 1,
+                'cid': folder_id,
+                'o': 'user_ptime',
+                'asc': 0,
+                'offset': offset,
+                'show_dir': 1,
+                'limit': limit,
+                'code': '',
+                'scid': '',
+                'snap': 0,
+                'natsort': 1,
+                'record_open_time': 1,
+                'source': '',
+                'format': 'json',
+                'fc_mix': 0
+            }
+            
+            response = self.session.get(url, params=params, timeout=30)
+            
+            if response.status_code == 200:
+                data = response.json()
+                if data.get('state'):
+                    files = []
+                    for item in data.get('data', []):
+                        file_info = {
+                            'fid': item.get('fid', ''),
+                            'cid': item.get('cid', ''),
+                            'name': item.get('n', ''),
+                            'size': item.get('s', 0),
+                            'is_dir': item.get('fid', '').endswith('d') or item.get('fc', 0) > 0,
+                            'time': item.get('t', ''),
+                            'pick_code': item.get('pc', '')
+                        }
+                        files.append(file_info)
+                    
+                    return {
+                        'files': files,
+                        'count': data.get('count', 0),
+                        'folder_id': folder_id
+                    }, None
+                else:
+                    return None, "获取文件列表失败"
+            else:
+                return None, f"HTTP错误: {response.status_code}"
+        except Exception as e:
+            return None, str(e)
+
+# ============================================
+
 class DoubanHelper:
     """豆瓣API辅助类"""
     
@@ -1105,6 +1264,10 @@ class MediaHandler(SimpleHTTPRequestHandler):
                 self.handle_rollback(data)
             elif self.path == '/api/update-history':
                 self.handle_update_history(data)
+            elif self.path == '/api/cloud/verify-cookie':
+                self.handle_cloud_verify_cookie(data)
+            elif self.path == '/api/cloud/list-files':
+                self.handle_cloud_list_files(data)
             else:
                 self.send_error(404)
         except Exception as e:
@@ -2562,6 +2725,76 @@ class MediaHandler(SimpleHTTPRequestHandler):
         except Exception as e:
             print(f"加载更新历史失败: {e}")
         return []
+    
+    def handle_cloud_verify_cookie(self, data):
+        """验证115网盘Cookie"""
+        try:
+            cookie = data.get('cookie', '').strip()
+            
+            if not cookie:
+                self.send_json_response({'error': 'Cookie不能为空'}, 400)
+                return
+            
+            # 创建API实例并验证
+            api = Cloud115API(cookie)
+            valid, user_info, error = api.verify_cookie()
+            
+            if valid:
+                # 加密存储Cookie
+                encryptor = CookieEncryption()
+                encrypted_cookie = encryptor.encrypt(cookie)
+                
+                # 保存到配置
+                USER_CONFIG['cloud_115_cookie'] = encrypted_cookie
+                save_config(USER_CONFIG)
+                
+                self.send_json_response({
+                    'success': True,
+                    'user_info': user_info
+                })
+            else:
+                self.send_json_response({
+                    'success': False,
+                    'error': error or 'Cookie验证失败'
+                }, 400)
+        except Exception as e:
+            self.send_json_response({'error': str(e)}, 500)
+    
+    def handle_cloud_list_files(self, data):
+        """获取115网盘文件列表"""
+        try:
+            folder_id = data.get('folder_id', '0')
+            offset = data.get('offset', 0)
+            limit = data.get('limit', 100)
+            
+            # 获取Cookie
+            encrypted_cookie = USER_CONFIG.get('cloud_115_cookie', '')
+            if not encrypted_cookie:
+                self.send_json_response({'error': '请先配置115网盘Cookie'}, 400)
+                return
+            
+            # 解密Cookie
+            encryptor = CookieEncryption()
+            cookie = encryptor.decrypt(encrypted_cookie)
+            
+            # 创建API实例
+            api = Cloud115API(cookie)
+            
+            # 获取文件列表
+            result, error = api.list_files(folder_id, offset, limit)
+            
+            if result:
+                self.send_json_response({
+                    'success': True,
+                    'data': result
+                })
+            else:
+                self.send_json_response({
+                    'success': False,
+                    'error': error or '获取文件列表失败'
+                }, 500)
+        except Exception as e:
+            self.send_json_response({'error': str(e)}, 500)
     
     def send_json_response(self, data, status=200):
         self.send_response(status)

@@ -1,10 +1,15 @@
 # 实现计划 - 115网盘整理模块
 
-- [ ] 1. 代码重构：模块化现有功能
+- [x] 1. 代码重构：模块化现有功能
+
+
+
   - 将现有功能重构为LocalModule类
   - 提取共享的MediaParser、TMDBHelper、DoubanHelper为独立服务
   - 创建ModuleManager管理本地和云端模块
   - 更新API路由支持/api/local/*和/api/cloud/*
+
+
   - _需求: 9.1, 9.2, 9.3_
 
 - [ ] 2. 实现Cookie加密存储
