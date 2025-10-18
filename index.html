@@ -610,6 +610,18 @@
             <span>媒体库文件管理器 <span id="headerVersion">V1.0.1</span></span>
         </h1>
         
+        <!-- 模块切换选项卡 -->
+        <div style="margin-bottom: 30px; display: flex; justify-content: center; gap: 10px;">
+            <button id="localModuleTab" onclick="switchModule('local')" style="flex: 1; max-width: 250px; padding: 15px 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 10px; cursor: pointer; font-size: 16px; font-weight: 600; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4); transition: all 0.3s;">
+                💻 本地整理
+            </button>
+            <button id="cloudModuleTab" onclick="switchModule('cloud')" style="flex: 1; max-width: 250px; padding: 15px 30px; background: #e9ecef; color: #6c757d; border: 2px solid #dee2e6; border-radius: 10px; cursor: pointer; font-size: 16px; font-weight: 600; transition: all 0.3s;">
+                ☁️ 115网盘整理
+            </button>
+        </div>
+        
+        <!-- 本地整理模块 -->
+        <div id="localModule" style="display: block;">
         <div style="margin-bottom: 20px;">
             <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #333;">
                 📂 扫描路径：
@@ -800,6 +812,54 @@
                 </div>
             </div>
         </div>
+        </div>
+        <!-- 本地整理模块结束 -->
+        
+        <!-- 115网盘整理模块 -->
+        <div id="cloudModule" style="display: none;">
+            <div style="margin-bottom: 20px; padding: 20px; background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%); border-radius: 12px; border: 2px solid #667eea;">
+                <div style="display: flex; align-items: center; margin-bottom: 15px;">
+                    <span style="font-size: 24px; margin-right: 10px;">☁️</span>
+                    <h3 style="margin: 0; color: #667eea;">115网盘云端整理</h3>
+                </div>
+                <p style="margin: 0; color: #666; line-height: 1.6;">
+                    纯云端操作，无需下载文件到本地。通过115 API直接在云端完成扫描、识别、重命名和分类整理。
+                </p>
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #333;">
+                    ☁️ 115网盘文件夹：
+                </label>
+                <div style="display: flex; gap: 10px;">
+                    <input type="text" id="cloud115FolderPath" placeholder="选择要整理的115网盘文件夹" readonly
+                           style="flex: 1; padding: 12px 16px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px; background: #f8f9fa; cursor: pointer;"
+                           onclick="openCloud115Browser()">
+                    <button onclick="openCloud115Browser()" style="padding: 12px 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;">
+                        📁 浏览网盘
+                    </button>
+                </div>
+                <small style="color: #666; margin-top: 5px; display: block;">点击浏览按钮选择115网盘中要整理的文件夹</small>
+            </div>
+            
+            <div style="text-align: center; margin-bottom: 20px;">
+                <button onclick="startCloud115Organize()" style="font-size: 16px; padding: 14px 36px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4); border: none; border-radius: 8px; color: white; cursor: pointer; transition: transform 0.2s; font-weight: 500;">
+                    🚀 开始云端整理
+                </button>
+            </div>
+            
+            <div style="margin-bottom: 20px; padding: 20px; background: #fff3cd; border-radius: 12px; border-left: 4px solid #ffc107;">
+                <strong style="color: #856404;">💡 115网盘整理说明</strong><br>
+                <small style="color: #856404; line-height: 1.8;">
+                • <strong>首次使用</strong>：在"设置"中配置115网盘Cookie<br>
+                • <strong>纯云端操作</strong>：所有操作通过115 API完成，不占用本地空间<br>
+                • <strong>智能识别</strong>：自动识别媒体文件，获取中文标题<br>
+                • <strong>标准化命名</strong>：按照Plex/Jellyfin/Emby标准格式重命名<br>
+                • <strong>自动分类</strong>：电影和电视剧自动分类到不同文件夹
+                </small>
+            </div>
+        </div>
+        <!-- 115网盘整理模块结束 -->
 
         <div id="status" class="status"></div>
 
@@ -1032,10 +1092,17 @@
         let currentFolder = '';
         let renameLog = [];
 
+        // 当前模块
+        let currentModule = 'local';
+        
         // 页面加载时从localStorage读取路径
         window.addEventListener('DOMContentLoaded', function() {
             // 加载并显示版本号
             loadHeaderVersion();
+            
+            // 加载模块选择
+            const savedModule = localStorage.getItem('currentModule') || 'local';
+            switchModule(savedModule);
             
             // 扫描路径
             const savedPath = localStorage.getItem('scanPath');
@@ -1305,6 +1372,66 @@
             return div.innerHTML;
         }
 
+        // 模块切换函数
+        function switchModule(module) {
+            currentModule = module;
+            localStorage.setItem('currentModule', module);
+            
+            const localModule = document.getElementById('localModule');
+            const cloudModule = document.getElementById('cloudModule');
+            const localTab = document.getElementById('localModuleTab');
+            const cloudTab = document.getElementById('cloudModuleTab');
+            
+            if (module === 'local') {
+                // 显示本地模块
+                localModule.style.display = 'block';
+                cloudModule.style.display = 'none';
+                
+                // 更新选项卡样式
+                localTab.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+                localTab.style.color = 'white';
+                localTab.style.border = 'none';
+                localTab.style.boxShadow = '0 4px 15px rgba(102, 126, 234, 0.4)';
+                
+                cloudTab.style.background = '#e9ecef';
+                cloudTab.style.color = '#6c757d';
+                cloudTab.style.border = '2px solid #dee2e6';
+                cloudTab.style.boxShadow = 'none';
+            } else {
+                // 显示115网盘模块
+                localModule.style.display = 'none';
+                cloudModule.style.display = 'block';
+                
+                // 更新选项卡样式
+                cloudTab.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+                cloudTab.style.color = 'white';
+                cloudTab.style.border = 'none';
+                cloudTab.style.boxShadow = '0 4px 15px rgba(102, 126, 234, 0.4)';
+                
+                localTab.style.background = '#e9ecef';
+                localTab.style.color = '#6c757d';
+                localTab.style.border = '2px solid #dee2e6';
+                localTab.style.boxShadow = 'none';
+            }
+        }
+        
+        // 打开115网盘浏览器
+        function openCloud115Browser() {
+            alert('115网盘浏览器功能即将推出！\n\n请先在"设置"中配置115网盘Cookie。');
+            // TODO: 实现115网盘浏览器
+        }
+        
+        // 开始115网盘整理
+        function startCloud115Organize() {
+            const folderPath = document.getElementById('cloud115FolderPath').value;
+            if (!folderPath) {
+                alert('请先选择要整理的115网盘文件夹');
+                return;
+            }
+            alert('115网盘整理功能即将推出！\n\n系统将自动完成：\n1. 扫描文件\n2. 识别标题\n3. 智能去重\n4. 标准化重命名\n5. 自动分类');
+            // TODO: 实现115网盘整理流程
+        }
+        
         // 折叠/展开功能说明
         function toggleFunctionInfo() {
             const content = document.getElementById('functionInfoContent');
