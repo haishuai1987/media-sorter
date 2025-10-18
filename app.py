@@ -570,10 +570,18 @@ class Cloud115API:
             
             # 获取用户信息
             url = f'{self.BASE_URL}/user/info'
+            print(f"[115 API] 请求URL: {url}")
+            print(f"[115 API] Cookie前20字符: {self.cookie[:20]}...")
+            
             response = self.session.get(url, timeout=10)
+            
+            print(f"[115 API] 响应状态码: {response.status_code}")
+            print(f"[115 API] 响应内容: {response.text[:500]}")
             
             if response.status_code == 200:
                 data = response.json()
+                print(f"[115 API] JSON数据: {json.dumps(data, ensure_ascii=False)[:500]}")
+                
                 if data.get('state'):
                     user_info = {
                         'user_id': data.get('data', {}).get('user_id', ''),
@@ -583,10 +591,15 @@ class Cloud115API:
                     }
                     return True, user_info, None
                 else:
-                    return False, None, "Cookie无效或已过期"
+                    error_msg = data.get('error', 'Cookie无效或已过期')
+                    print(f"[115 API] 验证失败: {error_msg}")
+                    return False, None, error_msg
             else:
                 return False, None, f"HTTP错误: {response.status_code}"
         except Exception as e:
+            print(f"[115 API] 异常: {str(e)}")
+            import traceback
+            traceback.print_exc()
             return False, None, str(e)
     
     def list_files(self, folder_id='0', offset=0, limit=1000):
