@@ -1241,15 +1241,20 @@ class MediaHandler(SimpleHTTPRequestHandler):
             super().do_GET()
     
     def do_POST(self):
-        print(f"\n[POST DEBUG] 收到POST请求: {self.path}")
+        import sys
+        print(f"\n[POST DEBUG] 收到POST请求: {self.path}", flush=True)
+        sys.stdout.flush()
         content_length = int(self.headers['Content-Length'])
-        print(f"[POST DEBUG] Content-Length: {content_length}")
+        print(f"[POST DEBUG] Content-Length: {content_length}", flush=True)
+        sys.stdout.flush()
         post_data = self.rfile.read(content_length)
-        print(f"[POST DEBUG] 原始数据: {post_data[:200]}")
+        print(f"[POST DEBUG] 原始数据: {post_data[:200]}", flush=True)
+        sys.stdout.flush()
         
         try:
             data = json.loads(post_data.decode('utf-8'))
-            print(f"[POST DEBUG] 解析后的JSON: {data}")
+            print(f"[POST DEBUG] 解析后的JSON: {data}", flush=True)
+            sys.stdout.flush()
             
             if self.path == '/api/scan':
                 self.handle_scan(data)
@@ -1282,7 +1287,9 @@ class MediaHandler(SimpleHTTPRequestHandler):
             elif self.path == '/api/update-history':
                 self.handle_update_history(data)
             elif self.path == '/api/cloud/verify-cookie':
-                print(f"[POST DEBUG] 路由到 handle_cloud_verify_cookie")
+                import sys
+                print(f"[POST DEBUG] 路由到 handle_cloud_verify_cookie", flush=True)
+                sys.stdout.flush()
                 self.handle_cloud_verify_cookie(data)
             elif self.path == '/api/cloud/list-files':
                 self.handle_cloud_list_files(data)
@@ -2749,16 +2756,23 @@ class MediaHandler(SimpleHTTPRequestHandler):
     
     def handle_cloud_verify_cookie(self, data):
         """验证115网盘Cookie"""
-        print(f"\n[115 DEBUG] 收到验证请求")
-        print(f"[115 DEBUG] 请求数据类型: {type(data)}")
-        print(f"[115 DEBUG] 请求数据内容: {data}")
+        import sys
+        print(f"\n[115 DEBUG] 收到验证请求", flush=True)
+        sys.stdout.flush()
+        print(f"[115 DEBUG] 请求数据类型: {type(data)}", flush=True)
+        sys.stdout.flush()
+        print(f"[115 DEBUG] 请求数据内容: {data}", flush=True)
+        sys.stdout.flush()
         
         try:
             cookie = data.get('cookie', '').strip()
-            print(f"[115 DEBUG] 提取的Cookie长度: {len(cookie) if cookie else 0}")
+            print(f"[115 DEBUG] 提取的Cookie长度: {len(cookie) if cookie else 0}", flush=True)
+            sys.stdout.flush()
             
             if not cookie:
-                print(f"[115 DEBUG] Cookie为空，返回400错误")
+                import sys
+                print(f"[115 DEBUG] Cookie为空，返回400错误", flush=True)
+                sys.stdout.flush()
                 self.send_json_response({'error': 'Cookie不能为空'}, 400)
                 return
             
