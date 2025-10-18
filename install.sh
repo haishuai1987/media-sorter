@@ -183,6 +183,84 @@ EOF
     fi
 }
 
+# 创建rc.local开机自启（适用于不支持systemd的系统）
+create_rc_local() {
+    echo ""
+    read -p "是否设置开机自启（使用rc.local）？[y/N] " -n 1 -r
+    echo
+    
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        INSTALL_DIR=$(pwd)
+        RC_LOCAL="/etc/rc.local"
+        START_SCRIPT="$INSTALL_DIR/start.sh"
+        
+        # 创建启动脚本
+        echo "创建启动脚本..."
+        cat > "$START_SCRIPT" << EOF
+#!/bin/bash
+# 媒体库文件管理器启动脚本
+
+cd $INSTALL_DIR
+nohup $PYTHON_CMD app.py > $INSTALL_DIR/media-renamer.log 2>&1 &
+echo \$! > $INSTALL_DIR/media-renamer.pid
+EOF
+        chmod +x "$START_SCRIPT"
+        
+        # 添加到rc.local
+        if [ -f "$RC_LOCAL" ]; then
+            # 检查是否已添加
+            if ! grep -q "media-renamer" "$RC_LOCAL"; then
+                echo "添加到rc.local..."
+                sudo sed -i '/^exit 0/i\# Media Renamer\n'"$START_SCRIPT"'\n' "$RC_LOCAL"
+                echo -e "${GREEN}✓ 已添加到rc.local${NC}"
+            else
+                echo -e "${YELLOW}rc.local中已存在，跳过${NC}"
+            fi
+        else
+            # 创建rc.local
+            echo "创建rc.local..."
+            sudo tee "$RC_LOCAL" > /dev/null << EOF
+#!/bin/bash
+# rc.local
+
+# Media Renamer
+$START_SCRIPT
+
+exit 0
+EOF
+            sudo chmod +x "$RC_LOCAL"
+            echo -e "${GREEN}✓ rc.local已创建${NC}"
+        fi
+        
+        # 创建停止脚本
+        STOP_SCRIPT="$INSTALL_DIR/stop.sh"
+        cat > "$STOP_SCRIPT" << EOF
+#!/bin/bash
+# 媒体库文件管理器停止脚本
+
+if [ -f $INSTALL_DIR/media-renamer.pid ]; then
+    PID=\$(cat $INSTALL_DIR/media-renamer.pid)
+    if ps -p \$PID > /dev/null; then
+        kill \$PID
+        echo "服务已停止"
+    else
+        echo "服务未运行"
+    fi
+    rm -f $INSTALL_DIR/media-renamer.pid
+else
+    echo "未找到PID文件"
+fi
+EOF
+        chmod +x "$STOP_SCRIPT"
+        
+        echo -e "${GREEN}✓ 开机自启已设置${NC}"
+        echo "管理脚本:"
+        echo "  启动: $START_SCRIPT"
+        echo "  停止: $STOP_SCRIPT"
+        echo "  日志: tail -f $INSTALL_DIR/media-renamer.log"
+    fi
+}
+
 # 显示使用说明
 show_usage() {
     echo ""
@@ -229,9 +307,14 @@ main() {
     create_config
     set_permissions
     
-    # 仅在支持systemd的系统上提供服务选项
+    # 根据系统类型选择开机自启方式
     if command -v systemctl &> /dev/null && [ "$OS" != "synology" ] && [ "$OS" != "qnap" ]; then
+        # 支持systemd的系统
         create_service
+    else
+        # 不支持systemd的系统（NAS等）
+        echo -e "${YELLOW}检测到NAS系统，将使用rc.local方式设置开机自启${NC}"
+        create_rc_local
     fi
     
     show_usage
