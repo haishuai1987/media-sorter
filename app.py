@@ -564,23 +564,33 @@ class Cloud115API:
     
     def verify_cookie(self):
         """验证Cookie有效性并获取用户信息"""
+        import sys
+        print(f"\n[115 API] 验证Cookie开始", flush=True)
+        sys.stdout.flush()
         try:
             if not self.session:
+                print(f"[115 API] requests库未安装", flush=True)
+                sys.stdout.flush()
                 return False, None, "requests库未安装"
             
             # 获取用户信息
             url = f'{self.BASE_URL}/user/info'
-            print(f"[115 API] 请求URL: {url}")
-            print(f"[115 API] Cookie前20字符: {self.cookie[:20]}...")
+            print(f"[115 API] 请求URL: {url}", flush=True)
+            sys.stdout.flush()
+            print(f"[115 API] Cookie前20字符: {self.cookie[:20]}...", flush=True)
+            sys.stdout.flush()
             
             response = self.session.get(url, timeout=10)
             
-            print(f"[115 API] 响应状态码: {response.status_code}")
-            print(f"[115 API] 响应内容: {response.text[:500]}")
+            print(f"[115 API] 响应状态码: {response.status_code}", flush=True)
+            sys.stdout.flush()
+            print(f"[115 API] 响应内容: {response.text[:500]}", flush=True)
+            sys.stdout.flush()
             
             if response.status_code == 200:
                 data = response.json()
-                print(f"[115 API] JSON数据: {json.dumps(data, ensure_ascii=False)[:500]}")
+                print(f"[115 API] JSON数据: {json.dumps(data, ensure_ascii=False)[:500]}", flush=True)
+                sys.stdout.flush()
                 
                 if data.get('state'):
                     user_info = {
@@ -592,12 +602,16 @@ class Cloud115API:
                     return True, user_info, None
                 else:
                     error_msg = data.get('error', 'Cookie无效或已过期')
-                    print(f"[115 API] 验证失败: {error_msg}")
+                    print(f"[115 API] 验证失败: {error_msg}", flush=True)
+                    sys.stdout.flush()
                     return False, None, error_msg
             else:
+                print(f"[115 API] HTTP错误: {response.status_code}", flush=True)
+                sys.stdout.flush()
                 return False, None, f"HTTP错误: {response.status_code}"
         except Exception as e:
-            print(f"[115 API] 异常: {str(e)}")
+            print(f"[115 API] 异常: {str(e)}", flush=True)
+            sys.stdout.flush()
             import traceback
             traceback.print_exc()
             return False, None, str(e)
@@ -2777,8 +2791,15 @@ class MediaHandler(SimpleHTTPRequestHandler):
                 return
             
             # 创建API实例并验证
+            import sys
+            print(f"[115 DEBUG] 开始创建Cloud115API实例", flush=True)
+            sys.stdout.flush()
             api = Cloud115API(cookie)
+            print(f"[115 DEBUG] API实例创建成功，开始验证Cookie", flush=True)
+            sys.stdout.flush()
             valid, user_info, error = api.verify_cookie()
+            print(f"[115 DEBUG] 验证完成 - valid={valid}, error={error}", flush=True)
+            sys.stdout.flush()
             
             if valid:
                 # 加密存储Cookie
