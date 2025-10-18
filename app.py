@@ -2820,6 +2820,11 @@ class MediaHandler(SimpleHTTPRequestHandler):
                     'error': error or 'Cookie验证失败'
                 }, 400)
         except Exception as e:
+            import sys
+            import traceback
+            print(f"\n[115 DEBUG] 捕获到异常: {type(e).__name__}: {str(e)}", flush=True)
+            sys.stdout.flush()
+            traceback.print_exc()
             self.send_json_response({'error': str(e)}, 500)
     
     def handle_cloud_list_files(self, data):
