@@ -607,7 +607,7 @@
     <div class="container">
         <h1 style="display: flex; align-items: center; justify-content: center; gap: 15px;">
             <img src="/logo.svg" alt="Logo" style="width: 50px; height: 50px;">
-            <span>媒体库文件管理器 V1.3</span>
+            <span>媒体库文件管理器 <span id="headerVersion">V1.0.1</span></span>
         </h1>
         
         <div style="margin-bottom: 20px;">
@@ -1013,6 +1013,9 @@
 
         // 页面加载时从localStorage读取路径
         window.addEventListener('DOMContentLoaded', function() {
+            // 加载并显示版本号
+            loadHeaderVersion();
+            
             // 扫描路径
             const savedPath = localStorage.getItem('scanPath');
             const folderPathInput = document.getElementById('folderPath');
@@ -1045,6 +1048,27 @@
                 tvPathInput.value = '/vol02/1000-1-b23abde7/电视剧';
             }
         });
+        
+        // 加载并显示标题中的版本号
+        async function loadHeaderVersion() {
+            try {
+                const response = await fetch('/api/get-version', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    const headerVersionEl = document.getElementById('headerVersion');
+                    if (headerVersionEl) {
+                        headerVersionEl.textContent = data.current_version;
+                    }
+                }
+            } catch (error) {
+                console.error('加载版本号失败:', error);
+            }
+        }
 
         // 保存路径到localStorage
         function savePath() {

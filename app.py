@@ -2570,8 +2570,11 @@ class MediaHandler(SimpleHTTPRequestHandler):
         self.wfile.write(json.dumps(data, ensure_ascii=False).encode('utf-8'))
 
 if __name__ == '__main__':
+    # 读取版本号
+    current_version = VersionManager.get_current_version()
+    
     print('=' * 50)
-    print('🎬 媒体库文件管理器 V1.3')
+    print(f'🎬 媒体库文件管理器 {current_version}')
     print('=' * 50)
     print(f'服务器运行在: http://localhost:{PORT}')
     print(f'局域网访问: http://你的NAS_IP:{PORT}')
