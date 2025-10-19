@@ -1148,6 +1148,175 @@ class CloudScanner:
 
 # ============================================
 
+class CloudRenamer:
+    """115网盘文件重命名器"""
+    
+    def __init__(self, api, handler):
+        """
+        Args:
+            api: Cloud115API实例
+            handler: RequestHandler实例（用于调用parse_media_filename）
+        """
+        self.api = api
+        self.handler = handler
+    
+    def parse_filename(self, filename, parent_folder=''):
+        """解析文件名，提取媒体信息
+        
+        Args:
+            filename: 文件名
+            parent_folder: 父文件夹名称
+        
+        Returns:
+            metadata字典
+        """
+        return self.handler.parse_media_filename(filename, parent_folder)
+    
+    def generate_new_name(self, file_info, metadata, naming_template=None):
+        """生成新文件名
+        
+        Args:
+            file_info: 文件信息字典
+            metadata: 解析出的元数据
+            naming_template: 命名模板（可选）
+        
+        Returns:
+            新文件名
+        """
+        if not naming_template:
+            # 默认命名模板
+            if metadata.get('type') == 'tv':
+                # 电视剧: 标题 (年份) S01E01
+                if metadata.get('season_episode'):
+                    template = "{title}"
+                    if metadata.get('year'):
+                        template += " ({year})"
+                    template += " {season_episode}{fileExt}"
+                else:
+                    template = "{title}{fileExt}"
+            else:
+                # 电影: 标题 (年份)
+                template = "{title}"
+                if metadata.get('year'):
+                    template += " ({year})"
+                template += "{fileExt}"
+            naming_template = template
+        
+        # 使用元数据填充模板
+        new_name = naming_template.format(**metadata)
+        
+        # 清理文件名中的非法字符
+        new_name = re.sub(r'[<>:"/\\|?*]', '', new_name)
+        new_name = new_name.strip()
+        
+        return new_name
+    
+    def preview_rename(self, files, naming_template=None):
+        """预览重命名结果
+        
+        Args:
+            files: 文件列表
+            naming_template: 命名模板（可选）
+        
+        Returns:
+            [
+                {
+                    'file_id': '...',
+                    'old_name': '...',
+                    'new_name': '...',
+                    'metadata': {...},
+                    'changed': True/False
+                }
+            ]
+        """
+        preview_results = []
+        
+        for file in files:
+            old_name = file.get('name', '')
+            file_id = file.get('fid', '')
+            
+            # 解析文件名
+            metadata = self.parse_filename(old_name)
+            
+            # 生成新文件名
+            new_name = self.generate_new_name(file, metadata, naming_template)
+            
+            preview_results.append({
+                'file_id': file_id,
+                'old_name': old_name,
+                'new_name': new_name,
+                'metadata': metadata,
+                'changed': old_name != new_name
+            })
+        
+        return preview_results
+    
+    def rename_file(self, file_id, new_name):
+        """重命名单个文件
+        
+        Args:
+            file_id: 文件ID
+            new_name: 新文件名
+        
+        Returns:
+            (success: bool, error: str)
+        """
+        return self.api.rename_file(file_id, new_name)
+    
+    def batch_rename(self, rename_list, batch_size=50):
+        """批量重命名文件
+        
+        Args:
+            rename_list: [{'file_id': '...', 'new_name': '...'}]
+            batch_size: 每批处理数量
+        
+        Returns:
+            {
+                'success_count': int,
+                'failed_count': int,
+                'failed_files': [...]
+            }
+        """
+        success_count = 0
+        failed_count = 0
+        failed_files = []
+        
+        # 分批处理
+        for i in range(0, len(rename_list), batch_size):
+            batch = rename_list[i:i + batch_size]
+            
+            # 构建重命名映射
+            rename_map = {item['file_id']: item['new_name'] for item in batch}
+            
+            # 调用API批量重命名
+            count, failed, error = self.api.batch_rename(rename_map)
+            
+            success_count += count
+            failed_count += len(failed)
+            
+            if failed:
+                for file_id in failed:
+                    # 找到对应的文件信息
+                    file_info = next((item for item in batch if item['file_id'] == file_id), None)
+                    if file_info:
+                        failed_files.append({
+                            'file_id': file_id,
+                            'new_name': file_info['new_name'],
+                            'error': error
+                        })
+            
+            # 添加延迟避免API限流
+            if i + batch_size < len(rename_list):
+                time.sleep(1)
+        
+        return {
+            'success_count': success_count,
+            'failed_count': failed_count,
+            'failed_files': failed_files
+        }
+
+# ============================================
+
 class DoubanHelper:
     """豆瓣API辅助类"""
     
