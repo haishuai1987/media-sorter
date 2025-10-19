@@ -2087,24 +2087,25 @@
                             <div style="margin-bottom: 20px;">
                                 <p style="color: #666; margin-bottom: 15px;">请选择扫码方式：</p>
                                 <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px;">
-                                    <button onclick="selectQRType('alipay')" class="qr-type-btn" data-type="alipay" style="flex: 1; min-width: 80px; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; background: white; cursor: pointer; transition: all 0.2s;">支付宝</button>
-                                    <button onclick="selectQRType('wechat')" class="qr-type-btn" data-type="wechat" style="flex: 1; min-width: 80px; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; background: white; cursor: pointer; transition: all 0.2s;">微信</button>
-                                    <button onclick="selectQRType('android')" class="qr-type-btn" data-type="android" style="flex: 1; min-width: 80px; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; background: white; cursor: pointer; transition: all 0.2s;">安卓</button>
-                                    <button onclick="selectQRType('ios')" class="qr-type-btn" data-type="ios" style="flex: 1; min-width: 80px; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; background: white; cursor: pointer; transition: all 0.2s;">iOS</button>
-                                    <button onclick="selectQRType('pad')" class="qr-type-btn" data-type="pad" style="flex: 1; min-width: 80px; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; background: white; cursor: pointer; transition: all 0.2s;">PAD</button>
-                                    <button onclick="selectQRType('tv')" class="qr-type-btn" data-type="tv" style="flex: 1; min-width: 80px; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; background: white; cursor: pointer; transition: all 0.2s;">TV</button>
+                                    <button onclick="selectQRType('wechatmini')" class="qr-type-btn" data-type="wechatmini" style="flex: 1; min-width: 100px; padding: 10px; border: 2px solid #07c160; border-radius: 8px; background: #f0f9ff; cursor: pointer; transition: all 0.2s; font-weight: 600; color: #07c160;">微信小程序 ⭐</button>
+                                    <button onclick="selectQRType('alipaymini')" class="qr-type-btn" data-type="alipaymini" style="flex: 1; min-width: 80px; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; background: white; cursor: pointer; transition: all 0.2s;">支付宝</button>
+                                    <button onclick="selectQRType('android')" class="qr-type-btn" data-type="android" style="flex: 1; min-width: 80px; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; background: white; cursor: pointer; transition: all 0.2s;">安卓APP</button>
+                                    <button onclick="selectQRType('ios')" class="qr-type-btn" data-type="ios" style="flex: 1; min-width: 80px; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; background: white; cursor: pointer; transition: all 0.2s;">iOS APP</button>
+                                    <button onclick="selectQRType('tv')" class="qr-type-btn" data-type="tv" style="flex: 1; min-width: 80px; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; background: white; cursor: pointer; transition: all 0.2s;">TV版</button>
                                 </div>
                             </div>
                             
                             <div id="qrcodeContainer" style="text-align: center; padding: 20px; background: #f8f9fa; border-radius: 8px; min-height: 300px; display: flex; flex-direction: column; justify-content: center; align-items: center;">
-                                <p style="color: #999;">请先选择扫码方式</p>
+                                <p style="color: #999;">👆 请先选择扫码方式</p>
+                                <small style="color: #999; margin-top: 10px;">推荐使用微信小程序，Cookie有效期更长</small>
                             </div>
                             
-                            <div style="margin-top: 20px; padding: 15px; background: #fff3cd; border-radius: 8px; border-left: 4px solid #ffc107;">
-                                <small style="color: #856404; line-height: 1.6;">
-                                    <strong>💡 提示：</strong><br>
-                                    • 选择不常用的客户端（如TV、PAD）可保持Cookie长期有效<br>
-                                    • 使用115手机客户端扫码后自动获取Cookie<br>
+                            <div style="margin-top: 20px; padding: 15px; background: #e7f3ff; border-radius: 8px; border-left: 4px solid #2196f3;">
+                                <small style="color: #1976d2; line-height: 1.6;">
+                                    <strong>💡 使用提示：</strong><br>
+                                    • 推荐使用微信小程序或支付宝小程序扫码<br>
+                                    • 小程序Cookie有效期更长，不易过期<br>
+                                    • 使用115手机客户端扫码后点击确认<br>
                                     • Cookie会自动保存并验证
                                 </small>
                             </div>

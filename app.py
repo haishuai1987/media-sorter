@@ -928,11 +928,18 @@ class Cloud115API:
             return 0, file_ids, str(e)
     
     @staticmethod
-    def generate_qrcode(qr_type='android'):
-        """生成115网盘二维码登录（基于Alist方案）
+    def generate_qrcode(qr_type='wechatmini'):
+        """生成115网盘二维码登录（基于Alist/py115正确实现）
         
         Args:
-            qr_type: 二维码类型 (alipay, wechat, android, ios, pad, tv)
+            qr_type: 二维码类型
+                - web: 网页版
+                - android: 安卓APP
+                - ios: iOS APP
+                - tv: TV版
+                - alipaymini: 支付宝小程序
+                - wechatmini: 微信小程序（推荐）
+                - qandroid: 安卓TV
         
         Returns:
             (qrcode_url: str, session_id: str, error: str)
@@ -953,8 +960,7 @@ class Cloud115API:
             
             session_id = str(uuid.uuid4())
             
-            # 115网盘二维码登录API（参考Alist实现）
-            # 第一步：获取二维码sign
+            # 第一步：获取二维码token（参考py115实现）
             url = 'https://qrcodeapi.115.com/api/1.0/web/1.0/token/'
             headers = {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
@@ -969,21 +975,23 @@ class Cloud115API:
                 print(f"[115 API] 响应数据: {data}")
                 
                 if data.get('state'):
-                    sign = data.get('data', {}).get('sign', '')
-                    uid = data.get('data', {}).get('uid', '')
+                    token_data = data.get('data', {})
+                    uid = token_data.get('uid', '')
+                    time_val = token_data.get('time', 0)
+                    sign = token_data.get('sign', '')
                     
-                    if not sign:
-                        return None, None, 'API返回数据中缺少sign'
+                    if not uid or not sign:
+                        return None, None, 'API返回数据不完整'
                     
-                    print(f"[115 API] 获取到sign: {sign}, uid: {uid}")
+                    print(f"[115 API] 获取到token: uid={uid}, time={time_val}, sign={sign}")
                     
-                    # 生成二维码内容
-                    qr_content = f'https://qrcodeapi.115.com/api/1.0/web/1.0/qrcode?uid={sign}'
+                    # 生成二维码图片URL（使用mac端点，兼容性最好）
+                    qr_image_url = f'https://qrcodeapi.115.com/api/1.0/mac/1.0/qrcode?uid={uid}'
                     
                     # 使用qrcode库生成二维码图片
                     try:
                         qr = qrcode.QRCode(version=1, box_size=10, border=2)
-                        qr.add_data(qr_content)
+                        qr.add_data(qr_image_url)
                         qr.make(fit=True)
                         img = qr.make_image(fill_color="black", back_color="white")
                         
@@ -994,16 +1002,17 @@ class Cloud115API:
                         qrcode_url = f'data:image/png;base64,{img_base64}'
                     except ImportError:
                         # 如果qrcode库未安装，返回二维码URL让前端生成
-                        qrcode_url = qr_content
+                        qrcode_url = qr_image_url
                     
                     # 保存session信息
                     if not hasattr(Cloud115API, '_qr_sessions'):
                         Cloud115API._qr_sessions = {}
                     
                     Cloud115API._qr_sessions[session_id] = {
-                        'sign': sign,
                         'uid': uid,
-                        'type': qr_type,
+                        'time': time_val,
+                        'sign': sign,
+                        'app': qr_type,
                         'status': 'waiting',
                         'cookie': None,
                         'timestamp': time.time()
@@ -1027,17 +1036,18 @@ class Cloud115API:
     
     @staticmethod
     def check_qrcode_status(session_id):
-        """检查二维码扫码状态（基于Alist方案）
+        """检查二维码扫码状态（基于Alist/py115正确实现）
         
         Args:
             session_id: 会话ID
         
         Returns:
             (status: str, cookie: str, error: str)
-            status: waiting/scanned/success/expired
+            status: waiting/scanned/success/expired/cancelled
         """
         try:
             import requests
+            from urllib.parse import urlencode
             
             if not hasattr(Cloud115API, '_qr_sessions'):
                 return 'expired', None, '会话不存在'
@@ -1057,10 +1067,13 @@ class Cloud115API:
                 del Cloud115API._qr_sessions[session_id]
                 return 'success', cookie, None
             
-            # 调用115 API检查扫码状态
-            sign = session['sign']
-            uid = session.get('uid', sign)
-            url = f'https://qrcodeapi.115.com/get/status/?uid={sign}'
+            # 第一步：检查扫码状态（参考py115实现）
+            payload = {
+                'uid': session['uid'],
+                'time': session['time'],
+                'sign': session['sign']
+            }
+            url = f'https://qrcodeapi.115.com/get/status/?{urlencode(payload)}'
             headers = {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
             }
@@ -1072,7 +1085,8 @@ class Cloud115API:
                 data = response.json()
                 print(f"[115 API] 状态响应: {data}")
                 
-                status_code = data.get('data', {}).get('status')
+                status_data = data.get('data', {})
+                status_code = status_data.get('status')
                 
                 if status_code == 0:
                     # 等待扫码
@@ -1081,40 +1095,70 @@ class Cloud115API:
                     # 已扫码，等待确认
                     return 'scanned', None, None
                 elif status_code == 2:
-                    # 扫码成功，获取Cookie
-                    # 从响应中提取Cookie
-                    cookie_data = data.get('data', {})
+                    # 扫码成功，需要POST获取Cookie
+                    print(f"[115 API] 扫码确认，开始获取Cookie")
                     
-                    # 构建Cookie字符串
-                    cookie_parts = []
-                    if cookie_data.get('CID'):
-                        cookie_parts.append(f"CID={cookie_data['CID']}")
-                    if cookie_data.get('SEID'):
-                        cookie_parts.append(f"SEID={cookie_data['SEID']}")
-                    if cookie_data.get('UID'):
-                        cookie_parts.append(f"UID={cookie_data['UID']}")
+                    # 第二步：POST获取Cookie（关键步骤！）
+                    app = session.get('app', 'wechatmini')
+                    post_url = f'https://passportapi.115.com/app/1.0/{app}/1.0/login/qrcode/'
+                    post_data = {
+                        'app': app,
+                        'account': session['uid']
+                    }
                     
-                    cookie = '; '.join(cookie_parts)
+                    print(f"[115 API] POST获取Cookie: {post_url}, data={post_data}")
+                    post_response = requests.post(
+                        post_url,
+                        data=post_data,
+                        headers=headers,
+                        timeout=10
+                    )
                     
-                    if cookie:
-                        print(f"[115 API] 扫码成功，获取到Cookie")
-                        # 保存Cookie到session
-                        session['cookie'] = cookie
-                        session['status'] = 'success'
-                        return 'success', cookie, None
+                    if post_response.status_code == 200:
+                        result = post_response.json()
+                        print(f"[115 API] Cookie响应: {result}")
+                        
+                        if result.get('state'):
+                            # 成功获取Cookie
+                            cookie_dict = result.get('data', {}).get('cookie', {})
+                            
+                            # 构建Cookie字符串
+                            cookie_parts = []
+                            for key in ['UID', 'CID', 'SEID']:
+                                if key in cookie_dict:
+                                    cookie_parts.append(f"{key}={cookie_dict[key]}")
+                            
+                            cookie = '; '.join(cookie_parts)
+                            
+                            if cookie:
+                                print(f"[115 API] 成功获取Cookie")
+                                # 保存Cookie到session
+                                session['cookie'] = cookie
+                                session['status'] = 'success'
+                                return 'success', cookie, None
+                            else:
+                                print(f"[115 API] Cookie数据为空")
+                                return 'waiting', None, 'Cookie数据为空'
+                        else:
+                            error_msg = result.get('error', '获取Cookie失败')
+                            print(f"[115 API] 获取Cookie失败: {error_msg}")
+                            return 'waiting', None, error_msg
                     else:
-                        print(f"[115 API] 扫码成功但未获取到Cookie数据")
-                        return 'waiting', None, None
+                        print(f"[115 API] POST请求失败: {post_response.status_code}")
+                        return 'waiting', None, f'HTTP错误: {post_response.status_code}'
+                        
                 elif status_code == -1:
                     # 二维码过期
                     del Cloud115API._qr_sessions[session_id]
                     return 'expired', None, '二维码已过期'
                 elif status_code == -2:
                     # 取消扫码
-                    return 'waiting', None, None
+                    return 'cancelled', None, '用户取消扫码'
                 else:
+                    print(f"[115 API] 未知状态码: {status_code}")
                     return 'waiting', None, None
             else:
+                print(f"[115 API] 检查状态失败: {response.status_code}")
                 return 'waiting', None, None
         except Exception as e:
             print(f"[115 API] 检查二维码状态异常: {str(e)}")
