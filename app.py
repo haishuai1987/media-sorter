@@ -1059,6 +1059,8 @@ class CloudScanner:
     def group_duplicate_files(self, video_files):
         """识别重复文件（基于文件名和大小）
         
+        注意：此方法需要非常谨慎，避免误删文件
+        
         Args:
             video_files: 视频文件列表
         
@@ -1077,14 +1079,25 @@ class CloudScanner:
         """
         from collections import defaultdict
         
-        # 按文件名分组（忽略扩展名）
+        # 使用更严格的去重策略：只有文件名几乎完全相同才认为是重复
         name_groups = defaultdict(list)
         for file in video_files:
             name = file.get('name', '')
             base_name = os.path.splitext(name)[0].lower()
-            # 移除常见的质量标记
-            base_name = re.sub(r'\b(1080p|720p|480p|2160p|4k|bluray|web-dl|webrip|hdtv|x264|x265|hevc)\b', '', base_name, flags=re.IGNORECASE)
+            
+            # 只移除最常见的质量标记，保留更多信息避免误判
+            # 移除前后的空格、点、下划线
+            base_name = re.sub(r'[\s\._-]+', ' ', base_name)
+            # 只移除明确的质量标记（必须是独立的词）
+            base_name = re.sub(r'\s+(1080p|720p|480p|2160p|4k)\s+', ' ', base_name, flags=re.IGNORECASE)
+            base_name = re.sub(r'\s+(bluray|blu-ray|web-dl|webrip|hdtv)\s+', ' ', base_name, flags=re.IGNORECASE)
+            base_name = re.sub(r'\s+(x264|x265|h264|h265|hevc|avc)\s+', ' ', base_name, flags=re.IGNORECASE)
             base_name = base_name.strip()
+            
+            # 如果处理后的名称太短（少于5个字符），使用原始名称避免误判
+            if len(base_name) < 5:
+                base_name = os.path.splitext(name)[0].lower()
+            
             name_groups[base_name].append(file)
         
         duplicates = []
@@ -1092,6 +1105,17 @@ class CloudScanner:
         
         for base_name, files in name_groups.items():
             if len(files) > 1:
+                # 额外检查：文件大小差异不能太大（避免误判）
+                sizes = [f.get('size', 0) for f in files]
+                max_size = max(sizes)
+                min_size = min(sizes)
+                
+                # 如果最大和最小文件大小差异超过30%，可能不是重复
+                if max_size > 0 and (max_size - min_size) / max_size > 0.3:
+                    print(f"[CloudScanner] 跳过可疑重复组: {base_name} (大小差异过大)")
+                    unique.extend(files)
+                    continue
+                
                 # 有重复，按质量排序
                 sorted_files = sorted(files, key=lambda f: self._calculate_quality_score(f), reverse=True)
                 duplicates.append({
@@ -1100,6 +1124,7 @@ class CloudScanner:
                     'keep': sorted_files[0].get('fid'),
                     'remove': [f.get('fid') for f in sorted_files[1:]]
                 })
+                print(f"[CloudScanner] 发现重复: {base_name} ({len(files)}个文件)")
             else:
                 unique.extend(files)
         
@@ -3777,16 +3802,14 @@ class MediaHandler(SimpleHTTPRequestHandler):
                 return
             
             # 步骤2: 去重（如果启用）
+            # 注意：去重功能暂时禁用自动删除，只做标记
+            duplicates = []
             if enable_dedupe:
                 dedupe_result = scanner.group_duplicate_files(video_files)
                 duplicates = dedupe_result['duplicates']
-                video_files = dedupe_result['unique']
-                
-                # 删除重复文件
-                for dup_group in duplicates:
-                    remove_ids = dup_group['remove']
-                    if remove_ids:
-                        api.delete_file(remove_ids)
+                # 不再自动删除，只记录重复文件
+                # video_files保持不变，包含所有文件
+                print(f"[HANDLER] 发现 {len(duplicates)} 组重复文件，但不自动删除")
             else:
                 duplicates = []
             
