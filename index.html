@@ -1086,6 +1086,28 @@
         </div>
     </div>
 
+    <!-- 115网盘浏览器弹窗 -->
+    <div id="cloud115BrowserOverlay" class="folder-browser-overlay" style="display: none;" onclick="closeCloud115Browser(event)">
+        <div class="folder-browser" onclick="event.stopPropagation()">
+            <div class="folder-browser-header">
+                <h3>☁️ 选择115网盘文件夹</h3>
+                <button class="folder-browser-close" onclick="closeCloud115Browser()">×</button>
+            </div>
+            <div class="folder-browser-path" id="cloud115BrowserPath">
+                <span onclick="navigateCloud115Folder('0')" style="cursor: pointer; color: #667eea;">🏠 根目录</span>
+            </div>
+            <div class="folder-browser-list" id="cloud115FolderList">
+                <div style="text-align: center; padding: 40px; color: #999;">
+                    加载中...
+                </div>
+            </div>
+            <div class="folder-browser-footer">
+                <button onclick="closeCloud115Browser()" style="background: #999;">取消</button>
+                <button onclick="selectCloud115Folder()" style="background: #667eea;">选择此文件夹</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         let currentFiles = [];
         let currentFilter = 'all';
@@ -1415,20 +1437,158 @@
             }
         }
         
+        // 115网盘浏览器相关变量
+        let currentCloud115FolderId = '0';
+        let currentCloud115FolderName = '根目录';
+        let cloud115FolderHistory = [{ id: '0', name: '根目录' }];
+        
         // 打开115网盘浏览器
-        function openCloud115Browser() {
-            alert('115网盘浏览器功能即将推出！\n\n请先在"设置"中配置115网盘Cookie。');
-            // TODO: 实现115网盘浏览器
+        async function openCloud115Browser() {
+            const overlay = document.getElementById('cloud115BrowserOverlay');
+            overlay.style.display = 'flex';
+            
+            // 重置到根目录
+            currentCloud115FolderId = '0';
+            currentCloud115FolderName = '根目录';
+            cloud115FolderHistory = [{ id: '0', name: '根目录' }];
+            
+            // 加载根目录
+            await loadCloud115Folders('0');
+        }
+        
+        // 关闭115网盘浏览器
+        function closeCloud115Browser(event) {
+            if (event && event.target.id !== 'cloud115BrowserOverlay') return;
+            const overlay = document.getElementById('cloud115BrowserOverlay');
+            overlay.style.display = 'none';
+        }
+        
+        // 加载115网盘文件夹列表
+        async function loadCloud115Folders(folderId) {
+            const listEl = document.getElementById('cloud115FolderList');
+            listEl.innerHTML = '<div style="text-align: center; padding: 40px; color: #999;">加载中...</div>';
+            
+            try {
+                const response = await fetch('/api/cloud/list-files', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ folder_id: folderId, limit: 1000 })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success && data.data) {
+                    const files = data.data.files || [];
+                    const folders = files.filter(f => f.is_dir);
+                    
+                    if (folders.length === 0) {
+                        listEl.innerHTML = '<div style="text-align: center; padding: 40px; color: #999;">此文件夹为空</div>';
+                        return;
+                    }
+                    
+                    let html = '<div style="padding: 10px;">';
+                    
+                    // 添加返回上级按钮
+                    if (cloud115FolderHistory.length > 1) {
+                        html += `
+                            <div onclick="goBackCloud115Folder()" style="padding: 12px; margin-bottom: 5px; background: #f8f9fa; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: background 0.2s;" onmouseover="this.style.background='#e9ecef'" onmouseout="this.style.background='#f8f9fa'">
+                                <span style="font-size: 20px;">⬆️</span>
+                                <span style="font-weight: 500;">返回上级</span>
+                            </div>
+                        `;
+                    }
+                    
+                    // 显示文件夹列表
+                    folders.forEach(folder => {
+                        const fileCount = folder.file_count > 0 ? ` (${folder.file_count}项)` : '';
+                        html += `
+                            <div onclick="navigateCloud115Folder('${folder.fid}', '${folder.name.replace(/'/g, "\\'")}'))" style="padding: 12px; margin-bottom: 5px; background: white; border: 1px solid #e0e0e0; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: all 0.2s;" onmouseover="this.style.background='#f0f4ff'; this.style.borderColor='#667eea'" onmouseout="this.style.background='white'; this.style.borderColor='#e0e0e0'">
+                                <span style="font-size: 20px;">📁</span>
+                                <div style="flex: 1;">
+                                    <div style="font-weight: 500; color: #333;">${folder.name}</div>
+                                    <small style="color: #999;">${fileCount}</small>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    
+                    html += '</div>';
+                    listEl.innerHTML = html;
+                } else {
+                    listEl.innerHTML = `<div style="text-align: center; padding: 40px; color: #d32f2f;">${data.error || '加载失败'}</div>`;
+                }
+            } catch (error) {
+                listEl.innerHTML = `<div style="text-align: center; padding: 40px; color: #d32f2f;">加载失败: ${error.message}</div>`;
+            }
+        }
+        
+        // 导航到指定文件夹
+        async function navigateCloud115Folder(folderId, folderName = '') {
+            currentCloud115FolderId = folderId;
+            
+            if (folderId === '0') {
+                currentCloud115FolderName = '根目录';
+                cloud115FolderHistory = [{ id: '0', name: '根目录' }];
+            } else {
+                currentCloud115FolderName = folderName;
+                cloud115FolderHistory.push({ id: folderId, name: folderName });
+            }
+            
+            // 更新路径显示
+            updateCloud115BrowserPath();
+            
+            // 加载文件夹内容
+            await loadCloud115Folders(folderId);
+        }
+        
+        // 返回上级文件夹
+        async function goBackCloud115Folder() {
+            if (cloud115FolderHistory.length > 1) {
+                cloud115FolderHistory.pop();
+                const parent = cloud115FolderHistory[cloud115FolderHistory.length - 1];
+                currentCloud115FolderId = parent.id;
+                currentCloud115FolderName = parent.name;
+                
+                updateCloud115BrowserPath();
+                await loadCloud115Folders(currentCloud115FolderId);
+            }
+        }
+        
+        // 更新路径显示
+        function updateCloud115BrowserPath() {
+            const pathEl = document.getElementById('cloud115BrowserPath');
+            let html = '<span onclick="navigateCloud115Folder(\'0\')" style="cursor: pointer; color: #667eea;">🏠 根目录</span>';
+            
+            for (let i = 1; i < cloud115FolderHistory.length; i++) {
+                const folder = cloud115FolderHistory[i];
+                html += ` <span style="color: #999;">›</span> <span style="color: #333;">${folder.name}</span>`;
+            }
+            
+            pathEl.innerHTML = html;
+        }
+        
+        // 选择当前文件夹
+        function selectCloud115Folder() {
+            const input = document.getElementById('cloud115FolderPath');
+            const pathText = cloud115FolderHistory.map(f => f.name).join(' / ');
+            input.value = pathText;
+            input.dataset.folderId = currentCloud115FolderId;
+            
+            closeCloud115Browser();
         }
         
         // 开始115网盘整理
         function startCloud115Organize() {
-            const folderPath = document.getElementById('cloud115FolderPath').value;
-            if (!folderPath) {
+            const input = document.getElementById('cloud115FolderPath');
+            const folderPath = input.value;
+            const folderId = input.dataset.folderId;
+            
+            if (!folderPath || !folderId) {
                 alert('请先选择要整理的115网盘文件夹');
                 return;
             }
-            alert('115网盘整理功能即将推出！\n\n系统将自动完成：\n1. 扫描文件\n2. 识别标题\n3. 智能去重\n4. 标准化重命名\n5. 自动分类');
+            
+            alert(`115网盘整理功能开发中！\n\n将整理文件夹: ${folderPath}\n文件夹ID: ${folderId}\n\n系统将自动完成：\n1. 扫描文件\n2. 识别标题\n3. 智能去重\n4. 标准化重命名\n5. 自动分类`);
             // TODO: 实现115网盘整理流程
         }
         
