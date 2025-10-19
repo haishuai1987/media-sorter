@@ -163,3 +163,150 @@ button:hover {
     color: #999;
     padding: 40px;
 }
+
+/* 115网盘登录区域 */
+.login-section {
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.login-btn {
+    padding: 12px 32px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 600;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.login-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
+/* 二维码弹窗 */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    animation: fadeIn 0.3s;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.modal-content {
+    background-color: white;
+    margin: 10% auto;
+    padding: 30px;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 400px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    animation: slideIn 0.3s;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateY(-50px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.modal-content h2 {
+    margin: 0 0 20px 0;
+    color: #333;
+    text-align: center;
+}
+
+.close {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+    line-height: 20px;
+}
+
+.close:hover,
+.close:focus {
+    color: #000;
+}
+
+#qrcodeContainer {
+    text-align: center;
+    min-height: 280px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f9f9f9;
+    border-radius: 8px;
+    margin-bottom: 15px;
+}
+
+.qrcode-image {
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+}
+
+.qrcode-loading {
+    color: #667eea;
+    font-size: 16px;
+    padding: 20px;
+}
+
+.qrcode-error {
+    color: #d32f2f;
+    font-size: 16px;
+    padding: 20px;
+}
+
+.qrcode-status {
+    text-align: center;
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    font-weight: 500;
+}
+
+.qrcode-status.waiting {
+    background: #e3f2fd;
+    color: #1976d2;
+}
+
+.qrcode-status.scanned {
+    background: #fff3e0;
+    color: #f57c00;
+}
+
+.qrcode-status.success {
+    background: #e8f5e9;
+    color: #388e3c;
+}
+
+.qrcode-status.error {
+    background: #ffebee;
+    color: #d32f2f;
+}
+
+.qrcode-tip {
+    text-align: center;
+    color: #666;
+    font-size: 14px;
+    margin: 0;
+}
