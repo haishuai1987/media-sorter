@@ -51,6 +51,15 @@ test_*.py
 *.tmp
 *.bak
 *.backup
+*.backup2
+*.broken
+
+# 运行时文件
+*.pid
+media-renamer.pid
+
+# 更新历史
+update_history.json
 
 # Node.js（如果有）
 node_modules/
