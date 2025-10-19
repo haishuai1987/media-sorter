@@ -2418,6 +2418,8 @@ class MediaHandler(SimpleHTTPRequestHandler):
                 self.handle_check_update(data)
             elif self.path == '/api/update':
                 self.handle_update(data)
+            elif self.path == '/api/force-update':
+                self.handle_force_update(data)
             elif self.path == '/api/rollback':
                 self.handle_rollback(data)
             elif self.path == '/api/update-history':
@@ -3812,6 +3814,100 @@ class MediaHandler(SimpleHTTPRequestHandler):
                 update_manager.update_lock = False
                 
         except Exception as e:
+            self.send_json_response({'error': str(e)}, 500)
+    
+    def handle_force_update(self, data):
+        """强制更新（重置本地修改）"""
+        try:
+            import subprocess
+            
+            use_proxy = data.get('use_proxy', False)
+            auto_restart = data.get('auto_restart', True)
+            
+            # 创建UpdateManager实例
+            update_manager = UpdateManager()
+            
+            # 检查是否是Git仓库
+            if not update_manager.check_git_repository():
+                self.send_json_response({
+                    'error': '当前不是Git仓库，无法自动更新'
+                }, 400)
+                return
+            
+            # 检查更新锁
+            if update_manager.update_lock:
+                self.send_json_response({
+                    'error': '已有更新操作正在进行中，请稍后再试'
+                }, 400)
+                return
+            
+            # 设置更新锁
+            update_manager.update_lock = True
+            
+            try:
+                # 获取当前版本
+                current_version = VersionManager.get_current_version()
+                
+                # 强制重置本地修改
+                print("强制重置本地修改...")
+                reset_success, _, reset_error = update_manager.execute_git_command(
+                    ['git', 'reset', '--hard', 'HEAD'],
+                    timeout=30
+                )
+                
+                if not reset_success:
+                    self.send_json_response({
+                        'error': f'重置失败: {reset_error}'
+                    }, 500)
+                    return
+                
+                # 执行更新
+                success, message = update_manager.pull_updates(use_proxy=use_proxy)
+                
+                if not success:
+                    self.send_json_response({
+                        'error': message
+                    }, 500)
+                    return
+                
+                # 更新成功，读取新版本号
+                new_version = VersionManager.get_current_version()
+                
+                # 记录更新历史
+                self.save_update_history({
+                    'version': new_version,
+                    'timestamp': time.strftime('%Y-%m-%d %H:%M:%S'),
+                    'status': 'success',
+                    'commits': 1,
+                    'user': 'admin',
+                    'ip': self.client_address[0],
+                    'force': True
+                })
+                
+                # 发送成功响应
+                response = {
+                    'updated': True,
+                    'new_version': new_version,
+                    'message': '强制更新成功'
+                }
+                
+                if auto_restart:
+                    response['message'] += '，服务将在3秒后重启'
+                    self.send_json_response(response)
+                    
+                    # 重启服务
+                    update_manager.restart_service()
+                else:
+                    response['message'] += '，请手动重启服务使更新生效'
+                    self.send_json_response(response)
+                
+            finally:
+                # 释放更新锁
+                update_manager.update_lock = False
+                
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
             self.send_json_response({'error': str(e)}, 500)
     
     def handle_rollback(self, data):
