@@ -3768,12 +3768,10 @@ class MediaHandler(SimpleHTTPRequestHandler):
             self.send_json_response({'error': str(e)}, 500)
     
     def handle_cloud_smart_organize(self, data):
-        """115网盘智能整理"""
+        """115网盘智能整理 - 新策略：尊重现有文件夹结构"""
         try:
             folder_id = data.get('folder_id', '0')
             target_folder_id = data.get('target_folder_id', '0')
-            enable_rename = data.get('enable_rename', True)
-            enable_dedupe = data.get('enable_dedupe', True)
             
             # 获取Cookie
             encrypted_cookie = USER_CONFIG.get('cloud_115_cookie', '')
@@ -3788,66 +3786,159 @@ class MediaHandler(SimpleHTTPRequestHandler):
             # 创建API实例
             api = Cloud115API(cookie)
             
-            # 步骤1: 扫描文件
-            scanner = CloudScanner(api)
-            scan_result = scanner.scan_folder(folder_id, recursive=True)
-            video_files = scan_result['video_files']
+            print(f"[整理] 开始整理文件夹: {folder_id}")
             
-            if not video_files:
-                self.send_json_response({
-                    'success': True,
-                    'message': '未找到视频文件',
-                    'stats': scan_result['stats']
-                })
-                return
+            # 步骤1: 获取第一层文件夹（剧集文件夹）
+            result, error = api.list_files(folder_id, offset=0, limit=1000)
+            if error:
+                raise Exception(f"获取文件夹列表失败: {error}")
             
-            # 步骤2: 去重（如果启用）
-            # 注意：去重功能暂时禁用自动删除，只做标记
-            duplicates = []
-            if enable_dedupe:
-                dedupe_result = scanner.group_duplicate_files(video_files)
-                duplicates = dedupe_result['duplicates']
-                # 不再自动删除，只记录重复文件
-                # video_files保持不变，包含所有文件
-                print(f"[HANDLER] 发现 {len(duplicates)} 组重复文件，但不自动删除")
-            else:
-                duplicates = []
+            folders = [f for f in result.get('files', []) if f.get('is_dir')]
+            print(f"[整理] 找到 {len(folders)} 个文件夹")
             
-            # 步骤3: 解析文件名
-            renamer = CloudRenamer(api, self)
-            metadata_map = {}
-            for file in video_files:
-                filename = file.get('name', '')
-                metadata = renamer.parse_filename(filename)
-                metadata_map[file.get('fid')] = metadata
+            total_renamed = 0
+            total_moved = 0
+            operations = []
             
-            # 步骤4: 重命名（如果启用）
-            if enable_rename:
-                preview = renamer.preview_rename(video_files)
-                rename_list = [
-                    {'file_id': item['file_id'], 'new_name': item['new_name']}
-                    for item in preview if item['changed']
-                ]
-                if rename_list:
-                    rename_result = renamer.batch_rename(rename_list)
-                else:
-                    rename_result = {'success_count': 0, 'failed_count': 0}
-            else:
-                rename_result = {'success_count': 0, 'failed_count': 0}
-            
-            # 步骤5: 移动到分类文件夹
-            mover = CloudMover(api)
-            move_result = mover.organize_files(video_files, target_folder_id, metadata_map)
+            # 处理每个剧集文件夹
+            for show_folder in folders:
+                folder_name = show_folder.get('name', '')
+                folder_fid = show_folder.get('fid', '')
+                
+                print(f"[整理] 处理文件夹: {folder_name}")
+                
+                # 步骤2: 清理文件夹名（去掉{tmdb-xxx}标记）
+                clean_name = re.sub(r'\s*\{tmdb-\d+\}', '', folder_name).strip()
+                if clean_name != folder_name:
+                    print(f"[整理] 重命名文件夹: {folder_name} -> {clean_name}")
+                    success, error = api.rename_file(folder_fid, clean_name)
+                    if success:
+                        total_renamed += 1
+                        operations.append({
+                            'type': 'rename_folder',
+                            'old_name': folder_name,
+                            'new_name': clean_name,
+                            'success': True
+                        })
+                    else:
+                        print(f"[整理] 重命名失败: {error}")
+                
+                # 步骤3: 检查第二层（Season文件夹）
+                season_result, error = api.list_files(folder_fid, offset=0, limit=1000)
+                if error:
+                    print(f"[整理] 获取Season文件夹失败: {error}")
+                    continue
+                
+                season_folders = [f for f in season_result.get('files', []) if f.get('is_dir')]
+                print(f"[整理] 找到 {len(season_folders)} 个Season文件夹")
+                
+                # 处理每个Season文件夹
+                for season_folder in season_folders:
+                    season_name = season_folder.get('name', '')
+                    season_fid = season_folder.get('fid', '')
+                    
+                    # 检查是否是Season文件夹
+                    season_match = re.match(r'Season\s+(\d+)', season_name, re.IGNORECASE)
+                    if not season_match:
+                        print(f"[整理] 跳过非Season文件夹: {season_name}")
+                        continue
+                    
+                    season_num = season_match.group(1).zfill(2)  # 补零，如 "1" -> "01"
+                    print(f"[整理] 处理Season {season_num}")
+                    
+                    # 步骤4: 获取媒体文件
+                    files_result, error = api.list_files(season_fid, offset=0, limit=1000)
+                    if error:
+                        print(f"[整理] 获取文件列表失败: {error}")
+                        continue
+                    
+                    video_files = [f for f in files_result.get('files', []) 
+                                 if not f.get('is_dir') and self._is_video_file(f.get('name', ''))]
+                    
+                    print(f"[整理] 找到 {len(video_files)} 个视频文件")
+                    
+                    # 步骤5: 检查并重命名文件
+                    for video_file in video_files:
+                        file_name = video_file.get('name', '')
+                        file_fid = video_file.get('fid', '')
+                        
+                        # 检查文件名是否已经是标准格式
+                        # 标准格式: "剧集名 - S01E01 - 第1集.mkv"
+                        standard_pattern = rf'^{re.escape(clean_name)}\s*-\s*S{season_num}E\d{{2}}\s*-\s*第\d+集'
+                        
+                        if re.match(standard_pattern, file_name):
+                            print(f"[整理] 文件已是标准格式，跳过: {file_name}")
+                            continue
+                        
+                        # 提取集数
+                        episode_match = re.search(r'[Ee](\d{1,3})', file_name)
+                        if not episode_match:
+                            # 尝试从文件名中提取数字
+                            num_match = re.search(r'(\d{1,3})', file_name)
+                            if num_match:
+                                episode_num = num_match.group(1).zfill(2)
+                            else:
+                                print(f"[整理] 无法提取集数，跳过: {file_name}")
+                                continue
+                        else:
+                            episode_num = episode_match.group(1).zfill(2)
+                        
+                        # 获取文件扩展名
+                        ext = os.path.splitext(file_name)[1]
+                        
+                        # 生成新文件名
+                        new_name = f"{clean_name} - S{season_num}E{episode_num} - 第{int(episode_num)}集{ext}"
+                        
+                        if new_name != file_name:
+                            print(f"[整理] 重命名: {file_name} -> {new_name}")
+                            success, error = api.rename_file(file_fid, new_name)
+                            if success:
+                                total_renamed += 1
+                                operations.append({
+                                    'type': 'rename_file',
+                                    'old_name': file_name,
+                                    'new_name': new_name,
+                                    'success': True
+                                })
+                            else:
+                                print(f"[整理] 重命名失败: {error}")
+                                operations.append({
+                                    'type': 'rename_file',
+                                    'old_name': file_name,
+                                    'new_name': new_name,
+                                    'success': False,
+                                    'error': error
+                                })
+                
+                # 步骤6: 移动整个剧集文件夹到目标位置
+                # 只有当目标文件夹不是当前文件夹时才移动
+                if target_folder_id != folder_id:
+                    print(f"[整理] 移动文件夹: {clean_name}")
+                    success, error = api.move_file(folder_fid, target_folder_id)
+                    if success:
+                        total_moved += 1
+                        operations.append({
+                            'type': 'move_folder',
+                            'folder_name': clean_name,
+                            'success': True
+                        })
+                    else:
+                        print(f"[整理] 移动失败: {error}")
+                        operations.append({
+                            'type': 'move_folder',
+                            'folder_name': clean_name,
+                            'success': False,
+                            'error': error
+                        })
             
             # 返回结果
             self.send_json_response({
                 'success': True,
                 'data': {
-                    'scan_stats': scan_result['stats'],
-                    'duplicates_removed': len(duplicates),
-                    'files_renamed': rename_result['success_count'],
-                    'files_moved': move_result['success_count'],
-                    'operations': move_result['operations']
+                    'folders_processed': len(folders),
+                    'files_renamed': total_renamed,
+                    'folders_moved': total_moved,
+                    'operations': operations
                 }
             })
         except Exception as e:
@@ -3855,6 +3946,12 @@ class MediaHandler(SimpleHTTPRequestHandler):
             import traceback
             traceback.print_exc()
             self.send_json_response({'error': str(e)}, 500)
+    
+    def _is_video_file(self, filename):
+        """判断是否为视频文件"""
+        video_exts = ['.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.webm', '.m4v', '.rmvb', '.rm', '.3gp', '.ts', '.m2ts']
+        ext = os.path.splitext(filename.lower())[1]
+        return ext in video_exts
     
     def send_json_response(self, data, status=200):
         self.send_response(status)
