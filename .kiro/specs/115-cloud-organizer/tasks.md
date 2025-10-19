@@ -88,6 +88,8 @@
   - _需求: 7.1, 7.2, 7.3, 7.4_
 
 
+
+
 - [ ] 9. 实现云端智能去重
   - 在CloudScanner中添加group_duplicate_files方法
   - 复用本地模块的质量评分逻辑
@@ -117,6 +119,7 @@
 
 - [ ] 12. 实现后端API端点
   - 实现POST /api/cloud/verify-cookie验证Cookie
+
   - 实现POST /api/cloud/list-folders列出文件夹
   - 实现POST /api/cloud/scan扫描文件
   - 实现POST /api/cloud/smart-organize智能整理
