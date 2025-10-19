@@ -929,6 +929,225 @@ class Cloud115API:
 
 # ============================================
 
+class CloudScanner:
+    """115网盘扫描器"""
+    
+    # 支持的媒体文件扩展名
+    MEDIA_EXTENSIONS = {
+        'video': ['.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.webm', '.m4v', '.rmvb', '.rm', '.3gp', '.ts', '.m2ts'],
+        'subtitle': ['.srt', '.ass', '.ssa', '.sub', '.idx', '.vtt']
+    }
+    
+    def __init__(self, api):
+        """
+        Args:
+            api: Cloud115API实例
+        """
+        self.api = api
+        self.scan_stats = {
+            'total_files': 0,
+            'total_size': 0,
+            'video_files': 0,
+            'subtitle_files': 0,
+            'folders_scanned': 0
+        }
+    
+    def is_media_file(self, filename):
+        """判断是否为媒体文件"""
+        ext = os.path.splitext(filename.lower())[1]
+        return ext in self.MEDIA_EXTENSIONS['video']
+    
+    def is_subtitle_file(self, filename):
+        """判断是否为字幕文件"""
+        ext = os.path.splitext(filename.lower())[1]
+        return ext in self.MEDIA_EXTENSIONS['subtitle']
+    
+    def filter_media_files(self, files):
+        """过滤出媒体文件
+        
+        Args:
+            files: 文件列表
+        
+        Returns:
+            (video_files: list, subtitle_files: list)
+        """
+        video_files = []
+        subtitle_files = []
+        
+        for file in files:
+            if file.get('is_dir'):
+                continue
+            
+            filename = file.get('name', '')
+            if self.is_media_file(filename):
+                video_files.append(file)
+            elif self.is_subtitle_file(filename):
+                subtitle_files.append(file)
+        
+        return video_files, subtitle_files
+    
+    def scan_folder(self, folder_id='0', recursive=True, max_depth=10):
+        """扫描文件夹
+        
+        Args:
+            folder_id: 文件夹ID
+            recursive: 是否递归扫描子文件夹
+            max_depth: 最大递归深度
+        
+        Returns:
+            {
+                'video_files': [...],
+                'subtitle_files': [...],
+                'stats': {...}
+            }
+        """
+        all_video_files = []
+        all_subtitle_files = []
+        
+        def _scan_recursive(fid, depth=0):
+            if depth > max_depth:
+                return
+            
+            # 获取文件列表
+            result, error = self.api.list_files(fid, offset=0, limit=1000)
+            if error:
+                print(f"[CloudScanner] 扫描文件夹 {fid} 失败: {error}")
+                return
+            
+            files = result.get('files', [])
+            self.scan_stats['folders_scanned'] += 1
+            
+            # 过滤媒体文件
+            video_files, subtitle_files = self.filter_media_files(files)
+            
+            # 添加文件夹路径信息
+            for vf in video_files:
+                vf['folder_id'] = fid
+                vf['depth'] = depth
+            for sf in subtitle_files:
+                sf['folder_id'] = fid
+                sf['depth'] = depth
+            
+            all_video_files.extend(video_files)
+            all_subtitle_files.extend(subtitle_files)
+            
+            self.scan_stats['total_files'] += len(files)
+            self.scan_stats['video_files'] += len(video_files)
+            self.scan_stats['subtitle_files'] += len(subtitle_files)
+            
+            for f in files:
+                self.scan_stats['total_size'] += f.get('size', 0)
+            
+            # 递归扫描子文件夹
+            if recursive:
+                folders = [f for f in files if f.get('is_dir')]
+                for folder in folders:
+                    _scan_recursive(folder.get('fid'), depth + 1)
+        
+        # 开始扫描
+        print(f"[CloudScanner] 开始扫描文件夹: {folder_id}")
+        _scan_recursive(folder_id)
+        
+        print(f"[CloudScanner] 扫描完成: {self.scan_stats}")
+        
+        return {
+            'video_files': all_video_files,
+            'subtitle_files': all_subtitle_files,
+            'stats': self.scan_stats.copy()
+        }
+    
+    def group_duplicate_files(self, video_files):
+        """识别重复文件（基于文件名和大小）
+        
+        Args:
+            video_files: 视频文件列表
+        
+        Returns:
+            {
+                'duplicates': [
+                    {
+                        'name': '文件名',
+                        'files': [文件列表],
+                        'keep': 文件ID,
+                        'remove': [文件ID列表]
+                    }
+                ],
+                'unique': [唯一文件列表]
+            }
+        """
+        from collections import defaultdict
+        
+        # 按文件名分组（忽略扩展名）
+        name_groups = defaultdict(list)
+        for file in video_files:
+            name = file.get('name', '')
+            base_name = os.path.splitext(name)[0].lower()
+            # 移除常见的质量标记
+            base_name = re.sub(r'\b(1080p|720p|480p|2160p|4k|bluray|web-dl|webrip|hdtv|x264|x265|hevc)\b', '', base_name, flags=re.IGNORECASE)
+            base_name = base_name.strip()
+            name_groups[base_name].append(file)
+        
+        duplicates = []
+        unique = []
+        
+        for base_name, files in name_groups.items():
+            if len(files) > 1:
+                # 有重复，按质量排序
+                sorted_files = sorted(files, key=lambda f: self._calculate_quality_score(f), reverse=True)
+                duplicates.append({
+                    'name': base_name,
+                    'files': sorted_files,
+                    'keep': sorted_files[0].get('fid'),
+                    'remove': [f.get('fid') for f in sorted_files[1:]]
+                })
+            else:
+                unique.extend(files)
+        
+        return {
+            'duplicates': duplicates,
+            'unique': unique
+        }
+    
+    def _calculate_quality_score(self, file):
+        """计算文件质量分数（用于去重）"""
+        score = 0
+        name = file.get('name', '').lower()
+        size = file.get('size', 0)
+        
+        # 分辨率分数
+        if '2160p' in name or '4k' in name:
+            score += 1000
+        elif '1080p' in name:
+            score += 500
+        elif '720p' in name:
+            score += 200
+        elif '480p' in name:
+            score += 100
+        
+        # 来源分数
+        if 'bluray' in name or 'blu-ray' in name:
+            score += 300
+        elif 'web-dl' in name:
+            score += 200
+        elif 'webrip' in name:
+            score += 150
+        elif 'hdtv' in name:
+            score += 100
+        
+        # 编码分数
+        if 'hevc' in name or 'x265' in name or 'h265' in name:
+            score += 50
+        elif 'x264' in name or 'h264' in name:
+            score += 30
+        
+        # 文件大小分数（越大越好，但有上限）
+        size_score = min(size / (1024 * 1024 * 1024), 50)  # 最多50分
+        score += size_score
+        
+        return score
+
+# ============================================
+
 class DoubanHelper:
     """豆瓣API辅助类"""
     

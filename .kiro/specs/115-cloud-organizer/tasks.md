@@ -32,11 +32,14 @@
 - [ ] 3. 实现Cloud115API基础类
   - 创建Cloud115API类
 
+
+
   - 实现_create_session方法创建HTTP会话
   - 实现verify_cookie方法验证Cookie有效性
   - 添加请求头和基础URL配置
   - 实现错误处理和日志记录
   - _需求: 1.2, 1.3, 12.2_
+
 
 - [ ] 4. 实现115网盘文件列表API
   - 实现list_files方法获取文件夹内容
