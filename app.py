@@ -381,22 +381,27 @@ class UpdateManager:
             'error': None
         }
     
-    def pull_updates(self, use_proxy=False):
+    def pull_updates(self, use_proxy=False, skip_check=False):
         """拉取更新
+        
+        Args:
+            use_proxy: 是否使用代理
+            skip_check: 是否跳过本地修改检查（用于force-update）
         
         Returns:
             (success, message)
         """
         print("正在拉取更新...")
         
-        # 检查是否有本地修改
-        success, stdout, stderr = self.execute_git_command(
-            ['git', 'status', '--porcelain'],
-            timeout=10
-        )
-        
-        if success and stdout.strip():
-            return False, '检测到本地有未提交的修改，请先提交或重置'
+        # 检查是否有本地修改（除非skip_check=True）
+        if not skip_check:
+            success, stdout, stderr = self.execute_git_command(
+                ['git', 'status', '--porcelain'],
+                timeout=10
+            )
+            
+            if success and stdout.strip():
+                return False, '检测到本地有未提交的修改，请先提交或重置'
         
         # 执行pull
         success, stdout, stderr = self.execute_git_command(
@@ -3870,8 +3875,8 @@ class MediaHandler(SimpleHTTPRequestHandler):
                     }, 500)
                     return
                 
-                # 执行更新
-                success, message = update_manager.pull_updates(use_proxy=use_proxy)
+                # 执行更新（跳过本地修改检查，因为已经reset了）
+                success, message = update_manager.pull_updates(use_proxy=use_proxy, skip_check=True)
                 
                 if not success:
                     self.send_json_response({
