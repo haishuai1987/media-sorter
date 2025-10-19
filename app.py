@@ -632,23 +632,17 @@ class Cloud115API:
                 if time.time() - cached_time < self._cache_ttl:
                     return cached_data, None
             
-            url = f'{self.BASE_URL}/files'
+            # 尝试使用app端点
+            url = f'https://proapi.115.com/app/files'
             params = {
                 'aid': 1,
                 'cid': folder_id,
-                'o': 'user_ptime',  # 按修改时间排序
-                'asc': 0,  # 降序
+                'o': 'user_ptime',
+                'asc': 0,
                 'offset': offset,
-                'show_dir': 1,  # 显示文件夹
+                'show_dir': 1,
                 'limit': limit,
-                'code': '',
-                'scid': '',
-                'snap': 0,
-                'natsort': 1,  # 自然排序
-                'record_open_time': 1,
-                'source': '',
-                'format': 'json',
-                'fc_mix': 0
+                'natsort': 1
             }
             
             print(f"[115 API] 请求文件列表: folder_id={folder_id}, url={url}")
