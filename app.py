@@ -2364,6 +2364,15 @@ class MediaHandler(SimpleHTTPRequestHandler):
             self.end_headers()
             with open('public/index.html', 'rb') as f:
                 self.wfile.write(f.read())
+        elif self.path == '/style.css':
+            try:
+                self.send_response(200)
+                self.send_header('Content-type', 'text/css; charset=utf-8')
+                self.end_headers()
+                with open('public/style.css', 'rb') as f:
+                    self.wfile.write(f.read())
+            except FileNotFoundError:
+                self.send_error(404)
         elif self.path == '/logo.svg':
             try:
                 self.send_response(200)
