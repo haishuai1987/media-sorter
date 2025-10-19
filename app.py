@@ -938,11 +938,17 @@ class Cloud115API:
             (qrcode_url: str, session_id: str, error: str)
         """
         try:
-            import requests
+            # 检查requests库
+            try:
+                import requests
+            except ImportError:
+                return None, None, "requests库未安装，请运行: pip install requests"
+            
             import uuid
             
+            print(f"[115 API] 开始生成二维码: type={qr_type}")
+            
             # 115网盘二维码登录API
-            # 注意：这是简化实现，实际115 API可能需要更复杂的参数
             session_id = str(uuid.uuid4())
             
             # 根据类型选择不同的客户端标识
@@ -963,7 +969,10 @@ class Cloud115API:
                 'Content-Type': 'application/x-www-form-urlencoded'
             }
             
+            print(f"[115 API] 请求URL: {url}")
             response = requests.post(url, headers=headers, timeout=10)
+            print(f"[115 API] 响应状态: {response.status_code}")
+            print(f"[115 API] 响应内容: {response.text[:200]}")
             
             if response.status_code == 200:
                 data = response.json()
@@ -971,6 +980,8 @@ class Cloud115API:
                     # 生成二维码URL
                     uid = data.get('data', {}).get('uid', '')
                     qrcode_url = f'https://qrcodeapi.115.com/api/1.0/mac/1.0/qrcode?uid={uid}'
+                    
+                    print(f"[115 API] 二维码生成成功: uid={uid}")
                     
                     # 保存session信息到全局变量（实际应该用Redis等）
                     if not hasattr(Cloud115API, '_qr_sessions'):
@@ -986,11 +997,17 @@ class Cloud115API:
                     
                     return qrcode_url, session_id, None
                 else:
-                    return None, None, data.get('error', '生成二维码失败')
+                    error_msg = data.get('error', '生成二维码失败')
+                    print(f"[115 API] API返回失败: {error_msg}")
+                    return None, None, error_msg
             else:
-                return None, None, f"HTTP错误: {response.status_code}"
+                error_msg = f"HTTP错误: {response.status_code}"
+                print(f"[115 API] {error_msg}")
+                return None, None, error_msg
         except Exception as e:
             print(f"[115 API] 生成二维码异常: {str(e)}")
+            import traceback
+            traceback.print_exc()
             return None, None, str(e)
     
     @staticmethod

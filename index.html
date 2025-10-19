@@ -2233,11 +2233,15 @@
                 
                 const data = await response.json();
                 if (data.success && data.settings && data.settings.cloud_115_cookie) {
-                    // 解密并显示Cookie（用于编辑）
-                    // 注意：这里不显示实际Cookie内容，只显示状态
-                    const statusEl = document.getElementById('cloud115StatusInline');
-                    statusEl.textContent = '✅ 已配置（可重新输入更新）';
-                    statusEl.style.color = '#155724';
+                    // 显示已配置状态
+                    const indicator = document.getElementById('cloud115StatusIndicator');
+                    const statusText = document.getElementById('cloud115StatusText');
+                    
+                    if (indicator && statusText) {
+                        indicator.style.background = '#28a745';
+                        statusText.textContent = '已配置（可重新输入更新）';
+                        statusText.style.color = '#155724';
+                    }
                 }
             } catch (error) {
                 console.error('加载115网盘状态失败:', error);
