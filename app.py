@@ -651,10 +651,14 @@ class Cloud115API:
                 'fc_mix': 0
             }
             
+            print(f"[115 API] 请求文件列表: folder_id={folder_id}, url={url}")
             response = self.session.get(url, params=params, timeout=30)
+            print(f"[115 API] 响应状态: {response.status_code}")
+            print(f"[115 API] 响应内容: {response.text[:500]}")
             
             if response.status_code == 200:
                 data = response.json()
+                print(f"[115 API] JSON解析成功, state={data.get('state')}")
                 if data.get('state'):
                     files = []
                     for item in data.get('data', []):
@@ -689,10 +693,15 @@ class Cloud115API:
                     return result, None
                 else:
                     error_msg = data.get('error', '获取文件列表失败')
+                    print(f"[115 API] API返回失败: {error_msg}")
                     return None, error_msg
             else:
+                print(f"[115 API] HTTP错误: {response.status_code}")
                 return None, f"HTTP错误: {response.status_code}"
         except Exception as e:
+            print(f"[115 API] 异常: {str(e)}")
+            import traceback
+            traceback.print_exc()
             return None, str(e)
     
     def clear_cache(self):
