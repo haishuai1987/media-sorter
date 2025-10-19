@@ -632,21 +632,15 @@ class Cloud115API:
                 if time.time() - cached_time < self._cache_ttl:
                     return cached_data, None
             
-            # 尝试使用app端点
-            url = f'https://proapi.115.com/app/files'
-            params = {
-                'aid': 1,
-                'cid': folder_id,
-                'o': 'user_ptime',
-                'asc': 0,
-                'offset': offset,
-                'show_dir': 1,
-                'limit': limit,
-                'natsort': 1
-            }
+            # 使用webapi端点，最简参数
+            url = f'{self.BASE_URL}/files'
             
-            print(f"[115 API] 请求文件列表: folder_id={folder_id}, url={url}")
-            response = self.session.get(url, params=params, timeout=30)
+            # 构建查询字符串（不使用params，直接拼接）
+            query_params = f"?aid=1&cid={folder_id}&offset={offset}&limit={limit}&show_dir=1"
+            full_url = url + query_params
+            
+            print(f"[115 API] 请求文件列表: folder_id={folder_id}, url={full_url}")
+            response = self.session.get(full_url, timeout=30)
             print(f"[115 API] 响应状态: {response.status_code}")
             print(f"[115 API] 响应内容: {response.text[:500]}")
             
