@@ -1478,10 +1478,11 @@
                 const data = await response.json();
                 
                 if (data.success && data.data) {
-                    const files = data.data.files || [];
-                    const folders = files.filter(f => f.is_dir);
+                    const allFiles = data.data.files || [];
+                    const folders = allFiles.filter(f => f.is_dir);
+                    const files = allFiles.filter(f => !f.is_dir);
                     
-                    if (folders.length === 0) {
+                    if (allFiles.length === 0) {
                         listEl.innerHTML = '<div style="text-align: center; padding: 40px; color: #999;">此文件夹为空</div>';
                         return;
                     }
@@ -1508,6 +1509,22 @@
                                 <div style="flex: 1;">
                                     <div style="font-weight: 500; color: #333;">${folder.name}</div>
                                     <small style="color: #999;">${fileCount}</small>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    
+                    // 显示文件列表
+                    files.forEach(file => {
+                        const fileSize = file.size > 0 ? formatFileSize(file.size) : '';
+                        const safeName = file.name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                        const fileIcon = getFileIcon(file.name);
+                        html += `
+                            <div style="padding: 12px; margin-bottom: 5px; background: white; border: 1px solid #e0e0e0; border-radius: 6px; display: flex; align-items: center; gap: 10px;">
+                                <span style="font-size: 20px;">${fileIcon}</span>
+                                <div style="flex: 1;">
+                                    <div style="font-weight: 500; color: #333;">${file.name}</div>
+                                    <small style="color: #999;">${fileSize}</small>
                                 </div>
                             </div>
                         `;
@@ -1566,6 +1583,29 @@
             }
             
             pathEl.innerHTML = html;
+        }
+        
+        // 格式化文件大小
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return (bytes / Math.pow(k, i)).toFixed(2) + ' ' + sizes[i];
+        }
+        
+        // 根据文件扩展名获取图标
+        function getFileIcon(filename) {
+            const ext = filename.split('.').pop().toLowerCase();
+            const iconMap = {
+                'mp4': '🎬', 'mkv': '🎬', 'avi': '🎬', 'mov': '🎬', 'wmv': '🎬', 'flv': '🎬', 'webm': '🎬',
+                'mp3': '🎵', 'wav': '🎵', 'flac': '🎵', 'aac': '🎵', 'm4a': '🎵',
+                'jpg': '🖼️', 'jpeg': '🖼️', 'png': '🖼️', 'gif': '🖼️', 'bmp': '🖼️', 'webp': '🖼️',
+                'pdf': '📄', 'doc': '📄', 'docx': '📄', 'txt': '📄', 'rtf': '📄',
+                'zip': '📦', 'rar': '📦', '7z': '📦', 'tar': '📦', 'gz': '📦',
+                'exe': '⚙️', 'msi': '⚙️', 'apk': '⚙️',
+            };
+            return iconMap[ext] || '📄';
         }
         
         // 选择当前文件夹
