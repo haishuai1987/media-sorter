@@ -979,19 +979,18 @@ class Cloud115API:
                     uid = token_data.get('uid', '')
                     time_val = token_data.get('time', 0)
                     sign = token_data.get('sign', '')
+                    qrcode_content = token_data.get('qrcode', '')  # 关键！使用API返回的qrcode字段
                     
-                    if not uid or not sign:
+                    if not uid or not sign or not qrcode_content:
                         return None, None, 'API返回数据不完整'
                     
                     print(f"[115 API] 获取到token: uid={uid}, time={time_val}, sign={sign}")
+                    print(f"[115 API] 二维码内容: {qrcode_content[:50]}...")
                     
-                    # 生成二维码图片URL（使用mac端点，兼容性最好）
-                    qr_image_url = f'https://qrcodeapi.115.com/api/1.0/mac/1.0/qrcode?uid={uid}'
-                    
-                    # 使用qrcode库生成二维码图片
+                    # 使用qrcode库生成二维码图片（使用API返回的qrcode内容）
                     try:
                         qr = qrcode.QRCode(version=1, box_size=10, border=2)
-                        qr.add_data(qr_image_url)
+                        qr.add_data(qrcode_content)  # 使用API返回的qrcode内容，不是自己拼接的URL
                         qr.make(fit=True)
                         img = qr.make_image(fill_color="black", back_color="white")
                         
@@ -1001,8 +1000,8 @@ class Cloud115API:
                         img_base64 = base64.b64encode(buffer.getvalue()).decode()
                         qrcode_url = f'data:image/png;base64,{img_base64}'
                     except ImportError:
-                        # 如果qrcode库未安装，返回二维码URL让前端生成
-                        qrcode_url = qr_image_url
+                        # 如果qrcode库未安装，返回二维码内容让前端生成
+                        qrcode_url = qrcode_content
                     
                     # 保存session信息
                     if not hasattr(Cloud115API, '_qr_sessions'):
