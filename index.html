@@ -827,6 +827,36 @@
                 </p>
             </div>
             
+            <!-- 115网盘Cookie配置 -->
+            <div style="margin-bottom: 20px; padding: 20px; background: white; border-radius: 12px; border: 2px solid #e0e0e0;">
+                <h4 style="margin: 0 0 15px 0; color: #333; display: flex; align-items: center; gap: 10px;">
+                    <span>🔐</span>
+                    <span>115网盘登录配置</span>
+                </h4>
+                
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #333;">登录状态：</label>
+                    <div id="cloud115StatusInline" style="padding: 12px; background: #f8f9fa; border-radius: 6px; color: #6c757d; border: 1px solid #dee2e6;">
+                        未配置
+                    </div>
+                </div>
+                
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #333;">Cookie：</label>
+                    <textarea id="cloud115CookieInline" rows="3" placeholder="输入115网盘Cookie" 
+                              style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px; font-family: monospace; resize: vertical;"></textarea>
+                    <small style="color: #666; display: block; margin-top: 5px;">
+                        获取方法: 登录115网盘 → F12开发者工具 → Application → Cookies → 复制所有Cookie
+                    </small>
+                </div>
+                
+                <div style="display: flex; gap: 10px;">
+                    <button onclick="verifyCloud115CookieInline()" style="flex: 1; padding: 12px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;">
+                        🔍 验证并保存Cookie
+                    </button>
+                </div>
+            </div>
+            
             <div style="margin-bottom: 20px;">
                 <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #333;">
                     ☁️ 115网盘文件夹：
@@ -1434,8 +1464,18 @@
                 localTab.style.color = '#6c757d';
                 localTab.style.border = '2px solid #dee2e6';
                 localTab.style.boxShadow = 'none';
+                
+                // 加载115网盘状态
+                loadCloud115Status();
             }
         }
+        
+        // 页面加载完成后初始化
+        window.addEventListener('DOMContentLoaded', function() {
+            // 恢复上次选择的模块
+            const savedModule = localStorage.getItem('currentModule') || 'local';
+            switchModule(savedModule);
+        });
         
         // 115网盘浏览器相关变量
         let currentCloud115FolderId = '0';
@@ -1870,7 +1910,7 @@
             modal.style.display = 'none';
         }
         
-        // 115网盘Cookie验证
+        // 115网盘Cookie验证（设置弹窗中）
         async function verifyCloud115Cookie() {
             const cookie = document.getElementById('cloud115Cookie').value.trim();
             
@@ -1927,6 +1967,98 @@
             } finally {
                 btn.disabled = false;
                 btn.textContent = '🔍 验证Cookie';
+            }
+        }
+        
+        // 115网盘Cookie验证（内联版本，在115网盘整理模块中）
+        async function verifyCloud115CookieInline() {
+            const cookie = document.getElementById('cloud115CookieInline').value.trim();
+            
+            if (!cookie) {
+                alert('请先输入115网盘Cookie');
+                return;
+            }
+            
+            const btn = event.target;
+            btn.disabled = true;
+            btn.textContent = '🔍 验证中...';
+            
+            const statusEl = document.getElementById('cloud115StatusInline');
+            statusEl.textContent = '验证中...';
+            statusEl.style.background = '#fff3cd';
+            statusEl.style.color = '#856404';
+            statusEl.style.borderColor = '#ffc107';
+            
+            try {
+                const response = await fetch('/api/cloud/verify-cookie', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ cookie })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    const userInfo = data.user_info;
+                    const spaceUsed = (userInfo.space_used / (1024**3)).toFixed(2);
+                    const spaceTotal = (userInfo.space_total / (1024**3)).toFixed(2);
+                    
+                    statusEl.innerHTML = `
+                        ✅ 已登录<br>
+                        <small>用户: ${userInfo.username || userInfo.user_id}</small><br>
+                        <small>空间: ${spaceUsed}GB / ${spaceTotal}GB</small>
+                    `;
+                    statusEl.style.background = '#d4edda';
+                    statusEl.style.color = '#155724';
+                    statusEl.style.borderColor = '#c3e6cb';
+                    
+                    // 清空输入框
+                    document.getElementById('cloud115CookieInline').value = '';
+                    document.getElementById('cloud115CookieInline').placeholder = '已配置（重新输入可更新）';
+                    
+                    alert('✅ Cookie验证并保存成功！\n\n用户: ' + (userInfo.username || userInfo.user_id) + '\n空间: ' + spaceUsed + 'GB / ' + spaceTotal + 'GB');
+                } else {
+                    statusEl.textContent = '❌ ' + (data.error || 'Cookie无效');
+                    statusEl.style.background = '#f8d7da';
+                    statusEl.style.color = '#721c24';
+                    statusEl.style.borderColor = '#f5c6cb';
+                    
+                    alert('❌ Cookie验证失败\n\n' + (data.error || 'Cookie无效或已过期'));
+                }
+            } catch (error) {
+                statusEl.textContent = '❌ 验证失败';
+                statusEl.style.background = '#f8d7da';
+                statusEl.style.color = '#721c24';
+                statusEl.style.borderColor = '#f5c6cb';
+                
+                alert('❌ 验证失败\n\n' + error.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🔍 验证并保存Cookie';
+            }
+        }
+        
+        // 加载115网盘Cookie状态（页面加载时调用）
+        async function loadCloud115Status() {
+            try {
+                const response = await fetch('/api/get-settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
+                });
+                
+                const data = await response.json();
+                if (data.success && data.settings && data.settings.cloud_115_cookie) {
+                    const statusEl = document.getElementById('cloud115StatusInline');
+                    statusEl.innerHTML = '✅ 已配置<br><small>刷新页面后请重新验证以查看详细信息</small>';
+                    statusEl.style.background = '#d4edda';
+                    statusEl.style.color = '#155724';
+                    statusEl.style.borderColor = '#c3e6cb';
+                    
+                    document.getElementById('cloud115CookieInline').placeholder = '已配置（重新输入可更新）';
+                }
+            } catch (error) {
+                console.error('加载115网盘状态失败:', error);
             }
         }
         
