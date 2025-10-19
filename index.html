@@ -1501,8 +1501,9 @@
                     // 显示文件夹列表
                     folders.forEach(folder => {
                         const fileCount = folder.file_count > 0 ? ` (${folder.file_count}项)` : '';
+                        const safeName = folder.name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
                         html += `
-                            <div onclick="navigateCloud115Folder('${folder.fid}', '${folder.name.replace(/'/g, "\\'")}')" style="padding: 12px; margin-bottom: 5px; background: white; border: 1px solid #e0e0e0; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: all 0.2s;" onmouseover="this.style.background='#f0f4ff'; this.style.borderColor='#667eea'" onmouseout="this.style.background='white'; this.style.borderColor='#e0e0e0'">
+                            <div onclick="navigateCloud115Folder('${folder.fid}', '${safeName}')" style="padding: 12px; margin-bottom: 5px; background: white; border: 1px solid #e0e0e0; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: all 0.2s;" onmouseover="this.style.background='#f0f4ff'; this.style.borderColor='#667eea'" onmouseout="this.style.background='white'; this.style.borderColor='#e0e0e0'">
                                 <span style="font-size: 20px;">📁</span>
                                 <div style="flex: 1;">
                                     <div style="font-weight: 500; color: #333;">${folder.name}</div>
