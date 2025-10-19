@@ -2827,26 +2827,34 @@ class MediaHandler(SimpleHTTPRequestHandler):
     
     def handle_cloud_list_files(self, data):
         """获取115网盘文件列表"""
+        print(f"\n[HANDLER] 收到文件列表请求: {data}")
         try:
             folder_id = data.get('folder_id', '0')
             offset = data.get('offset', 0)
             limit = data.get('limit', 100)
+            print(f"[HANDLER] 参数: folder_id={folder_id}, offset={offset}, limit={limit}")
             
             # 获取Cookie
             encrypted_cookie = USER_CONFIG.get('cloud_115_cookie', '')
+            print(f"[HANDLER] Cookie存在: {bool(encrypted_cookie)}")
             if not encrypted_cookie:
+                print(f"[HANDLER] Cookie未配置")
                 self.send_json_response({'error': '请先配置115网盘Cookie'}, 400)
                 return
             
             # 解密Cookie
             encryptor = CookieEncryption()
             cookie = encryptor.decrypt(encrypted_cookie)
+            print(f"[HANDLER] Cookie解密成功，长度: {len(cookie)}")
             
             # 创建API实例
             api = Cloud115API(cookie)
+            print(f"[HANDLER] API实例创建成功")
             
             # 获取文件列表
+            print(f"[HANDLER] 开始调用list_files")
             result, error = api.list_files(folder_id, offset, limit)
+            print(f"[HANDLER] list_files返回: result={bool(result)}, error={error}")
             
             if result:
                 self.send_json_response({
@@ -2854,11 +2862,15 @@ class MediaHandler(SimpleHTTPRequestHandler):
                     'data': result
                 })
             else:
+                print(f"[HANDLER] 返回错误: {error}")
                 self.send_json_response({
                     'success': False,
                     'error': error or '获取文件列表失败'
                 }, 500)
         except Exception as e:
+            print(f"[HANDLER] 异常: {type(e).__name__}: {str(e)}")
+            import traceback
+            traceback.print_exc()
             self.send_json_response({'error': str(e)}, 500)
     
     def send_json_response(self, data, status=200):
