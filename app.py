@@ -650,11 +650,13 @@ class Cloud115API:
                 if data.get('state'):
                     files = []
                     for item in data.get('data', []):
-                        # 判断是否为文件夹
-                        is_directory = item.get('fid', '').endswith('d') or item.get('fc', 0) > 0
+                        # 判断是否为文件夹：有cid但没有fid的是文件夹
+                        has_cid = bool(item.get('cid'))
+                        has_fid = bool(item.get('fid'))
+                        is_directory = has_cid and not has_fid
                         
                         file_info = {
-                            'fid': item.get('fid', ''),
+                            'fid': item.get('fid', item.get('cid', '')),  # 文件夹用cid作为fid
                             'cid': item.get('cid', ''),
                             'name': item.get('n', ''),
                             'size': item.get('s', 0),
@@ -662,7 +664,7 @@ class Cloud115API:
                             'time': item.get('t', ''),
                             'pick_code': item.get('pc', ''),
                             'sha1': item.get('sha', ''),
-                            'file_count': item.get('fc', 0) if is_directory else 0
+                            'file_count': item.get('fc', 0)
                         }
                         files.append(file_info)
                     
