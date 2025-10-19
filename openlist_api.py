@@ -17,7 +17,8 @@ class OpenListAPI:
     
     # OpenList API 基础URL
     # 根据文档: https://doc.oplist.org/ecosystem/official_APIpage
-    BASE_URL = 'https://api.oplist.org.cn/api/v1'
+    # 115网盘使用 /115cloud 路径
+    BASE_URL = 'https://api.oplist.org.cn/115cloud'
     
     # 文件列表缓存（5分钟TTL）
     _file_cache = {}

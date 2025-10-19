@@ -2434,6 +2434,12 @@ class MediaHandler(SimpleHTTPRequestHandler):
                 self.handle_cloud_generate_qrcode(data)
             elif self.path == '/api/cloud/check-qrcode':
                 self.handle_cloud_check_qrcode(data)
+            elif self.path == '/api/qrcode/start':
+                self.handle_qrcode_start(data)
+            elif self.path == '/api/qrcode/check':
+                self.handle_qrcode_check(data)
+            elif self.path == '/api/qrcode/finish':
+                self.handle_qrcode_finish(data)
             else:
                 self.send_error(404)
         except Exception as e:
@@ -4262,6 +4268,153 @@ class MediaHandler(SimpleHTTPRequestHandler):
             import traceback
             traceback.print_exc()
             self.send_json_response({'error': str(e)}, 500)
+    
+    def handle_qrcode_start(self, data):
+        """开始二维码登录（优化版：不需要qrcode库）"""
+        try:
+            import requests
+            from urllib.parse import urlencode
+            
+            app_type = data.get('app', 'wechatmini')
+            
+            # 1. 获取Token
+            url = 'https://qrcodeapi.115.com/api/1.0/web/1.0/token/'
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            }
+            
+            print(f"[QRCode] 开始生成二维码: app={app_type}")
+            response = requests.get(url, headers=headers, timeout=10)
+            result = response.json()
+            
+            if not result.get('state'):
+                self.send_json_response({'success': False, 'error': '获取Token失败'}, 500)
+                return
+            
+            token_data = result.get('data', {})
+            uid = token_data.get('uid')
+            time_val = token_data.get('time')
+            sign = token_data.get('sign')
+            
+            # 2. 生成二维码URL（关键：直接使用115的图片URL，不需要qrcode库！）
+            qr_url = f'https://qrcodeapi.115.com/api/1.0/mac/1.0/qrcode?uid={uid}'
+            
+            print(f"[QRCode] 二维码生成成功: uid={uid}")
+            
+            # 3. 返回给前端
+            self.send_json_response({
+                'success': True,
+                'qr_url': qr_url,  # 前端直接显示这个图片
+                'uid': uid,
+                'time': time_val,
+                'sign': sign,
+                'app': app_type
+            })
+        except Exception as e:
+            print(f"[QRCode] 生成二维码失败: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            self.send_json_response({'success': False, 'error': str(e)}, 500)
+    
+    def handle_qrcode_check(self, data):
+        """检查二维码扫码状态（优化版）"""
+        try:
+            import requests
+            from urllib.parse import urlencode
+            
+            uid = data.get('uid')
+            time_val = data.get('time')
+            sign = data.get('sign')
+            
+            if not all([uid, time_val, sign]):
+                self.send_json_response({'success': False, 'error': '缺少必要参数'}, 400)
+                return
+            
+            # 检查状态
+            params = {'uid': uid, 'time': time_val, 'sign': sign}
+            url = f'https://qrcodeapi.115.com/get/status/?{urlencode(params)}'
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            }
+            
+            response = requests.get(url, headers=headers, timeout=10)
+            result = response.json()
+            
+            status_data = result.get('data', {})
+            status_code = status_data.get('status')
+            
+            # 状态码：
+            # 0 - 等待扫码
+            # 1 - 已扫码，等待确认
+            # 2 - 已确认，登录成功
+            # -1 - 二维码过期
+            # -2 - 用户取消
+            
+            self.send_json_response({
+                'success': True,
+                'status': status_code
+            })
+        except Exception as e:
+            print(f"[QRCode] 检查状态失败: {str(e)}")
+            self.send_json_response({'success': False, 'error': str(e)}, 500)
+    
+    def handle_qrcode_finish(self, data):
+        """完成二维码登录，获取Cookie（优化版）"""
+        try:
+            import requests
+            
+            uid = data.get('uid')
+            app_type = data.get('app', 'wechatmini')
+            
+            if not uid:
+                self.send_json_response({'success': False, 'error': '缺少uid参数'}, 400)
+                return
+            
+            # POST获取Cookie
+            url = f'https://passportapi.115.com/app/1.0/{app_type}/1.0/login/qrcode/'
+            post_data = {'app': app_type, 'account': uid}
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            }
+            
+            print(f"[QRCode] 获取Cookie: uid={uid}, app={app_type}")
+            response = requests.post(url, data=post_data, headers=headers, timeout=10)
+            result = response.json()
+            
+            if not result.get('state'):
+                self.send_json_response({'success': False, 'error': '获取Cookie失败'}, 500)
+                return
+            
+            # 提取Cookie
+            cookie_dict = result.get('data', {}).get('cookie', {})
+            cookie_parts = []
+            for key in ['UID', 'CID', 'SEID']:
+                if key in cookie_dict:
+                    cookie_parts.append(f"{key}={cookie_dict[key]}")
+            
+            cookie = '; '.join(cookie_parts)
+            
+            if not cookie:
+                self.send_json_response({'success': False, 'error': 'Cookie数据为空'}, 500)
+                return
+            
+            # 保存Cookie
+            encryptor = CookieEncryption()
+            encrypted_cookie = encryptor.encrypt(cookie)
+            USER_CONFIG['cloud_115_cookie'] = encrypted_cookie
+            save_config(USER_CONFIG)
+            
+            print(f"[QRCode] Cookie保存成功")
+            
+            self.send_json_response({
+                'success': True,
+                'cookie': cookie
+            })
+        except Exception as e:
+            print(f"[QRCode] 获取Cookie失败: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            self.send_json_response({'success': False, 'error': str(e)}, 500)
     
     def send_json_response(self, data, status=200):
         self.send_response(status)
