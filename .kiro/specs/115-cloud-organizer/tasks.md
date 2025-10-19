@@ -11,18 +11,27 @@
 
 
 
+
   - _需求: 9.1, 9.2, 9.3_
 
-- [ ] 2. 实现Cookie加密存储
+- [x] 2. 实现Cookie加密存储
+
+
+
   - 安装cryptography依赖
 
   - 创建CookieEncryption类实现AES-256加密
   - 生成并保存加密密钥到.encryption_key文件
   - 实现encrypt和decrypt方法
+
   - _需求: 12.1, 12.2_
+
+
+
 
 - [ ] 3. 实现Cloud115API基础类
   - 创建Cloud115API类
+
   - 实现_create_session方法创建HTTP会话
   - 实现verify_cookie方法验证Cookie有效性
   - 添加请求头和基础URL配置
@@ -89,6 +98,9 @@
   - 创建cloud_history.json文件
   - 实现save_operation方法保存操作记录
   - 实现load_history方法加载历史记录
+
+
+
   - 限制历史记录最多保存100条
   - 实现按日期和类型筛选功能
   - _需求: 11.1, 11.2, 11.3, 11.4_
@@ -101,8 +113,15 @@
   - 实现POST /api/cloud/get-history获取历史
   - _需求: 1.2, 2.1, 3.1, 6.1, 11.3_
 
+
+
+
+
+
 - [ ] 13. 实现前端模块切换界面
   - 在index.html添加模块切换选项卡（本地/115网盘）
+
+
 
 
   - 实现switchModule函数切换模块

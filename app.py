@@ -697,6 +697,235 @@ class Cloud115API:
     def clear_cache(self):
         """清除文件列表缓存"""
         self._file_cache.clear()
+    
+    def rename_file(self, file_id, new_name):
+        """重命名文件或文件夹
+        
+        Args:
+            file_id: 文件ID
+            new_name: 新文件名
+        
+        Returns:
+            (success: bool, error: str)
+        """
+        try:
+            if not self.session:
+                return False, "requests库未安装"
+            
+            url = f'{self.BASE_URL}/files/batch_rename'
+            
+            # 115 API需要的参数格式
+            data = {
+                'files_new_name': json.dumps({file_id: new_name})
+            }
+            
+            print(f"[115 API] 重命名文件: file_id={file_id}, new_name={new_name}")
+            response = self.session.post(url, data=data, timeout=30)
+            
+            if response.status_code == 200:
+                result = response.json()
+                if result.get('state'):
+                    self.clear_cache()  # 清除缓存
+                    return True, None
+                else:
+                    error_msg = result.get('error', '重命名失败')
+                    return False, error_msg
+            else:
+                return False, f"HTTP错误: {response.status_code}"
+        except Exception as e:
+            print(f"[115 API] 重命名异常: {str(e)}")
+            return False, str(e)
+    
+    def move_file(self, file_ids, target_folder_id):
+        """移动文件到指定文件夹
+        
+        Args:
+            file_ids: 文件ID列表（字符串或列表）
+            target_folder_id: 目标文件夹ID
+        
+        Returns:
+            (success: bool, error: str)
+        """
+        try:
+            if not self.session:
+                return False, "requests库未安装"
+            
+            # 确保file_ids是列表
+            if isinstance(file_ids, str):
+                file_ids = [file_ids]
+            
+            url = f'{self.BASE_URL}/files/move'
+            
+            # 115 API需要的参数格式
+            data = {
+                'pid': target_folder_id,
+                'fid[0]': ','.join(file_ids)
+            }
+            
+            print(f"[115 API] 移动文件: file_ids={file_ids}, target={target_folder_id}")
+            response = self.session.post(url, data=data, timeout=30)
+            
+            if response.status_code == 200:
+                result = response.json()
+                if result.get('state'):
+                    self.clear_cache()  # 清除缓存
+                    return True, None
+                else:
+                    error_msg = result.get('error', '移动失败')
+                    return False, error_msg
+            else:
+                return False, f"HTTP错误: {response.status_code}"
+        except Exception as e:
+            print(f"[115 API] 移动异常: {str(e)}")
+            return False, str(e)
+    
+    def delete_file(self, file_ids):
+        """删除文件或文件夹
+        
+        Args:
+            file_ids: 文件ID列表（字符串或列表）
+        
+        Returns:
+            (success: bool, error: str)
+        """
+        try:
+            if not self.session:
+                return False, "requests库未安装"
+            
+            # 确保file_ids是列表
+            if isinstance(file_ids, str):
+                file_ids = [file_ids]
+            
+            url = f'{self.BASE_URL}/rb/delete'
+            
+            # 115 API需要的参数格式
+            data = {
+                'fid[0]': ','.join(file_ids)
+            }
+            
+            print(f"[115 API] 删除文件: file_ids={file_ids}")
+            response = self.session.post(url, data=data, timeout=30)
+            
+            if response.status_code == 200:
+                result = response.json()
+                if result.get('state'):
+                    self.clear_cache()  # 清除缓存
+                    return True, None
+                else:
+                    error_msg = result.get('error', '删除失败')
+                    return False, error_msg
+            else:
+                return False, f"HTTP错误: {response.status_code}"
+        except Exception as e:
+            print(f"[115 API] 删除异常: {str(e)}")
+            return False, str(e)
+    
+    def create_folder(self, parent_id, folder_name):
+        """创建文件夹
+        
+        Args:
+            parent_id: 父文件夹ID
+            folder_name: 新文件夹名称
+        
+        Returns:
+            (folder_id: str, error: str)
+        """
+        try:
+            if not self.session:
+                return None, "requests库未安装"
+            
+            url = f'{self.BASE_URL}/files/add'
+            
+            # 115 API需要的参数格式
+            data = {
+                'pid': parent_id,
+                'cname': folder_name
+            }
+            
+            print(f"[115 API] 创建文件夹: parent={parent_id}, name={folder_name}")
+            response = self.session.post(url, data=data, timeout=30)
+            
+            if response.status_code == 200:
+                result = response.json()
+                if result.get('state'):
+                    folder_id = result.get('cid', result.get('id', ''))
+                    self.clear_cache()  # 清除缓存
+                    return folder_id, None
+                else:
+                    error_msg = result.get('error', '创建文件夹失败')
+                    return None, error_msg
+            else:
+                return None, f"HTTP错误: {response.status_code}"
+        except Exception as e:
+            print(f"[115 API] 创建文件夹异常: {str(e)}")
+            return None, str(e)
+    
+    def batch_rename(self, rename_map):
+        """批量重命名文件
+        
+        Args:
+            rename_map: {file_id: new_name} 字典，最多50个
+        
+        Returns:
+            (success_count: int, failed: list, error: str)
+        """
+        try:
+            if not self.session:
+                return 0, [], "requests库未安装"
+            
+            # 限制批量操作数量
+            if len(rename_map) > 50:
+                return 0, [], "批量操作最多支持50个文件"
+            
+            url = f'{self.BASE_URL}/files/batch_rename'
+            
+            data = {
+                'files_new_name': json.dumps(rename_map)
+            }
+            
+            print(f"[115 API] 批量重命名: count={len(rename_map)}")
+            response = self.session.post(url, data=data, timeout=30)
+            
+            if response.status_code == 200:
+                result = response.json()
+                if result.get('state'):
+                    self.clear_cache()
+                    return len(rename_map), [], None
+                else:
+                    error_msg = result.get('error', '批量重命名失败')
+                    return 0, list(rename_map.keys()), error_msg
+            else:
+                return 0, list(rename_map.keys()), f"HTTP错误: {response.status_code}"
+        except Exception as e:
+            print(f"[115 API] 批量重命名异常: {str(e)}")
+            return 0, list(rename_map.keys()), str(e)
+    
+    def batch_move(self, file_ids, target_folder_id):
+        """批量移动文件
+        
+        Args:
+            file_ids: 文件ID列表，最多50个
+            target_folder_id: 目标文件夹ID
+        
+        Returns:
+            (success_count: int, failed: list, error: str)
+        """
+        try:
+            if not self.session:
+                return 0, [], "requests库未安装"
+            
+            # 限制批量操作数量
+            if len(file_ids) > 50:
+                return 0, file_ids, "批量操作最多支持50个文件"
+            
+            success, error = self.move_file(file_ids, target_folder_id)
+            if success:
+                return len(file_ids), [], None
+            else:
+                return 0, file_ids, error
+        except Exception as e:
+            print(f"[115 API] 批量移动异常: {str(e)}")
+            return 0, file_ids, str(e)
 
 # ============================================
 
