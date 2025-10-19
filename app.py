@@ -2163,6 +2163,10 @@ class MediaHandler(SimpleHTTPRequestHandler):
                 self.handle_cloud_verify_cookie(data)
             elif self.path == '/api/cloud/list-files':
                 self.handle_cloud_list_files(data)
+            elif self.path == '/api/cloud/scan':
+                self.handle_cloud_scan(data)
+            elif self.path == '/api/cloud/smart-organize':
+                self.handle_cloud_smart_organize(data)
             else:
                 self.send_error(404)
         except Exception as e:
@@ -3700,6 +3704,131 @@ class MediaHandler(SimpleHTTPRequestHandler):
                 }, 500)
         except Exception as e:
             print(f"[HANDLER] 异常: {type(e).__name__}: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            self.send_json_response({'error': str(e)}, 500)
+    
+    def handle_cloud_scan(self, data):
+        """扫描115网盘文件夹"""
+        try:
+            folder_id = data.get('folder_id', '0')
+            recursive = data.get('recursive', True)
+            max_depth = data.get('max_depth', 10)
+            
+            # 获取Cookie
+            encrypted_cookie = USER_CONFIG.get('cloud_115_cookie', '')
+            if not encrypted_cookie:
+                self.send_json_response({'error': '请先配置115网盘Cookie'}, 400)
+                return
+            
+            # 解密Cookie
+            encryptor = CookieEncryption()
+            cookie = encryptor.decrypt(encrypted_cookie)
+            
+            # 创建API和扫描器实例
+            api = Cloud115API(cookie)
+            scanner = CloudScanner(api)
+            
+            # 扫描文件夹
+            result = scanner.scan_folder(folder_id, recursive, max_depth)
+            
+            self.send_json_response({
+                'success': True,
+                'data': result
+            })
+        except Exception as e:
+            print(f"[HANDLER] 扫描异常: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            self.send_json_response({'error': str(e)}, 500)
+    
+    def handle_cloud_smart_organize(self, data):
+        """115网盘智能整理"""
+        try:
+            folder_id = data.get('folder_id', '0')
+            target_folder_id = data.get('target_folder_id', '0')
+            enable_rename = data.get('enable_rename', True)
+            enable_dedupe = data.get('enable_dedupe', True)
+            
+            # 获取Cookie
+            encrypted_cookie = USER_CONFIG.get('cloud_115_cookie', '')
+            if not encrypted_cookie:
+                self.send_json_response({'error': '请先配置115网盘Cookie'}, 400)
+                return
+            
+            # 解密Cookie
+            encryptor = CookieEncryption()
+            cookie = encryptor.decrypt(encrypted_cookie)
+            
+            # 创建API实例
+            api = Cloud115API(cookie)
+            
+            # 步骤1: 扫描文件
+            scanner = CloudScanner(api)
+            scan_result = scanner.scan_folder(folder_id, recursive=True)
+            video_files = scan_result['video_files']
+            
+            if not video_files:
+                self.send_json_response({
+                    'success': True,
+                    'message': '未找到视频文件',
+                    'stats': scan_result['stats']
+                })
+                return
+            
+            # 步骤2: 去重（如果启用）
+            if enable_dedupe:
+                dedupe_result = scanner.group_duplicate_files(video_files)
+                duplicates = dedupe_result['duplicates']
+                video_files = dedupe_result['unique']
+                
+                # 删除重复文件
+                for dup_group in duplicates:
+                    remove_ids = dup_group['remove']
+                    if remove_ids:
+                        api.delete_file(remove_ids)
+            else:
+                duplicates = []
+            
+            # 步骤3: 解析文件名
+            renamer = CloudRenamer(api, self)
+            metadata_map = {}
+            for file in video_files:
+                filename = file.get('name', '')
+                metadata = renamer.parse_filename(filename)
+                metadata_map[file.get('fid')] = metadata
+            
+            # 步骤4: 重命名（如果启用）
+            if enable_rename:
+                preview = renamer.preview_rename(video_files)
+                rename_list = [
+                    {'file_id': item['file_id'], 'new_name': item['new_name']}
+                    for item in preview if item['changed']
+                ]
+                if rename_list:
+                    rename_result = renamer.batch_rename(rename_list)
+                else:
+                    rename_result = {'success_count': 0, 'failed_count': 0}
+            else:
+                rename_result = {'success_count': 0, 'failed_count': 0}
+            
+            # 步骤5: 移动到分类文件夹
+            mover = CloudMover(api)
+            move_result = mover.organize_files(video_files, target_folder_id, metadata_map)
+            
+            # 返回结果
+            self.send_json_response({
+                'success': True,
+                'data': {
+                    'scan_stats': scan_result['stats'],
+                    'duplicates_removed': len(duplicates),
+                    'files_renamed': rename_result['success_count'],
+                    'files_moved': move_result['success_count'],
+                    'operations': move_result['operations']
+                }
+            })
+        except Exception as e:
+            print(f"[HANDLER] 智能整理异常: {str(e)}")
             import traceback
             traceback.print_exc()
             self.send_json_response({'error': str(e)}, 500)

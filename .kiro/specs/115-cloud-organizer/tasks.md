@@ -56,12 +56,14 @@
   - 实现rename_file方法重命名文件
   - 实现move_file方法移动文件
 
+
   - 实现delete_file方法删除文件
   - 实现create_folder方法创建文件夹
   - 添加批量操作支持（50个/批次）
   - _需求: 6.1, 6.2, 7.2, 7.3_
 
-- [ ] 6. 实现CloudScanner扫描器
+- [x] 6. 实现CloudScanner扫描器
+
   - 创建CloudScanner类
   - 实现scan_folder方法扫描指定文件夹
   - 实现递归扫描子文件夹功能
@@ -84,6 +86,7 @@
   - 实现create_category_structure创建分类文件夹
   - 实现ensure_folder_exists确保文件夹存在
   - _需求: 7.1, 7.2, 7.3, 7.4_
+
 
 - [ ] 9. 实现云端智能去重
   - 在CloudScanner中添加group_duplicate_files方法
