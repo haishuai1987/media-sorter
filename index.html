@@ -835,15 +835,32 @@
                 </h4>
                 
                 <div style="margin-bottom: 15px;">
-                    <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #333;">
-                        Cookie：
-                        <span id="cloud115StatusInline" style="margin-left: 10px; font-size: 12px; font-weight: normal;"></span>
+                    <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #333; display: flex; align-items: center; gap: 8px;">
+                        <span>115 Cookie</span>
+                        <span id="cloud115StatusIndicator" style="width: 10px; height: 10px; border-radius: 50%; background: #ccc;" title="Cookie状态"></span>
+                        <span id="cloud115StatusText" style="font-size: 12px; font-weight: normal; color: #666;"></span>
                     </label>
-                    <textarea id="cloud115CookieInline" rows="3" placeholder="粘贴115网盘Cookie，将自动验证..." 
-                              style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px; font-family: monospace; resize: vertical;"
-                              oninput="autoVerifyCloud115Cookie()"></textarea>
+                    <div style="position: relative; display: flex; gap: 8px; align-items: center;">
+                        <input type="password" id="cloud115CookieInline" placeholder="粘贴115网盘Cookie，将自动验证..." 
+                               style="flex: 1; padding: 12px 120px 12px 16px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px; font-family: monospace;"
+                               oninput="autoVerifyCloud115Cookie()">
+                        <div style="position: absolute; right: 60px; display: flex; gap: 8px; align-items: center;">
+                            <button onclick="toggleCookieVisibility()" title="显示/隐藏Cookie" 
+                                    style="padding: 8px; background: transparent; border: none; cursor: pointer; font-size: 18px;">
+                                👁️
+                            </button>
+                            <button onclick="copyCookie()" title="复制Cookie" 
+                                    style="padding: 8px; background: transparent; border: none; cursor: pointer; font-size: 18px;">
+                                📋
+                            </button>
+                        </div>
+                        <button onclick="showQRCodeLogin()" title="扫码登录" 
+                                style="padding: 12px 16px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 20px; white-space: nowrap;">
+                            📱
+                        </button>
+                    </div>
                     <small style="color: #666; display: block; margin-top: 5px;">
-                        获取方法: 登录115网盘 → F12开发者工具 → Application → Cookies → 复制所有Cookie
+                        点击图标切换显示、复制或扫码登录 | 手动获取: 登录115网盘 → F12 → Application → Cookies
                     </small>
                 </div>
             </div>
@@ -1965,7 +1982,8 @@
         let cloud115VerifyTimer = null;
         async function autoVerifyCloud115Cookie() {
             const cookie = document.getElementById('cloud115CookieInline').value.trim();
-            const statusEl = document.getElementById('cloud115StatusInline');
+            const indicator = document.getElementById('cloud115StatusIndicator');
+            const statusText = document.getElementById('cloud115StatusText');
             
             // 清除之前的定时器
             if (cloud115VerifyTimer) {
@@ -1973,20 +1991,19 @@
             }
             
             if (!cookie) {
-                statusEl.textContent = '';
-                statusEl.style.color = '#6c757d';
+                indicator.style.background = '#ccc';
+                statusText.textContent = '未配置';
+                statusText.style.color = '#666';
                 return;
             }
             
             // 显示等待状态
-            statusEl.textContent = '⏳ 等待输入完成...';
-            statusEl.style.color = '#856404';
+            indicator.style.background = '#ffc107';
+            statusText.textContent = '验证中...';
+            statusText.style.color = '#856404';
             
             // 设置防抖：1秒后自动验证
             cloud115VerifyTimer = setTimeout(async () => {
-                statusEl.textContent = '🔍 验证中...';
-                statusEl.style.color = '#856404';
-                
                 try {
                     const response = await fetch('/api/cloud/verify-cookie', {
                         method: 'POST',
@@ -2001,17 +2018,202 @@
                         const spaceUsed = (userInfo.space_used / (1024**3)).toFixed(2);
                         const spaceTotal = (userInfo.space_total / (1024**3)).toFixed(2);
                         
-                        statusEl.innerHTML = `✅ 已登录 | 用户: ${userInfo.username || userInfo.user_id} | 空间: ${spaceUsed}GB / ${spaceTotal}GB`;
-                        statusEl.style.color = '#155724';
+                        indicator.style.background = '#28a745';
+                        statusText.textContent = `已登录 | ${userInfo.username || userInfo.user_id} | ${spaceUsed}GB/${spaceTotal}GB`;
+                        statusText.style.color = '#155724';
                     } else {
-                        statusEl.textContent = '❌ ' + (data.error || 'Cookie无效');
-                        statusEl.style.color = '#721c24';
+                        indicator.style.background = '#dc3545';
+                        statusText.textContent = 'Cookie无效';
+                        statusText.style.color = '#721c24';
                     }
                 } catch (error) {
-                    statusEl.textContent = '❌ 验证失败: ' + error.message;
-                    statusEl.style.color = '#721c24';
+                    indicator.style.background = '#dc3545';
+                    statusText.textContent = '验证失败';
+                    statusText.style.color = '#721c24';
                 }
             }, 1000); // 1秒防抖
+        }
+        
+        // 切换Cookie显示/隐藏
+        function toggleCookieVisibility() {
+            const input = document.getElementById('cloud115CookieInline');
+            if (input.type === 'password') {
+                input.type = 'text';
+            } else {
+                input.type = 'password';
+            }
+        }
+        
+        // 复制Cookie
+        async function copyCookie() {
+            const input = document.getElementById('cloud115CookieInline');
+            const cookie = input.value;
+            
+            if (!cookie) {
+                alert('Cookie为空，无法复制');
+                return;
+            }
+            
+            try {
+                await navigator.clipboard.writeText(cookie);
+                alert('✅ Cookie已复制到剪贴板');
+            } catch (error) {
+                // 降级方案
+                input.select();
+                document.execCommand('copy');
+                alert('✅ Cookie已复制到剪贴板');
+            }
+        }
+        
+        // 显示二维码登录弹窗
+        function showQRCodeLogin() {
+            const modal = document.getElementById('qrcodeLoginModal');
+            if (!modal) {
+                // 创建二维码登录弹窗
+                const modalHtml = `
+                    <div id="qrcodeLoginModal" style="display: flex; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000; justify-content: center; align-items: center;">
+                        <div style="background: white; padding: 30px; border-radius: 12px; min-width: 400px; max-width: 500px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                                <h3 style="margin: 0; color: #333;">📱 115网盘扫码登录</h3>
+                                <button onclick="closeQRCodeLogin()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #999;">×</button>
+                            </div>
+                            
+                            <div style="margin-bottom: 20px;">
+                                <p style="color: #666; margin-bottom: 15px;">请选择扫码方式：</p>
+                                <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px;">
+                                    <button onclick="selectQRType('alipay')" class="qr-type-btn" data-type="alipay" style="flex: 1; min-width: 80px; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; background: white; cursor: pointer; transition: all 0.2s;">支付宝</button>
+                                    <button onclick="selectQRType('wechat')" class="qr-type-btn" data-type="wechat" style="flex: 1; min-width: 80px; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; background: white; cursor: pointer; transition: all 0.2s;">微信</button>
+                                    <button onclick="selectQRType('android')" class="qr-type-btn" data-type="android" style="flex: 1; min-width: 80px; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; background: white; cursor: pointer; transition: all 0.2s;">安卓</button>
+                                    <button onclick="selectQRType('ios')" class="qr-type-btn" data-type="ios" style="flex: 1; min-width: 80px; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; background: white; cursor: pointer; transition: all 0.2s;">iOS</button>
+                                    <button onclick="selectQRType('pad')" class="qr-type-btn" data-type="pad" style="flex: 1; min-width: 80px; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; background: white; cursor: pointer; transition: all 0.2s;">PAD</button>
+                                    <button onclick="selectQRType('tv')" class="qr-type-btn" data-type="tv" style="flex: 1; min-width: 80px; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; background: white; cursor: pointer; transition: all 0.2s;">TV</button>
+                                </div>
+                            </div>
+                            
+                            <div id="qrcodeContainer" style="text-align: center; padding: 20px; background: #f8f9fa; border-radius: 8px; min-height: 300px; display: flex; flex-direction: column; justify-content: center; align-items: center;">
+                                <p style="color: #999;">请先选择扫码方式</p>
+                            </div>
+                            
+                            <div style="margin-top: 20px; padding: 15px; background: #fff3cd; border-radius: 8px; border-left: 4px solid #ffc107;">
+                                <small style="color: #856404; line-height: 1.6;">
+                                    <strong>💡 提示：</strong><br>
+                                    • 选择不常用的客户端（如TV、PAD）可保持Cookie长期有效<br>
+                                    • 使用115手机客户端扫码后自动获取Cookie<br>
+                                    • Cookie会自动保存并验证
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                document.body.insertAdjacentHTML('beforeend', modalHtml);
+            } else {
+                modal.style.display = 'flex';
+            }
+        }
+        
+        // 关闭二维码登录弹窗
+        function closeQRCodeLogin() {
+            const modal = document.getElementById('qrcodeLoginModal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        }
+        
+        // 选择二维码类型
+        async function selectQRType(type) {
+            // 更新按钮样式
+            document.querySelectorAll('.qr-type-btn').forEach(btn => {
+                if (btn.dataset.type === type) {
+                    btn.style.borderColor = '#667eea';
+                    btn.style.background = '#f0f4ff';
+                    btn.style.color = '#667eea';
+                    btn.style.fontWeight = '600';
+                } else {
+                    btn.style.borderColor = '#e0e0e0';
+                    btn.style.background = 'white';
+                    btn.style.color = '#333';
+                    btn.style.fontWeight = 'normal';
+                }
+            });
+            
+            const container = document.getElementById('qrcodeContainer');
+            container.innerHTML = '<p style="color: #667eea;">🔄 正在生成二维码...</p>';
+            
+            try {
+                // 调用后端API生成二维码
+                const response = await fetch('/api/cloud/generate-qrcode', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ type })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // 显示二维码
+                    container.innerHTML = `
+                        <img src="${data.qrcode}" style="width: 250px; height: 250px; border: 2px solid #e0e0e0; border-radius: 8px;">
+                        <p style="color: #667eea; margin-top: 15px; font-weight: 500;">请使用115手机客户端扫码</p>
+                        <p style="color: #999; font-size: 12px;">等待扫码...</p>
+                    `;
+                    
+                    // 开始轮询检查登录状态
+                    checkQRCodeStatus(data.session_id);
+                } else {
+                    container.innerHTML = `<p style="color: #dc3545;">❌ ${data.error || '生成二维码失败'}</p>`;
+                }
+            } catch (error) {
+                container.innerHTML = `
+                    <p style="color: #dc3545;">❌ 功能开发中</p>
+                    <small style="color: #999; margin-top: 10px; display: block;">此功能需要后端支持，敬请期待</small>
+                `;
+            }
+        }
+        
+        // 检查二维码扫码状态
+        let qrcodeCheckTimer = null;
+        async function checkQRCodeStatus(sessionId) {
+            // 清除之前的定时器
+            if (qrcodeCheckTimer) {
+                clearInterval(qrcodeCheckTimer);
+            }
+            
+            // 每2秒检查一次
+            qrcodeCheckTimer = setInterval(async () => {
+                try {
+                    const response = await fetch('/api/cloud/check-qrcode', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ session_id: sessionId })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success && data.cookie) {
+                        // 扫码成功，获取到Cookie
+                        clearInterval(qrcodeCheckTimer);
+                        
+                        // 填充Cookie并验证
+                        document.getElementById('cloud115CookieInline').value = data.cookie;
+                        autoVerifyCloud115Cookie();
+                        
+                        // 关闭弹窗
+                        closeQRCodeLogin();
+                        alert('✅ 扫码登录成功！Cookie已自动填充并验证');
+                    } else if (data.expired) {
+                        // 二维码过期
+                        clearInterval(qrcodeCheckTimer);
+                        document.getElementById('qrcodeContainer').innerHTML = `
+                            <p style="color: #dc3545;">⏰ 二维码已过期</p>
+                            <button onclick="selectQRType('${data.type}')" style="margin-top: 15px; padding: 10px 20px; background: #667eea; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                                🔄 刷新二维码
+                            </button>
+                        `;
+                    }
+                } catch (error) {
+                    console.error('检查二维码状态失败:', error);
+                }
+            }, 2000);
         }
         
         // 加载115网盘Cookie状态（页面加载时调用）
