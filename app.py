@@ -1317,6 +1317,230 @@ class CloudRenamer:
 
 # ============================================
 
+class CloudMover:
+    """115网盘文件移动器"""
+    
+    def __init__(self, api):
+        """
+        Args:
+            api: Cloud115API实例
+        """
+        self.api = api
+        self.folder_cache = {}  # 文件夹ID缓存
+    
+    def ensure_folder_exists(self, parent_id, folder_name):
+        """确保文件夹存在，不存在则创建
+        
+        Args:
+            parent_id: 父文件夹ID
+            folder_name: 文件夹名称
+        
+        Returns:
+            (folder_id: str, error: str)
+        """
+        # 检查缓存
+        cache_key = f"{parent_id}/{folder_name}"
+        if cache_key in self.folder_cache:
+            return self.folder_cache[cache_key], None
+        
+        # 获取父文件夹内容
+        result, error = self.api.list_files(parent_id, offset=0, limit=1000)
+        if error:
+            return None, f"获取文件夹列表失败: {error}"
+        
+        # 查找是否已存在同名文件夹
+        files = result.get('files', [])
+        for file in files:
+            if file.get('is_dir') and file.get('name') == folder_name:
+                folder_id = file.get('fid')
+                self.folder_cache[cache_key] = folder_id
+                return folder_id, None
+        
+        # 不存在，创建新文件夹
+        folder_id, error = self.api.create_folder(parent_id, folder_name)
+        if error:
+            return None, f"创建文件夹失败: {error}"
+        
+        self.folder_cache[cache_key] = folder_id
+        return folder_id, None
+    
+    def create_category_structure(self, base_folder_id, category, title, year=None):
+        """创建分类文件夹结构
+        
+        Args:
+            base_folder_id: 基础文件夹ID
+            category: 分类（'movie' 或 'tv'）
+            title: 标题
+            year: 年份（可选）
+        
+        Returns:
+            (target_folder_id: str, error: str)
+        """
+        try:
+            # 第一层：分类文件夹（电影/电视剧）
+            category_name = '电影' if category == 'movie' else '电视剧'
+            category_id, error = self.ensure_folder_exists(base_folder_id, category_name)
+            if error:
+                return None, error
+            
+            # 第二层：标题文件夹
+            if year:
+                folder_name = f"{title} ({year})"
+            else:
+                folder_name = title
+            
+            target_id, error = self.ensure_folder_exists(category_id, folder_name)
+            if error:
+                return None, error
+            
+            return target_id, None
+        except Exception as e:
+            return None, str(e)
+    
+    def move_file(self, file_id, target_folder_id):
+        """移动单个文件
+        
+        Args:
+            file_id: 文件ID
+            target_folder_id: 目标文件夹ID
+        
+        Returns:
+            (success: bool, error: str)
+        """
+        return self.api.move_file(file_id, target_folder_id)
+    
+    def batch_move(self, file_list, target_folder_id, batch_size=50):
+        """批量移动文件
+        
+        Args:
+            file_list: 文件ID列表
+            target_folder_id: 目标文件夹ID
+            batch_size: 每批处理数量
+        
+        Returns:
+            {
+                'success_count': int,
+                'failed_count': int,
+                'failed_files': [...]
+            }
+        """
+        success_count = 0
+        failed_count = 0
+        failed_files = []
+        
+        # 分批处理
+        for i in range(0, len(file_list), batch_size):
+            batch = file_list[i:i + batch_size]
+            
+            # 调用API批量移动
+            count, failed, error = self.api.batch_move(batch, target_folder_id)
+            
+            success_count += count
+            failed_count += len(failed)
+            
+            if failed:
+                for file_id in failed:
+                    failed_files.append({
+                        'file_id': file_id,
+                        'error': error
+                    })
+            
+            # 添加延迟避免API限流
+            if i + batch_size < len(file_list):
+                time.sleep(1)
+        
+        return {
+            'success_count': success_count,
+            'failed_count': failed_count,
+            'failed_files': failed_files
+        }
+    
+    def organize_files(self, files, base_folder_id, metadata_map):
+        """整理文件到分类文件夹
+        
+        Args:
+            files: 文件列表
+            base_folder_id: 基础文件夹ID
+            metadata_map: {file_id: metadata} 元数据映射
+        
+        Returns:
+            {
+                'success_count': int,
+                'failed_count': int,
+                'operations': [...]
+            }
+        """
+        operations = []
+        success_count = 0
+        failed_count = 0
+        
+        # 按标题和年份分组
+        from collections import defaultdict
+        groups = defaultdict(list)
+        
+        for file in files:
+            file_id = file.get('fid')
+            metadata = metadata_map.get(file_id, {})
+            
+            title = metadata.get('title', '未知')
+            year = metadata.get('year', '')
+            category = metadata.get('type', 'movie')
+            
+            group_key = f"{category}|{title}|{year}"
+            groups[group_key].append(file)
+        
+        # 为每组创建文件夹并移动文件
+        for group_key, group_files in groups.items():
+            category, title, year = group_key.split('|')
+            
+            # 创建目标文件夹
+            target_id, error = self.create_category_structure(
+                base_folder_id, category, title, year if year else None
+            )
+            
+            if error:
+                failed_count += len(group_files)
+                for file in group_files:
+                    operations.append({
+                        'file_id': file.get('fid'),
+                        'file_name': file.get('name'),
+                        'action': 'move',
+                        'target': f"{title} ({year})" if year else title,
+                        'success': False,
+                        'error': error
+                    })
+                continue
+            
+            # 批量移动文件
+            file_ids = [f.get('fid') for f in group_files]
+            result = self.batch_move(file_ids, target_id)
+            
+            success_count += result['success_count']
+            failed_count += result['failed_count']
+            
+            # 记录操作
+            for file in group_files:
+                file_id = file.get('fid')
+                is_success = file_id not in [f['file_id'] for f in result['failed_files']]
+                
+                operations.append({
+                    'file_id': file_id,
+                    'file_name': file.get('name'),
+                    'action': 'move',
+                    'target': f"{title} ({year})" if year else title,
+                    'target_id': target_id,
+                    'success': is_success,
+                    'error': None if is_success else '移动失败'
+                })
+        
+        return {
+            'success_count': success_count,
+            'failed_count': failed_count,
+            'operations': operations
+        }
+
+# ============================================
+
 class DoubanHelper:
     """豆瓣API辅助类"""
     
