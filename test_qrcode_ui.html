@@ -253,7 +253,7 @@
                 const response = await fetch(`${serverUrl}/api/qrcode/start`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ app: 'wechatmini' })
+                    body: JSON.stringify({ app: 'android' })
                 });
                 
                 const data = await response.json();

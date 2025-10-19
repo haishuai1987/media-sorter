@@ -4275,7 +4275,7 @@ class MediaHandler(SimpleHTTPRequestHandler):
             import requests
             from urllib.parse import urlencode
             
-            app_type = data.get('app', 'wechatmini')
+            app_type = data.get('app', 'android')
             
             # 1. 获取Token
             url = 'https://qrcodeapi.115.com/api/1.0/web/1.0/token/'
@@ -4364,7 +4364,7 @@ class MediaHandler(SimpleHTTPRequestHandler):
             import requests
             
             uid = data.get('uid')
-            app_type = data.get('app', 'wechatmini')
+            app_type = data.get('app', 'android')
             
             if not uid:
                 self.send_json_response({'success': False, 'error': '缺少uid参数'}, 400)

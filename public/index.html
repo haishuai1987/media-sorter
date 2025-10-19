@@ -1,15 +1,22 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>媒体和字幕文件管理器</title>
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
     <div class="container">
         <h1>📁 媒体和字幕文件管理器</h1>
-        
+
+        <!-- 115网盘登录区域 -->
+        <div class="login-section">
+            <button onclick="showQRCodeModal()" class="login-btn">🔐 115网盘扫码登录</button>
+        </div>
+
         <div class="scan-section">
             <input type="text" id="folderPath" placeholder="输入文件夹路径，例如：/media/videos" />
             <button onclick="scanFolder()">扫描文件夹</button>
@@ -26,11 +33,192 @@
         <div id="fileList" class="file-list"></div>
     </div>
 
+    <!-- 二维码登录弹窗 -->
+    <div id="qrcodeModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeQRCodeModal()">&times;</span>
+            <h2>115网盘扫码登录</h2>
+            <div id="qrcodeContainer">
+                <div class="qrcode-loading">正在生成二维码...</div>
+            </div>
+            <div id="qrcodeStatus" class="qrcode-status"></div>
+            <p class="qrcode-tip">请使用115手机客户端扫描二维码</p>
+        </div>
+    </div>
+
     <script>
         let currentFiles = [];
         let currentFilter = 'all';
         let currentFolder = '';
+        let qrcodeData = null;
+        let qrcodeCheckInterval = null;
 
+        // ========== 二维码登录功能 ==========
+        async function showQRCodeModal() {
+            const modal = document.getElementById('qrcodeModal');
+            modal.style.display = 'block';
+            
+            // 生成二维码
+            await generateQRCode();
+        }
+
+        function closeQRCodeModal() {
+            const modal = document.getElementById('qrcodeModal');
+            modal.style.display = 'none';
+            
+            // 停止轮询
+            if (qrcodeCheckInterval) {
+                clearInterval(qrcodeCheckInterval);
+                qrcodeCheckInterval = null;
+            }
+        }
+
+        async function generateQRCode() {
+            const container = document.getElementById('qrcodeContainer');
+            const statusDiv = document.getElementById('qrcodeStatus');
+            
+            container.innerHTML = '<div class="qrcode-loading">正在生成二维码...</div>';
+            statusDiv.textContent = '';
+            
+            try {
+                const response = await fetch('/api/qrcode/start', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ app: 'android' })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    qrcodeData = data;
+                    
+                    // 显示二维码图片（直接使用115的图片URL）
+                    container.innerHTML = `<img src="${data.qr_url}" alt="二维码" class="qrcode-image">`;
+                    statusDiv.textContent = '等待扫码...';
+                    statusDiv.className = 'qrcode-status waiting';
+                    
+                    // 开始轮询检查状态
+                    startQRCodeCheck();
+                } else {
+                    container.innerHTML = '<div class="qrcode-error">生成二维码失败</div>';
+                    statusDiv.textContent = data.error || '未知错误';
+                    statusDiv.className = 'qrcode-status error';
+                }
+            } catch (error) {
+                container.innerHTML = '<div class="qrcode-error">网络错误</div>';
+                statusDiv.textContent = error.message;
+                statusDiv.className = 'qrcode-status error';
+            }
+        }
+
+        function startQRCodeCheck() {
+            // 每2秒检查一次状态
+            qrcodeCheckInterval = setInterval(async () => {
+                await checkQRCodeStatus();
+            }, 2000);
+        }
+
+        async function checkQRCodeStatus() {
+            if (!qrcodeData) return;
+            
+            try {
+                const response = await fetch('/api/qrcode/check', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        uid: qrcodeData.uid,
+                        time: qrcodeData.time,
+                        sign: qrcodeData.sign
+                    })
+                });
+                
+                const data = await response.json();
+                const statusDiv = document.getElementById('qrcodeStatus');
+                
+                if (data.success) {
+                    const status = data.status;
+                    
+                    if (status === 0) {
+                        // 等待扫码
+                        statusDiv.textContent = '等待扫码...';
+                        statusDiv.className = 'qrcode-status waiting';
+                    } else if (status === 1) {
+                        // 已扫码，等待确认
+                        statusDiv.textContent = '已扫码，请在手机上确认';
+                        statusDiv.className = 'qrcode-status scanned';
+                    } else if (status === 2) {
+                        // 登录成功
+                        statusDiv.textContent = '登录成功！正在获取Cookie...';
+                        statusDiv.className = 'qrcode-status success';
+                        
+                        // 停止轮询
+                        clearInterval(qrcodeCheckInterval);
+                        qrcodeCheckInterval = null;
+                        
+                        // 获取Cookie
+                        await finishQRCodeLogin();
+                    } else if (status === -1) {
+                        // 二维码过期
+                        statusDiv.textContent = '二维码已过期，请重新生成';
+                        statusDiv.className = 'qrcode-status error';
+                        clearInterval(qrcodeCheckInterval);
+                        qrcodeCheckInterval = null;
+                    } else if (status === -2) {
+                        // 用户取消
+                        statusDiv.textContent = '用户取消登录';
+                        statusDiv.className = 'qrcode-status error';
+                        clearInterval(qrcodeCheckInterval);
+                        qrcodeCheckInterval = null;
+                    }
+                }
+            } catch (error) {
+                console.error('检查状态失败:', error);
+            }
+        }
+
+        async function finishQRCodeLogin() {
+            const statusDiv = document.getElementById('qrcodeStatus');
+            
+            try {
+                const response = await fetch('/api/qrcode/finish', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        uid: qrcodeData.uid,
+                        app: qrcodeData.app
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    statusDiv.textContent = '✅ Cookie已保存！';
+                    statusDiv.className = 'qrcode-status success';
+                    
+                    // 3秒后关闭弹窗
+                    setTimeout(() => {
+                        closeQRCodeModal();
+                        showStatus('115网盘登录成功！', 'success');
+                    }, 3000);
+                } else {
+                    statusDiv.textContent = '获取Cookie失败: ' + (data.error || '未知错误');
+                    statusDiv.className = 'qrcode-status error';
+                }
+            } catch (error) {
+                statusDiv.textContent = '网络错误: ' + error.message;
+                statusDiv.className = 'qrcode-status error';
+            }
+        }
+
+        // 点击弹窗外部关闭
+        window.onclick = function(event) {
+            const modal = document.getElementById('qrcodeModal');
+            if (event.target === modal) {
+                closeQRCodeModal();
+            }
+        }
+
+        // ========== 原有功能 ==========
         async function scanFolder() {
             const folderPath = document.getElementById('folderPath').value.trim();
             if (!folderPath) {
@@ -71,8 +259,8 @@
 
         function displayFiles() {
             const fileList = document.getElementById('fileList');
-            const filtered = currentFilter === 'all' 
-                ? currentFiles 
+            const filtered = currentFilter === 'all'
+                ? currentFiles
                 : currentFiles.filter(f => f.type === currentFilter);
 
             if (filtered.length === 0) {
@@ -142,4 +330,5 @@
         }
     </script>
 </body>
+
 </html>
