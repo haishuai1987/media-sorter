@@ -1941,6 +1941,30 @@
                 auto_restart_after_update: document.getElementById('autoRestartAfterUpdate').checked
             };
             
+            // 如果输入了115网盘Cookie，先验证再保存
+            const cloud115Cookie = document.getElementById('cloud115Cookie').value.trim();
+            if (cloud115Cookie) {
+                try {
+                    const verifyResponse = await fetch('/api/cloud/verify-cookie', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ cookie: cloud115Cookie })
+                    });
+                    
+                    const verifyData = await verifyResponse.json();
+                    if (!verifyData.success) {
+                        alert('❌ 115网盘Cookie验证失败\n\n' + (verifyData.error || 'Cookie无效或已过期') + '\n\n请先验证Cookie后再保存设置。');
+                        return;
+                    }
+                    
+                    // Cookie已在验证时保存，这里不需要再次保存
+                    alert('✅ 115网盘Cookie已验证并保存！');
+                } catch (error) {
+                    alert('❌ 115网盘Cookie验证失败\n\n' + error.message);
+                    return;
+                }
+            }
+            
             try {
                 const response = await fetch('/api/save-settings', {
                     method: 'POST',

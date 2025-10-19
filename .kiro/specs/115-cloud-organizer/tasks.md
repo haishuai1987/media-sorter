@@ -103,6 +103,7 @@
   - 实现速率检测和自动等待
   - 实现指数退避重试策略
   - 添加最大重试次数限制（3次）
+
   - 记录速率限制事件到日志
   - _需求: 10.1, 10.2, 10.3, 10.4, 10.5_
 
@@ -119,6 +120,8 @@
 
 - [ ] 12. 实现后端API端点
   - 实现POST /api/cloud/verify-cookie验证Cookie
+
+
 
   - 实现POST /api/cloud/list-folders列出文件夹
   - 实现POST /api/cloud/scan扫描文件
