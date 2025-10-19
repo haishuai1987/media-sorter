@@ -926,6 +926,148 @@ class Cloud115API:
         except Exception as e:
             print(f"[115 API] 批量移动异常: {str(e)}")
             return 0, file_ids, str(e)
+    
+    @staticmethod
+    def generate_qrcode(qr_type='android'):
+        """生成115网盘二维码登录
+        
+        Args:
+            qr_type: 二维码类型 (alipay, wechat, android, ios, pad, tv)
+        
+        Returns:
+            (qrcode_url: str, session_id: str, error: str)
+        """
+        try:
+            import requests
+            import uuid
+            
+            # 115网盘二维码登录API
+            # 注意：这是简化实现，实际115 API可能需要更复杂的参数
+            session_id = str(uuid.uuid4())
+            
+            # 根据类型选择不同的客户端标识
+            client_map = {
+                'alipay': 'alipay',
+                'wechat': 'wechat',
+                'android': 'android',
+                'ios': 'ios',
+                'pad': 'ipad',
+                'tv': 'tv'
+            }
+            client = client_map.get(qr_type, 'android')
+            
+            # 调用115 API生成二维码
+            url = 'https://qrcodeapi.115.com/api/1.0/web/1.0/token/'
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                'Content-Type': 'application/x-www-form-urlencoded'
+            }
+            
+            response = requests.post(url, headers=headers, timeout=10)
+            
+            if response.status_code == 200:
+                data = response.json()
+                if data.get('state'):
+                    # 生成二维码URL
+                    uid = data.get('data', {}).get('uid', '')
+                    qrcode_url = f'https://qrcodeapi.115.com/api/1.0/mac/1.0/qrcode?uid={uid}'
+                    
+                    # 保存session信息到全局变量（实际应该用Redis等）
+                    if not hasattr(Cloud115API, '_qr_sessions'):
+                        Cloud115API._qr_sessions = {}
+                    
+                    Cloud115API._qr_sessions[session_id] = {
+                        'uid': uid,
+                        'type': qr_type,
+                        'status': 'waiting',
+                        'cookie': None,
+                        'timestamp': time.time()
+                    }
+                    
+                    return qrcode_url, session_id, None
+                else:
+                    return None, None, data.get('error', '生成二维码失败')
+            else:
+                return None, None, f"HTTP错误: {response.status_code}"
+        except Exception as e:
+            print(f"[115 API] 生成二维码异常: {str(e)}")
+            return None, None, str(e)
+    
+    @staticmethod
+    def check_qrcode_status(session_id):
+        """检查二维码扫码状态
+        
+        Args:
+            session_id: 会话ID
+        
+        Returns:
+            (status: str, cookie: str, error: str)
+            status: waiting/scanned/success/expired
+        """
+        try:
+            import requests
+            
+            if not hasattr(Cloud115API, '_qr_sessions'):
+                return 'expired', None, '会话不存在'
+            
+            session = Cloud115API._qr_sessions.get(session_id)
+            if not session:
+                return 'expired', None, '会话不存在'
+            
+            # 检查是否过期（5分钟）
+            if time.time() - session['timestamp'] > 300:
+                del Cloud115API._qr_sessions[session_id]
+                return 'expired', None, '二维码已过期'
+            
+            # 如果已经获取到Cookie，直接返回
+            if session.get('cookie'):
+                cookie = session['cookie']
+                del Cloud115API._qr_sessions[session_id]
+                return 'success', cookie, None
+            
+            # 调用115 API检查扫码状态
+            uid = session['uid']
+            url = f'https://qrcodeapi.115.com/get/status/?uid={uid}'
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            }
+            
+            response = requests.get(url, headers=headers, timeout=10)
+            
+            if response.status_code == 200:
+                data = response.json()
+                status_code = data.get('data', {}).get('status')
+                
+                if status_code == 0:
+                    # 等待扫码
+                    return 'waiting', None, None
+                elif status_code == 1:
+                    # 已扫码，等待确认
+                    return 'scanned', None, None
+                elif status_code == 2:
+                    # 扫码成功，获取Cookie
+                    cookie = response.headers.get('Set-Cookie', '')
+                    if cookie:
+                        # 保存Cookie到session
+                        session['cookie'] = cookie
+                        session['status'] = 'success'
+                        return 'success', cookie, None
+                    else:
+                        return 'waiting', None, None
+                elif status_code == -1:
+                    # 二维码过期
+                    del Cloud115API._qr_sessions[session_id]
+                    return 'expired', None, '二维码已过期'
+                elif status_code == -2:
+                    # 取消扫码
+                    return 'waiting', None, None
+                else:
+                    return 'waiting', None, None
+            else:
+                return 'waiting', None, None
+        except Exception as e:
+            print(f"[115 API] 检查二维码状态异常: {str(e)}")
+            return 'waiting', None, str(e)
 
 # ============================================
 
@@ -2192,6 +2334,10 @@ class MediaHandler(SimpleHTTPRequestHandler):
                 self.handle_cloud_scan(data)
             elif self.path == '/api/cloud/smart-organize':
                 self.handle_cloud_smart_organize(data)
+            elif self.path == '/api/cloud/generate-qrcode':
+                self.handle_cloud_generate_qrcode(data)
+            elif self.path == '/api/cloud/check-qrcode':
+                self.handle_cloud_check_qrcode(data)
             else:
                 self.send_error(404)
         except Exception as e:
@@ -3952,6 +4098,74 @@ class MediaHandler(SimpleHTTPRequestHandler):
         video_exts = ['.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.webm', '.m4v', '.rmvb', '.rm', '.3gp', '.ts', '.m2ts']
         ext = os.path.splitext(filename.lower())[1]
         return ext in video_exts
+    
+    def handle_cloud_generate_qrcode(self, data):
+        """生成115网盘二维码"""
+        try:
+            qr_type = data.get('type', 'android')
+            
+            print(f"[HANDLER] 生成二维码: type={qr_type}")
+            
+            qrcode_url, session_id, error = Cloud115API.generate_qrcode(qr_type)
+            
+            if qrcode_url:
+                self.send_json_response({
+                    'success': True,
+                    'qrcode': qrcode_url,
+                    'session_id': session_id,
+                    'type': qr_type
+                })
+            else:
+                self.send_json_response({
+                    'success': False,
+                    'error': error or '生成二维码失败'
+                }, 500)
+        except Exception as e:
+            print(f"[HANDLER] 生成二维码异常: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            self.send_json_response({'error': str(e)}, 500)
+    
+    def handle_cloud_check_qrcode(self, data):
+        """检查二维码扫码状态"""
+        try:
+            session_id = data.get('session_id', '')
+            
+            if not session_id:
+                self.send_json_response({'error': '缺少session_id'}, 400)
+                return
+            
+            status, cookie, error = Cloud115API.check_qrcode_status(session_id)
+            
+            if status == 'success' and cookie:
+                # 扫码成功，保存Cookie
+                encryptor = CookieEncryption()
+                encrypted_cookie = encryptor.encrypt(cookie)
+                USER_CONFIG['cloud_115_cookie'] = encrypted_cookie
+                save_config(USER_CONFIG)
+                
+                self.send_json_response({
+                    'success': True,
+                    'status': status,
+                    'cookie': cookie
+                })
+            elif status == 'expired':
+                self.send_json_response({
+                    'success': False,
+                    'expired': True,
+                    'status': status
+                })
+            else:
+                self.send_json_response({
+                    'success': False,
+                    'status': status,
+                    'error': error
+                })
+        except Exception as e:
+            print(f"[HANDLER] 检查二维码状态异常: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            self.send_json_response({'error': str(e)}, 500)
     
     def send_json_response(self, data, status=200):
         self.send_response(status)

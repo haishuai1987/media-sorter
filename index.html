@@ -2037,10 +2037,16 @@
         // 切换Cookie显示/隐藏
         function toggleCookieVisibility() {
             const input = document.getElementById('cloud115CookieInline');
+            const btn = event.target;
+            
             if (input.type === 'password') {
                 input.type = 'text';
+                btn.textContent = '🙈'; // 闭眼（隐藏）
+                btn.title = '隐藏Cookie';
             } else {
                 input.type = 'password';
+                btn.textContent = '👁️'; // 睁眼（显示）
+                btn.title = '显示Cookie';
             }
         }
         
