@@ -2928,7 +2928,10 @@
             });
             
             // 重置日志
-            document.getElementById('realtimeLog').innerHTML = '<div class="log-message">等待开始处理...</div>';
+            const detailLog = document.getElementById('detailLog');
+            if (detailLog) {
+                detailLog.innerHTML = '<div style="color: #999; text-align: center; padding: 20px;">等待开始处理...</div>';
+            }
         }
         
         function updateProgressDisplay() {
