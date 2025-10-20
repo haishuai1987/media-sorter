@@ -2734,7 +2734,8 @@
                 });
                 const data = await response.json();
                 if (data.success && data.current_version) {
-                    document.getElementById('currentVersionSettings').textContent = 'v' + data.current_version;
+                    // 后端已经包含 'v' 前缀，不需要再添加
+                    document.getElementById('currentVersionSettings').textContent = data.current_version;
                 } else {
                     document.getElementById('currentVersionSettings').textContent = '获取失败';
                 }
