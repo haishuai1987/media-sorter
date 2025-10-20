@@ -5062,7 +5062,13 @@ class MediaHandler(SimpleHTTPRequestHandler):
                 'toDelete': to_delete
             })
         except Exception as e:
-            self.send_json_response({'error': str(e)}, 500)
+            import traceback
+            error_msg = str(e)
+            error_trace = traceback.format_exc()
+            print(f"[ERROR] smart-rename 处理失败:")
+            print(f"  错误: {error_msg}")
+            print(f"  堆栈:\n{error_trace}")
+            self.send_json_response({'error': error_msg}, 500)
     
     def handle_cleanup(self, data):
         """清理跳过的文件和空文件夹"""
