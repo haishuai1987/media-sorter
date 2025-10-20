@@ -2727,12 +2727,19 @@
         // 加载版本号到设置模块
         async function loadVersionToSettings() {
             try {
-                const response = await fetch('/api/get-version');
+                const response = await fetch('/api/get-version', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
+                });
                 const data = await response.json();
-                if (data.version) {
-                    document.getElementById('currentVersionSettings').textContent = 'v' + data.version;
+                if (data.success && data.current_version) {
+                    document.getElementById('currentVersionSettings').textContent = 'v' + data.current_version;
+                } else {
+                    document.getElementById('currentVersionSettings').textContent = '获取失败';
                 }
             } catch (error) {
+                console.error('加载版本失败:', error);
                 document.getElementById('currentVersionSettings').textContent = '获取失败';
             }
         }
