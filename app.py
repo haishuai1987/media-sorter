@@ -494,6 +494,120 @@ class UpdateManager:
 
 # ============ 115网盘模块 ============
 
+class SecurityHelper:
+    """安全辅助工具类"""
+    
+    @staticmethod
+    def mask_cookie(cookie):
+        """脱敏Cookie用于日志显示
+        
+        Args:
+            cookie: 原始Cookie字符串
+        
+        Returns:
+            脱敏后的Cookie字符串
+        """
+        if not cookie or len(cookie) < 20:
+            return '***'
+        
+        # 只显示前8个和后8个字符
+        return f"{cookie[:8]}...{cookie[-8:]}"
+    
+    @staticmethod
+    def validate_cookie(cookie):
+        """验证Cookie格式
+        
+        Args:
+            cookie: Cookie字符串
+        
+        Returns:
+            (valid: bool, error: str)
+        """
+        if not cookie:
+            return False, "Cookie不能为空"
+        
+        if not isinstance(cookie, str):
+            return False, "Cookie必须是字符串"
+        
+        cookie = cookie.strip()
+        
+        if len(cookie) < 10:
+            return False, "Cookie长度过短，可能不完整"
+        
+        # 检查是否包含必要的字段
+        required_fields = ['UID', 'CID', 'SEID']
+        has_required = any(field in cookie for field in required_fields)
+        
+        if not has_required:
+            return False, "Cookie格式不正确，缺少必要字段（UID/CID/SEID）"
+        
+        return True, None
+    
+    @staticmethod
+    def validate_folder_id(folder_id):
+        """验证文件夹ID
+        
+        Args:
+            folder_id: 文件夹ID
+        
+        Returns:
+            (valid: bool, error: str)
+        """
+        if not folder_id:
+            return False, "文件夹ID不能为空"
+        
+        # 文件夹ID应该是数字或'0'
+        if not str(folder_id).isdigit():
+            return False, "文件夹ID格式不正确"
+        
+        return True, None
+    
+    @staticmethod
+    def validate_filename(filename):
+        """验证文件名安全性
+        
+        Args:
+            filename: 文件名
+        
+        Returns:
+            (valid: bool, error: str)
+        """
+        if not filename:
+            return False, "文件名不能为空"
+        
+        # 检查危险字符
+        dangerous_chars = ['..', '/', '\\', '\0', '<', '>', '|', '?', '*']
+        for char in dangerous_chars:
+            if char in filename:
+                return False, f"文件名包含非法字符: {char}"
+        
+        # 检查文件名长度
+        if len(filename) > 255:
+            return False, "文件名过长（最大255字符）"
+        
+        return True, None
+    
+    @staticmethod
+    def sanitize_log_message(message):
+        """清理日志消息中的敏感信息
+        
+        Args:
+            message: 原始日志消息
+        
+        Returns:
+            清理后的日志消息
+        """
+        import re
+        
+        # 脱敏Cookie
+        message = re.sub(r'(UID|CID|SEID)=[^;]+', r'\1=***', message)
+        
+        # 脱敏长字符串（可能是Cookie）
+        message = re.sub(r'[a-zA-Z0-9]{50,}', lambda m: m.group(0)[:8] + '...' + m.group(0)[-8:], message)
+        
+        return message
+
+
 class CookieEncryption:
     """Cookie加密工具"""
     
@@ -552,8 +666,92 @@ class Cloud115API:
     _cache_ttl = 300  # 5分钟
     
     def __init__(self, cookie):
+        # 验证Cookie
+        valid, error = SecurityHelper.validate_cookie(cookie)
+        if not valid:
+            print(f"[Cloud115API] Cookie验证失败: {error}")
+        
         self.cookie = cookie
         self.session = self._create_session()
+        self.last_error = None
+        self.error_count = 0
+        self.request_count = 0
+        self.last_request_time = 0
+        self.min_request_interval = 0.1  # 最小请求间隔（秒）
+        
+        # 日志中使用脱敏Cookie
+        masked_cookie = SecurityHelper.mask_cookie(cookie)
+        print(f"[Cloud115API] 初始化API客户端: Cookie={masked_cookie}")
+    
+    def _handle_api_error(self, error, operation='操作'):
+        """统一处理API错误
+        
+        Args:
+            error: 错误对象或错误消息
+            operation: 操作名称
+        
+        Returns:
+            用户友好的错误消息
+        """
+        self.last_error = str(error)
+        self.error_count += 1
+        
+        error_msg = str(error).lower()
+        
+        # Cookie相关错误
+        if 'cookie' in error_msg or 'unauthorized' in error_msg or '401' in error_msg:
+            return f"Cookie已过期或无效，请重新登录"
+        
+        # 网络错误
+        if 'timeout' in error_msg or 'connection' in error_msg:
+            return f"网络连接超时，请检查网络后重试"
+        
+        # 速率限制
+        if 'rate limit' in error_msg or 'too many' in error_msg or '429' in error_msg:
+            return f"请求过于频繁，请稍后再试"
+        
+        # 权限错误
+        if 'permission' in error_msg or 'forbidden' in error_msg or '403' in error_msg:
+            return f"没有权限执行此操作"
+        
+        # 文件不存在
+        if 'not found' in error_msg or '404' in error_msg:
+            return f"文件或文件夹不存在"
+        
+        # 服务器错误
+        if '500' in error_msg or '502' in error_msg or '503' in error_msg:
+            return f"115服务器暂时不可用，请稍后重试"
+        
+        # 其他错误
+        return f"{operation}失败: {error}"
+    
+    def get_error_stats(self):
+        """获取错误统计信息"""
+        return {
+            'last_error': self.last_error,
+            'error_count': self.error_count
+        }
+    
+    def _throttle_request(self):
+        """请求节流：确保请求间隔不小于最小间隔"""
+        current_time = time.time()
+        time_since_last = current_time - self.last_request_time
+        
+        if time_since_last < self.min_request_interval:
+            sleep_time = self.min_request_interval - time_since_last
+            time.sleep(sleep_time)
+        
+        self.last_request_time = time.time()
+        self.request_count += 1
+    
+    def get_performance_stats(self):
+        """获取性能统计信息"""
+        return {
+            'request_count': self.request_count,
+            'error_count': self.error_count,
+            'error_rate': self.error_count / max(self.request_count, 1),
+            'min_request_interval': self.min_request_interval
+        }
     
     def _create_session(self):
         """创建HTTP会话"""
@@ -578,7 +776,10 @@ class Cloud115API:
         """验证Cookie有效性并获取用户信息"""
         try:
             if not self.session:
-                return False, None, "requests库未安装"
+                return False, None, "requests库未安装，请运行: pip install requests"
+            
+            if not self.cookie or len(self.cookie.strip()) < 10:
+                return False, None, "Cookie为空或格式不正确"
             
             # 尝试多个API端点
             endpoints = [
@@ -586,32 +787,46 @@ class Cloud115API:
                 ('/user/info', 'user_info'),  # 用户信息API
             ]
             
+            last_error = None
             for endpoint, name in endpoints:
-                url = f'{self.BASE_URL}{endpoint}'
-                response = self.session.get(url, timeout=10)
-                
-                if response.status_code == 200:
-                    data = response.json()
+                try:
+                    url = f'{self.BASE_URL}{endpoint}'
+                    response = self.session.get(url, timeout=10)
                     
-                    if data.get('state'):
-                        # 成功获取数据
-                        user_data = data.get('data', {})
-                        user_info = {
-                            'user_id': user_data.get('user_id', user_data.get('uid', '')),
-                            'username': user_data.get('user_name', user_data.get('username', '')),
-                            'space_used': user_data.get('space_info', {}).get('all_use', {}).get('size', 0),
-                            'space_total': user_data.get('space_info', {}).get('all_total', {}).get('size', 0)
-                        }
-                        return True, user_info, None
+                    if response.status_code == 200:
+                        data = response.json()
+                        
+                        if data.get('state'):
+                            # 成功获取数据
+                            user_data = data.get('data', {})
+                            user_info = {
+                                'user_id': user_data.get('user_id', user_data.get('uid', '')),
+                                'username': user_data.get('user_name', user_data.get('username', '未知用户')),
+                                'space_used': user_data.get('space_info', {}).get('all_use', {}).get('size', 0),
+                                'space_total': user_data.get('space_info', {}).get('all_total', {}).get('size', 0)
+                            }
+                            return True, user_info, None
+                        else:
+                            last_error = data.get('error', 'API返回失败')
+                            continue
+                    elif response.status_code == 401:
+                        return False, None, "Cookie已过期，请重新登录"
+                    elif response.status_code == 403:
+                        return False, None, "Cookie无效或没有权限"
                     else:
-                        # 继续尝试下一个端点
+                        last_error = f"HTTP {response.status_code}"
                         continue
+                except Exception as e:
+                    last_error = str(e)
+                    continue
             
             # 所有端点都失败
-            return False, None, "Cookie无效或已过期"
+            error_msg = self._handle_api_error(last_error or "未知错误", "验证Cookie")
+            return False, None, error_msg
             
         except Exception as e:
-            return False, None, str(e)
+            error_msg = self._handle_api_error(e, "验证Cookie")
+            return False, None, error_msg
     
     def list_files(self, folder_id='0', offset=0, limit=1000, use_cache=True):
         """列出文件夹内容
@@ -636,6 +851,9 @@ class Cloud115API:
                 cached_data, cached_time = self._file_cache[cache_key]
                 if time.time() - cached_time < self._cache_ttl:
                     return cached_data, None
+            
+            # 请求节流
+            self._throttle_request()
             
             # 使用webapi端点，最简参数
             url = f'{self.BASE_URL}/files'
@@ -699,9 +917,58 @@ class Cloud115API:
             traceback.print_exc()
             return None, str(e)
     
-    def clear_cache(self):
-        """清除文件列表缓存"""
-        self._file_cache.clear()
+    def clear_cache(self, folder_id=None):
+        """清除文件列表缓存
+        
+        Args:
+            folder_id: 指定文件夹ID，None表示清除全部
+        """
+        if folder_id is None:
+            cleared = len(self._file_cache)
+            self._file_cache.clear()
+            print(f"[Cloud115API] 清除全部缓存: {cleared} 项")
+        else:
+            # 清除指定文件夹的缓存
+            keys_to_remove = [k for k in self._file_cache.keys() if k.startswith(f"{folder_id}_")]
+            for key in keys_to_remove:
+                del self._file_cache[key]
+            print(f"[Cloud115API] 清除文件夹 {folder_id} 缓存: {len(keys_to_remove)} 项")
+    
+    def get_cache_stats(self):
+        """获取缓存统计信息
+        
+        Returns:
+            {
+                'total_items': 缓存项数量,
+                'cache_size': 缓存大小（估算）,
+                'hit_rate': 缓存命中率（如果有统计）
+            }
+        """
+        import sys
+        
+        total_items = len(self._file_cache)
+        cache_size = sum(sys.getsizeof(v) for v in self._file_cache.values())
+        
+        # 清理过期缓存
+        current_time = time.time()
+        expired_keys = []
+        for key, (data, cached_time) in self._file_cache.items():
+            if current_time - cached_time > self._cache_ttl:
+                expired_keys.append(key)
+        
+        for key in expired_keys:
+            del self._file_cache[key]
+        
+        if expired_keys:
+            print(f"[Cloud115API] 清理过期缓存: {len(expired_keys)} 项")
+        
+        return {
+            'total_items': total_items,
+            'expired_items': len(expired_keys),
+            'cache_size_bytes': cache_size,
+            'cache_size_mb': cache_size / (1024 * 1024),
+            'ttl_seconds': self._cache_ttl
+        }
     
     def rename_file(self, file_id, new_name):
         """重命名文件或文件夹
@@ -716,6 +983,14 @@ class Cloud115API:
         try:
             if not self.session:
                 return False, "requests库未安装"
+            
+            # 验证文件名
+            valid, error = SecurityHelper.validate_filename(new_name)
+            if not valid:
+                return False, error
+            
+            # 请求节流
+            self._throttle_request()
             
             url = f'{self.BASE_URL}/files/batch_rename'
             
@@ -1300,6 +1575,180 @@ class CloudScanner:
         }
     
     def group_duplicate_files(self, video_files):
+        """识别重复文件并分组
+        
+        Args:
+            video_files: 视频文件列表
+        
+        Returns:
+            {
+                'duplicates': [
+                    {
+                        'name': '基础文件名',
+                        'files': [
+                            {'file': {...}, 'quality_score': 1500, 'keep': True},
+                            {'file': {...}, 'quality_score': 800, 'keep': False}
+                        ]
+                    }
+                ],
+                'unique_files': [...],
+                'stats': {
+                    'total_files': 100,
+                    'duplicate_groups': 10,
+                    'files_to_delete': 15
+                }
+            }
+        """
+        from collections import defaultdict
+        
+        # 按基础文件名分组
+        file_groups = defaultdict(list)
+        
+        for file in video_files:
+            filename = file.get('name', '')
+            # 提取基础文件名（去除分辨率、来源等标记）
+            base_name = self._extract_base_name(filename)
+            file_groups[base_name].append(file)
+        
+        duplicates = []
+        unique_files = []
+        files_to_delete = []
+        
+        for base_name, files in file_groups.items():
+            if len(files) > 1:
+                # 有重复，计算质量分数并排序
+                scored_files = []
+                for f in files:
+                    score = self._calculate_quality_score(f)
+                    scored_files.append({
+                        'file': f,
+                        'quality_score': score,
+                        'keep': False
+                    })
+                
+                # 按质量分数降序排序
+                scored_files.sort(key=lambda x: x['quality_score'], reverse=True)
+                
+                # 标记保留最高质量的文件
+                scored_files[0]['keep'] = True
+                
+                # 其他文件标记为删除
+                for sf in scored_files[1:]:
+                    files_to_delete.append(sf['file'])
+                
+                duplicates.append({
+                    'name': base_name,
+                    'files': scored_files
+                })
+            else:
+                # 唯一文件
+                unique_files.append(files[0])
+        
+        stats = {
+            'total_files': len(video_files),
+            'duplicate_groups': len(duplicates),
+            'files_to_delete': len(files_to_delete),
+            'unique_files': len(unique_files)
+        }
+        
+        print(f"[CloudScanner] 去重分析完成: {stats}")
+        
+        return {
+            'duplicates': duplicates,
+            'unique_files': unique_files,
+            'files_to_delete': files_to_delete,
+            'stats': stats
+        }
+    
+    def _extract_base_name(self, filename):
+        """提取基础文件名（去除质量标记）
+        
+        Args:
+            filename: 文件名
+        
+        Returns:
+            基础文件名
+        """
+        import re
+        
+        # 去除扩展名
+        name = os.path.splitext(filename)[0]
+        
+        # 去除常见的质量标记
+        patterns = [
+            r'\b(2160p|1080p|720p|480p|4k)\b',
+            r'\b(bluray|blu-ray|web-dl|webrip|hdtv|bdrip|dvdrip)\b',
+            r'\b(x264|x265|h264|h265|hevc|avc)\b',
+            r'\b(aac|ac3|dts|truehd|atmos)\b',
+            r'\[\d+p\]',
+            r'\[.*?(bluray|web|hdtv).*?\]',
+        ]
+        
+        for pattern in patterns:
+            name = re.sub(pattern, '', name, flags=re.IGNORECASE)
+        
+        # 清理多余的空格、点、横线
+        name = re.sub(r'[\s\.\-_]+', ' ', name).strip()
+        
+        return name
+    
+    def _calculate_quality_score(self, file):
+        """计算文件质量分数（用于去重）
+        
+        Args:
+            file: 文件信息字典
+        
+        Returns:
+            质量分数（整数）
+        """
+        score = 0
+        name = file.get('name', '').lower()
+        size = file.get('size', 0)
+        
+        # 分辨率分数
+        if '2160p' in name or '4k' in name:
+            score += 1000
+        elif '1080p' in name:
+            score += 500
+        elif '720p' in name:
+            score += 200
+        elif '480p' in name:
+            score += 100
+        
+        # 来源分数
+        if 'bluray' in name or 'blu-ray' in name or 'bdrip' in name:
+            score += 300
+        elif 'web-dl' in name:
+            score += 200
+        elif 'webrip' in name:
+            score += 150
+        elif 'hdtv' in name:
+            score += 100
+        
+        # 编码分数
+        if 'hevc' in name or 'x265' in name or 'h265' in name:
+            score += 50
+        elif 'x264' in name or 'h264' in name:
+            score += 30
+        
+        # 音频分数
+        if 'atmos' in name or 'truehd' in name:
+            score += 30
+        elif 'dts' in name:
+            score += 20
+        elif 'ac3' in name:
+            score += 10
+        elif 'aac' in name:
+            score += 5
+        
+        # 文件大小分数（越大越好，但有上限）
+        size_gb = size / (1024 * 1024 * 1024)
+        size_score = min(size_gb * 10, 100)  # 最多100分
+        score += size_score
+        
+        return score
+    
+    def group_duplicate_files(self, video_files):
         """识别重复文件（基于文件名和大小）
         
         注意：此方法需要非常谨慎，避免误删文件
@@ -1413,6 +1862,155 @@ class CloudScanner:
         score += size_score
         
         return score
+
+# ============================================
+
+class RateLimiter:
+    """API速率限制处理器"""
+    
+    def __init__(self, max_retries=3, base_delay=1.0):
+        """
+        Args:
+            max_retries: 最大重试次数
+            base_delay: 基础延迟时间（秒）
+        """
+        self.max_retries = max_retries
+        self.base_delay = base_delay
+        self.rate_limit_events = []
+    
+    def execute_with_retry(self, func, *args, **kwargs):
+        """执行函数，遇到速率限制时自动重试
+        
+        Args:
+            func: 要执行的函数
+            *args, **kwargs: 函数参数
+        
+        Returns:
+            函数执行结果
+        
+        Raises:
+            Exception: 超过最大重试次数后抛出异常
+        """
+        last_error = None
+        
+        for attempt in range(self.max_retries):
+            try:
+                result = func(*args, **kwargs)
+                
+                # 检查结果是否表示速率限制
+                if self._is_rate_limited(result):
+                    wait_time = self._calculate_backoff(attempt)
+                    self._log_rate_limit(attempt, wait_time)
+                    time.sleep(wait_time)
+                    continue
+                
+                return result
+                
+            except Exception as e:
+                last_error = e
+                error_msg = str(e).lower()
+                
+                # 检查是否为速率限制错误
+                if 'rate limit' in error_msg or 'too many requests' in error_msg or '429' in error_msg:
+                    wait_time = self._calculate_backoff(attempt)
+                    self._log_rate_limit(attempt, wait_time)
+                    time.sleep(wait_time)
+                    continue
+                
+                # 其他错误，检查是否需要重试
+                if attempt < self.max_retries - 1:
+                    wait_time = self.base_delay
+                    print(f"[RateLimiter] 请求失败，{wait_time}秒后重试 (尝试 {attempt + 1}/{self.max_retries}): {e}")
+                    time.sleep(wait_time)
+                    continue
+                
+                # 最后一次尝试失败，抛出异常
+                raise
+        
+        # 超过最大重试次数
+        if last_error:
+            raise last_error
+        else:
+            raise Exception(f"超过最大重试次数 ({self.max_retries})")
+    
+    def _is_rate_limited(self, result):
+        """检查结果是否表示速率限制
+        
+        Args:
+            result: API返回结果
+        
+        Returns:
+            bool: 是否被限流
+        """
+        if isinstance(result, tuple) and len(result) >= 2:
+            # (success, error) 格式
+            success, error = result[0], result[1]
+            if not success and error:
+                error_lower = str(error).lower()
+                return 'rate limit' in error_lower or 'too many' in error_lower or '429' in error_lower
+        
+        return False
+    
+    def _calculate_backoff(self, attempt):
+        """计算指数退避等待时间
+        
+        Args:
+            attempt: 当前尝试次数（从0开始）
+        
+        Returns:
+            等待时间（秒）
+        """
+        # 指数退避: 1s, 2s, 4s, 8s...
+        wait_time = self.base_delay * (2 ** attempt)
+        # 添加随机抖动，避免多个请求同时重试
+        import random
+        jitter = random.uniform(0, 0.5)
+        return wait_time + jitter
+    
+    def _log_rate_limit(self, attempt, wait_time):
+        """记录速率限制事件
+        
+        Args:
+            attempt: 尝试次数
+            wait_time: 等待时间
+        """
+        event = {
+            'timestamp': time.time(),
+            'attempt': attempt + 1,
+            'wait_time': wait_time
+        }
+        self.rate_limit_events.append(event)
+        
+        # 只保留最近100条记录
+        if len(self.rate_limit_events) > 100:
+            self.rate_limit_events = self.rate_limit_events[-100:]
+        
+        print(f"[RateLimiter] 检测到速率限制，等待 {wait_time:.1f} 秒后重试 (尝试 {attempt + 1}/{self.max_retries})")
+    
+    def get_stats(self):
+        """获取速率限制统计信息
+        
+        Returns:
+            统计信息字典
+        """
+        if not self.rate_limit_events:
+            return {
+                'total_events': 0,
+                'recent_events': 0,
+                'avg_wait_time': 0
+            }
+        
+        # 最近5分钟的事件
+        recent_threshold = time.time() - 300
+        recent_events = [e for e in self.rate_limit_events if e['timestamp'] > recent_threshold]
+        
+        avg_wait = sum(e['wait_time'] for e in self.rate_limit_events) / len(self.rate_limit_events)
+        
+        return {
+            'total_events': len(self.rate_limit_events),
+            'recent_events': len(recent_events),
+            'avg_wait_time': avg_wait
+        }
 
 # ============================================
 
@@ -1806,6 +2404,252 @@ class CloudMover:
             'failed_count': failed_count,
             'operations': operations
         }
+
+# ============================================
+
+class CloudHistoryManager:
+    """115网盘操作历史记录管理器"""
+    
+    HISTORY_FILE = 'cloud_history.json'
+    MAX_RECORDS = 100
+    
+    def __init__(self):
+        """初始化历史记录管理器"""
+        self.history_file = os.path.join(os.path.expanduser('~/.media-renamer'), self.HISTORY_FILE)
+        self._ensure_history_file()
+    
+    def _ensure_history_file(self):
+        """确保历史记录文件存在"""
+        try:
+            # 确保目录存在
+            history_dir = os.path.dirname(self.history_file)
+            if not os.path.exists(history_dir):
+                os.makedirs(history_dir, exist_ok=True)
+            
+            # 如果文件不存在，创建空文件
+            if not os.path.exists(self.history_file):
+                self._save_history([])
+        except Exception as e:
+            print(f"[CloudHistory] 创建历史文件失败: {e}")
+    
+    def save_operation(self, operation_type, file_info, new_info=None, status='success', error=None):
+        """保存操作记录
+        
+        Args:
+            operation_type: 操作类型 (rename|move|delete|scan)
+            file_info: 文件信息字典
+            new_info: 新文件信息（重命名/移动后）
+            status: 操作状态 (success|failed)
+            error: 错误信息（如果失败）
+        
+        Returns:
+            bool: 是否保存成功
+        """
+        try:
+            # 加载现有历史
+            history = self._load_history()
+            
+            # 创建新记录
+            record = {
+                'id': self._generate_id(),
+                'timestamp': time.strftime('%Y-%m-%d %H:%M:%S'),
+                'operation_type': operation_type,
+                'status': status,
+                'file_id': file_info.get('fid', ''),
+                'file_name': file_info.get('name', ''),
+                'file_size': file_info.get('size', 0),
+                'folder_id': file_info.get('folder_id', file_info.get('cid', ''))
+            }
+            
+            # 添加操作特定信息
+            if operation_type == 'rename' and new_info:
+                record['new_name'] = new_info.get('name', '')
+            elif operation_type == 'move' and new_info:
+                record['target_folder_id'] = new_info.get('folder_id', '')
+                record['target_folder_name'] = new_info.get('folder_name', '')
+            
+            # 添加错误信息
+            if error:
+                record['error'] = str(error)
+            
+            # 添加到历史记录
+            history.insert(0, record)  # 最新的在前面
+            
+            # 限制记录数量
+            if len(history) > self.MAX_RECORDS:
+                history = history[:self.MAX_RECORDS]
+            
+            # 保存历史
+            self._save_history(history)
+            
+            return True
+            
+        except Exception as e:
+            print(f"[CloudHistory] 保存操作记录失败: {e}")
+            return False
+    
+    def load_history(self, limit=100, offset=0, operation_type=None, date_from=None, date_to=None):
+        """加载历史记录
+        
+        Args:
+            limit: 返回记录数量限制
+            offset: 偏移量
+            operation_type: 过滤操作类型
+            date_from: 开始日期 (YYYY-MM-DD)
+            date_to: 结束日期 (YYYY-MM-DD)
+        
+        Returns:
+            {
+                'records': [...],
+                'total': 总数量,
+                'filtered': 过滤后数量
+            }
+        """
+        try:
+            history = self._load_history()
+            total = len(history)
+            
+            # 过滤
+            filtered = history
+            
+            if operation_type:
+                filtered = [r for r in filtered if r.get('operation_type') == operation_type]
+            
+            if date_from:
+                filtered = [r for r in filtered if r.get('timestamp', '') >= date_from]
+            
+            if date_to:
+                # 包含当天的所有记录
+                date_to_end = date_to + ' 23:59:59'
+                filtered = [r for r in filtered if r.get('timestamp', '') <= date_to_end]
+            
+            filtered_count = len(filtered)
+            
+            # 分页
+            records = filtered[offset:offset + limit]
+            
+            return {
+                'records': records,
+                'total': total,
+                'filtered': filtered_count,
+                'limit': limit,
+                'offset': offset
+            }
+            
+        except Exception as e:
+            print(f"[CloudHistory] 加载历史记录失败: {e}")
+            return {
+                'records': [],
+                'total': 0,
+                'filtered': 0,
+                'limit': limit,
+                'offset': offset
+            }
+    
+    def get_statistics(self):
+        """获取历史统计信息
+        
+        Returns:
+            统计信息字典
+        """
+        try:
+            history = self._load_history()
+            
+            stats = {
+                'total_operations': len(history),
+                'by_type': {},
+                'by_status': {},
+                'recent_24h': 0,
+                'recent_7d': 0
+            }
+            
+            # 统计各类型操作数量
+            for record in history:
+                op_type = record.get('operation_type', 'unknown')
+                status = record.get('status', 'unknown')
+                
+                stats['by_type'][op_type] = stats['by_type'].get(op_type, 0) + 1
+                stats['by_status'][status] = stats['by_status'].get(status, 0) + 1
+            
+            # 统计最近操作
+            now = time.time()
+            for record in history:
+                timestamp_str = record.get('timestamp', '')
+                try:
+                    timestamp = time.mktime(time.strptime(timestamp_str, '%Y-%m-%d %H:%M:%S'))
+                    age = now - timestamp
+                    
+                    if age < 86400:  # 24小时
+                        stats['recent_24h'] += 1
+                    if age < 604800:  # 7天
+                        stats['recent_7d'] += 1
+                except:
+                    pass
+            
+            return stats
+            
+        except Exception as e:
+            print(f"[CloudHistory] 获取统计信息失败: {e}")
+            return {
+                'total_operations': 0,
+                'by_type': {},
+                'by_status': {},
+                'recent_24h': 0,
+                'recent_7d': 0
+            }
+    
+    def clear_history(self, before_date=None):
+        """清除历史记录
+        
+        Args:
+            before_date: 清除此日期之前的记录 (YYYY-MM-DD)，None表示清除全部
+        
+        Returns:
+            清除的记录数量
+        """
+        try:
+            if before_date is None:
+                # 清除全部
+                self._save_history([])
+                return -1  # 表示全部清除
+            
+            history = self._load_history()
+            original_count = len(history)
+            
+            # 保留指定日期之后的记录
+            filtered = [r for r in history if r.get('timestamp', '') >= before_date]
+            
+            self._save_history(filtered)
+            
+            return original_count - len(filtered)
+            
+        except Exception as e:
+            print(f"[CloudHistory] 清除历史记录失败: {e}")
+            return 0
+    
+    def _load_history(self):
+        """从文件加载历史记录"""
+        try:
+            if os.path.exists(self.history_file):
+                with open(self.history_file, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+        except Exception as e:
+            print(f"[CloudHistory] 读取历史文件失败: {e}")
+        
+        return []
+    
+    def _save_history(self, history):
+        """保存历史记录到文件"""
+        try:
+            with open(self.history_file, 'w', encoding='utf-8') as f:
+                json.dump(history, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            print(f"[CloudHistory] 保存历史文件失败: {e}")
+    
+    def _generate_id(self):
+        """生成唯一ID"""
+        import uuid
+        return str(uuid.uuid4())[:8]
 
 # ============================================
 
@@ -2450,6 +3294,10 @@ class MediaHandler(SimpleHTTPRequestHandler):
                 self.handle_cloud_generate_qrcode(data)
             elif self.path == '/api/cloud/check-qrcode':
                 self.handle_cloud_check_qrcode(data)
+            elif self.path == '/api/cloud/history':
+                self.handle_cloud_history(data)
+            elif self.path == '/api/cloud/history/stats':
+                self.handle_cloud_history_stats(data)
             elif self.path == '/api/qrcode/start':
                 self.handle_qrcode_start(data)
             elif self.path == '/api/qrcode/check':
@@ -4375,6 +5223,62 @@ class MediaHandler(SimpleHTTPRequestHandler):
                 })
         except Exception as e:
             print(f"[HANDLER] 检查二维码状态异常: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            self.send_json_response({'error': str(e)}, 500)
+    
+    def handle_cloud_history(self, data):
+        """获取115网盘操作历史记录"""
+        try:
+            limit = data.get('limit', 100)
+            offset = data.get('offset', 0)
+            operation_type = data.get('operation_type')
+            date_from = data.get('date_from')
+            date_to = data.get('date_to')
+            
+            # 创建历史管理器
+            history_manager = CloudHistoryManager()
+            
+            # 加载历史记录
+            result = history_manager.load_history(
+                limit=limit,
+                offset=offset,
+                operation_type=operation_type,
+                date_from=date_from,
+                date_to=date_to
+            )
+            
+            self.send_json_response({
+                'success': True,
+                'history': result['records'],
+                'total': result['total'],
+                'filtered': result['filtered'],
+                'limit': result['limit'],
+                'offset': result['offset']
+            })
+            
+        except Exception as e:
+            print(f"[HANDLER] 获取历史记录异常: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            self.send_json_response({'error': str(e)}, 500)
+    
+    def handle_cloud_history_stats(self, data):
+        """获取115网盘操作历史统计信息"""
+        try:
+            # 创建历史管理器
+            history_manager = CloudHistoryManager()
+            
+            # 获取统计信息
+            stats = history_manager.get_statistics()
+            
+            self.send_json_response({
+                'success': True,
+                'stats': stats
+            })
+            
+        except Exception as e:
+            print(f"[HANDLER] 获取历史统计异常: {str(e)}")
             import traceback
             traceback.print_exc()
             self.send_json_response({'error': str(e)}, 500)

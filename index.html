@@ -611,12 +611,15 @@
         </h1>
         
         <!-- 模块切换选项卡 -->
-        <div style="margin-bottom: 30px; display: flex; justify-content: center; gap: 10px;">
-            <button id="localModuleTab" onclick="switchModule('local')" style="flex: 1; max-width: 250px; padding: 15px 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 10px; cursor: pointer; font-size: 16px; font-weight: 600; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4); transition: all 0.3s;">
+        <div style="margin-bottom: 30px; display: flex; justify-content: center; gap: 10px; flex-wrap: wrap;">
+            <button id="localModuleTab" onclick="switchModule('local')" style="flex: 1; min-width: 200px; max-width: 250px; padding: 15px 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 10px; cursor: pointer; font-size: 16px; font-weight: 600; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4); transition: all 0.3s;">
                 💻 本地整理
             </button>
-            <button id="cloudModuleTab" onclick="switchModule('cloud')" style="flex: 1; max-width: 250px; padding: 15px 30px; background: #e9ecef; color: #6c757d; border: 2px solid #dee2e6; border-radius: 10px; cursor: pointer; font-size: 16px; font-weight: 600; transition: all 0.3s;">
+            <button id="cloudModuleTab" onclick="switchModule('cloud')" style="flex: 1; min-width: 200px; max-width: 250px; padding: 15px 30px; background: #e9ecef; color: #6c757d; border: 2px solid #dee2e6; border-radius: 10px; cursor: pointer; font-size: 16px; font-weight: 600; transition: all 0.3s;">
                 ☁️ 115网盘整理
+            </button>
+            <button id="settingsModuleTab" onclick="switchModule('settings')" style="flex: 1; min-width: 200px; max-width: 250px; padding: 15px 30px; background: #e9ecef; color: #6c757d; border: 2px solid #dee2e6; border-radius: 10px; cursor: pointer; font-size: 16px; font-weight: 600; transition: all 0.3s;">
+                ⚙️ 系统设置
             </button>
         </div>
         
@@ -710,12 +713,6 @@
             </button>
             <button onclick="showProgressModal()" style="font-size: 16px; padding: 14px 36px; background: linear-gradient(135deg, #28a745 0%, #20c997 100%); box-shadow: 0 4px 15px rgba(40, 167, 69, 0.4); border: none; border-radius: 8px; color: white; cursor: pointer; transition: transform 0.2s; font-weight: 500;">
                 📊 整理详情
-            </button>
-            <button onclick="showSettingsModal()" style="font-size: 16px; padding: 14px 36px; background: linear-gradient(135deg, #ff9800 0%, #ff5722 100%); box-shadow: 0 4px 15px rgba(255, 152, 0, 0.4); border: none; border-radius: 8px; color: white; cursor: pointer; transition: transform 0.2s; font-weight: 500;">
-                ⚙️ 设置
-            </button>
-            <button onclick="checkUpdate()" style="font-size: 16px; padding: 14px 36px; background: linear-gradient(135deg, #6c757d 0%, #495057 100%); box-shadow: 0 4px 15px rgba(108, 117, 125, 0.4); border: none; border-radius: 8px; color: white; cursor: pointer; transition: transform 0.2s; font-weight: 500;">
-                🔄 更新
             </button>
         </div>
 
@@ -880,9 +877,12 @@
                 <small style="color: #666; margin-top: 5px; display: block;">点击浏览按钮选择115网盘中要整理的文件夹</small>
             </div>
             
-            <div style="text-align: center; margin-bottom: 20px;">
+            <div style="text-align: center; margin-bottom: 20px; display: flex; gap: 15px; justify-content: center;">
                 <button onclick="startCloud115Organize()" style="font-size: 16px; padding: 14px 36px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4); border: none; border-radius: 8px; color: white; cursor: pointer; transition: transform 0.2s; font-weight: 500;">
                     🚀 开始云端整理
+                </button>
+                <button onclick="showCloudHistory()" style="font-size: 16px; padding: 14px 36px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); box-shadow: 0 4px 15px rgba(245, 87, 108, 0.4); border: none; border-radius: 8px; color: white; cursor: pointer; transition: transform 0.2s; font-weight: 500;">
+                    📜 操作历史
                 </button>
             </div>
             
@@ -898,6 +898,103 @@
             </div>
         </div>
         <!-- 115网盘整理模块结束 -->
+
+        <!-- 系统设置模块 -->
+        <div id="settingsModule" style="display: none;">
+            <div style="margin-bottom: 20px; padding: 20px; background: linear-gradient(135deg, #ff9800 0%, #ff5722 100%); border-radius: 12px; border: 2px solid #ff9800;">
+                <div style="display: flex; align-items: center; margin-bottom: 15px;">
+                    <span style="font-size: 24px; margin-right: 10px;">⚙️</span>
+                    <h3 style="margin: 0; color: white;">系统设置</h3>
+                </div>
+                <p style="margin: 0; color: white; line-height: 1.6;">
+                    配置系统全局参数，包括 TMDB API、豆瓣 Cookie、系统更新等
+                </p>
+            </div>
+
+            <!-- TMDB设置 -->
+            <div style="margin-bottom: 20px; padding: 20px; background: white; border-radius: 12px; border: 2px solid #e0e0e0;">
+                <h4 style="margin: 0 0 15px 0; color: #333; display: flex; align-items: center; gap: 10px;">
+                    <span>🎬</span>
+                    <span>TMDB 配置</span>
+                </h4>
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #333;">API Key:</label>
+                    <input type="text" id="tmdbApiKeySettings" placeholder="输入TMDB API Key" style="width: 100%; padding: 12px 16px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px;">
+                    <small style="color: #666; display: block; margin-top: 5px;">
+                        获取地址: <a href="https://www.themoviedb.org/settings/api" target="_blank" style="color: #667eea;">https://www.themoviedb.org/settings/api</a>
+                    </small>
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #333;">
+                        <input type="checkbox" id="tmdbProxyEnabledSettings" style="width: auto; margin-right: 8px;">
+                        启用 TMDB 代理
+                    </label>
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #333;">代理地址:</label>
+                    <input type="text" id="tmdbProxySettings" placeholder="例如: http://127.0.0.1:7890" style="width: 100%; padding: 12px 16px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px;">
+                    <small style="color: #666; display: block; margin-top: 5px;">用于访问 TMDB API（可选）</small>
+                </div>
+            </div>
+
+            <!-- 豆瓣设置 -->
+            <div style="margin-bottom: 20px; padding: 20px; background: white; border-radius: 12px; border: 2px solid #e0e0e0;">
+                <h4 style="margin: 0 0 15px 0; color: #333; display: flex; align-items: center; gap: 10px;">
+                    <span>🎭</span>
+                    <span>豆瓣配置</span>
+                </h4>
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #333;">Cookie:</label>
+                    <textarea id="doubanCookieSettings" rows="3" placeholder="输入豆瓣Cookie" style="width: 100%; padding: 12px 16px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px; font-family: monospace;"></textarea>
+                    <small style="color: #666; display: block; margin-top: 5px;">获取方法: 登录豆瓣 → F12 → Application → Cookies → 复制所有Cookie</small>
+                </div>
+            </div>
+
+            <!-- 系统更新设置 -->
+            <div style="margin-bottom: 20px; padding: 20px; background: white; border-radius: 12px; border: 2px solid #e0e0e0;">
+                <h4 style="margin: 0 0 15px 0; color: #333; display: flex; align-items: center; gap: 10px;">
+                    <span>🔄</span>
+                    <span>系统更新配置</span>
+                </h4>
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #333;">当前版本:</label>
+                    <div id="currentVersionSettings" style="padding: 12px 16px; background: #f8f9fa; border-radius: 8px; font-weight: 600; color: #667eea;">加载中...</div>
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #333;">
+                        <input type="checkbox" id="updateProxyEnabledSettings" style="width: auto; margin-right: 8px;">
+                        启用更新代理
+                    </label>
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #333;">更新代理地址:</label>
+                    <input type="text" id="updateProxySettings" placeholder="例如: http://127.0.0.1:7890" style="width: 100%; padding: 12px 16px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px;">
+                    <small style="color: #666; display: block; margin-top: 5px;">用于访问GitHub，直连失败时自动切换代理</small>
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #333;">
+                        <input type="checkbox" id="autoRestartAfterUpdateSettings" style="width: auto; margin-right: 8px;" checked>
+                        更新后自动重启服务
+                    </label>
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <button onclick="checkForUpdatesInSettings()" style="flex: 1; padding: 12px; background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;">
+                        🔍 检查更新
+                    </button>
+                    <button onclick="viewUpdateHistory()" style="flex: 1; padding: 12px; background: linear-gradient(135deg, #6c757d 0%, #495057 100%); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;">
+                        📜 更新历史
+                    </button>
+                </div>
+            </div>
+
+            <!-- 保存按钮 -->
+            <div style="text-align: center; margin-bottom: 20px;">
+                <button onclick="saveSettingsFromModule()" style="font-size: 16px; padding: 14px 36px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4); border: none; border-radius: 8px; color: white; cursor: pointer; transition: transform 0.2s; font-weight: 500;">
+                    💾 保存设置
+                </button>
+            </div>
+        </div>
+        <!-- 系统设置模块结束 -->
 
         <div id="status" class="status"></div>
 
@@ -934,58 +1031,11 @@
                         </div>
                     </div>
                     
-                    <!-- 详细进度 -->
+                    <!-- 详细操作日志 -->
                     <div class="progress-section">
-                        <h3>📋 详细进度</h3>
-                        <div id="detailProgress" class="detail-progress">
-                            <div class="progress-item">
-                                <span class="progress-icon">📂</span>
-                                <span class="progress-label">智能扫描</span>
-                                <span class="progress-status waiting">等待中</span>
-                            </div>
-                            <div class="progress-item">
-                                <span class="progress-icon">🌐</span>
-                                <span class="progress-label">中文标题识别</span>
-                                <span class="progress-status waiting">等待中</span>
-                            </div>
-                            <div class="progress-item">
-                                <span class="progress-icon">🎯</span>
-                                <span class="progress-label">智能去重</span>
-                                <span class="progress-status waiting">等待中</span>
-                            </div>
-                            <div class="progress-item">
-                                <span class="progress-icon">📝</span>
-                                <span class="progress-label">标准化重命名</span>
-                                <span class="progress-status waiting">等待中</span>
-                            </div>
-                            <div class="progress-item">
-                                <span class="progress-icon">📁</span>
-                                <span class="progress-label">智能分类</span>
-                                <span class="progress-status waiting">等待中</span>
-                            </div>
-                            <div class="progress-item">
-                                <span class="progress-icon">🚚</span>
-                                <span class="progress-label">自动移动</span>
-                                <span class="progress-status waiting">等待中</span>
-                            </div>
-                            <div class="progress-item">
-                                <span class="progress-icon">⚔️</span>
-                                <span class="progress-label">冲突处理</span>
-                                <span class="progress-status waiting">等待中</span>
-                            </div>
-                            <div class="progress-item">
-                                <span class="progress-icon">🧹</span>
-                                <span class="progress-label">自动清理</span>
-                                <span class="progress-status waiting">等待中</span>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- 实时日志 -->
-                    <div class="progress-section">
-                        <h3>📝 实时日志</h3>
-                        <div id="realtimeLog" class="realtime-log">
-                            <div class="log-message">等待开始处理...</div>
+                        <h3>📋 详细操作日志</h3>
+                        <div id="detailLog" class="detail-log" style="max-height: 400px; overflow-y: auto; background: #f8f9fa; border-radius: 8px; padding: 15px; font-family: 'Consolas', 'Monaco', monospace; font-size: 13px; line-height: 1.8;">
+                            <div style="color: #999; text-align: center; padding: 20px;">等待开始处理...</div>
                         </div>
                     </div>
                 </div>
@@ -1034,27 +1084,6 @@
                         <label>Cookie:</label>
                         <textarea id="doubanCookie" rows="3" placeholder="输入豆瓣Cookie"></textarea>
                         <small>获取方法: 登录豆瓣 → F12开发者工具 → Network → 复制Cookie</small>
-                    </div>
-                </div>
-                
-                <!-- 115网盘设置 -->
-                <div class="settings-section">
-                    <h3>☁️ 115网盘配置</h3>
-                    <div class="form-group">
-                        <label>登录状态:</label>
-                        <div id="cloud115Status" style="padding: 10px; background: #f8f9fa; border-radius: 6px; color: #6c757d;">
-                            未配置
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label>Cookie:</label>
-                        <textarea id="cloud115Cookie" rows="3" placeholder="输入115网盘Cookie"></textarea>
-                        <small>获取方法: 登录115网盘 → F12开发者工具 → Application → Cookies → 复制所有Cookie</small>
-                    </div>
-                    <div style="margin-top: 15px;">
-                        <button onclick="verifyCloud115Cookie()" style="width: 100%; padding: 12px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500;">
-                            🔍 验证Cookie
-                        </button>
                     </div>
                 </div>
                 
@@ -1146,6 +1175,54 @@
         </div>
     </div>
 
+    <!-- 115网盘操作历史弹窗 -->
+    <div id="cloudHistoryOverlay" class="folder-browser-overlay" style="display: none;" onclick="closeCloudHistory(event)">
+        <div class="folder-browser" onclick="event.stopPropagation()" style="max-width: 900px;">
+            <div class="folder-browser-header">
+                <h3>📜 115网盘操作历史</h3>
+                <button class="folder-browser-close" onclick="closeCloudHistory()">×</button>
+            </div>
+            
+            <div style="padding: 20px;">
+                <!-- 统计信息 -->
+                <div id="cloudHistoryStats" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 20px;">
+                    <!-- 统计卡片将通过 JS 动态生成 -->
+                </div>
+                
+                <!-- 过滤器 -->
+                <div style="display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap;">
+                    <select id="historyTypeFilter" onchange="loadCloudHistory()" style="padding: 8px 12px; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 14px;">
+                        <option value="">全部操作</option>
+                        <option value="rename">重命名</option>
+                        <option value="move">移动</option>
+                        <option value="delete">删除</option>
+                        <option value="scan">扫描</option>
+                    </select>
+                    
+                    <input type="date" id="historyDateFrom" onchange="loadCloudHistory()" style="padding: 8px 12px; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 14px;">
+                    <span style="line-height: 38px;">至</span>
+                    <input type="date" id="historyDateTo" onchange="loadCloudHistory()" style="padding: 8px 12px; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 14px;">
+                    
+                    <button onclick="exportCloudHistory()" style="padding: 8px 16px; background: #667eea; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px;">
+                        📥 导出CSV
+                    </button>
+                </div>
+                
+                <!-- 历史记录列表 -->
+                <div id="cloudHistoryList" style="max-height: 400px; overflow-y: auto; border: 2px solid #e0e0e0; border-radius: 8px; background: #f8f9fa;">
+                    <div style="text-align: center; padding: 40px; color: #999;">
+                        加载中...
+                    </div>
+                </div>
+                
+                <!-- 分页 -->
+                <div id="cloudHistoryPagination" style="display: flex; justify-content: center; gap: 10px; margin-top: 15px;">
+                    <!-- 分页按钮将通过 JS 动态生成 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         let currentFiles = [];
         let currentFilter = 'all';
@@ -1154,6 +1231,125 @@
 
         // 当前模块
         let currentModule = 'local';
+        
+        // ========== 错误处理工具函数 ==========
+        
+        /**
+         * 显示友好的错误提示
+         * @param {string} title - 错误标题
+         * @param {string} message - 错误消息
+         * @param {string} suggestion - 建议操作（可选）
+         */
+        function showErrorAlert(title, message, suggestion = '') {
+            let alertMsg = `❌ ${title}\n\n${message}`;
+            if (suggestion) {
+                alertMsg += `\n\n💡 建议: ${suggestion}`;
+            }
+            alert(alertMsg);
+        }
+        
+        /**
+         * 解析API错误并返回友好消息
+         * @param {Error|string} error - 错误对象或消息
+         * @returns {object} - {message: string, suggestion: string}
+         */
+        function parseApiError(error) {
+            const errorMsg = (error.message || error || '').toLowerCase();
+            
+            // Cookie相关错误
+            if (errorMsg.includes('cookie') || errorMsg.includes('过期') || errorMsg.includes('无效')) {
+                return {
+                    message: 'Cookie已过期或无效',
+                    suggestion: '请在设置中重新配置115网盘Cookie'
+                };
+            }
+            
+            // 网络错误
+            if (errorMsg.includes('network') || errorMsg.includes('timeout') || errorMsg.includes('连接')) {
+                return {
+                    message: '网络连接失败',
+                    suggestion: '请检查网络连接后重试'
+                };
+            }
+            
+            // 速率限制
+            if (errorMsg.includes('rate limit') || errorMsg.includes('频繁') || errorMsg.includes('429')) {
+                return {
+                    message: '请求过于频繁',
+                    suggestion: '请稍等片刻后再试'
+                };
+            }
+            
+            // 权限错误
+            if (errorMsg.includes('permission') || errorMsg.includes('权限') || errorMsg.includes('403')) {
+                return {
+                    message: '没有权限执行此操作',
+                    suggestion: '请检查Cookie是否正确'
+                };
+            }
+            
+            // 文件不存在
+            if (errorMsg.includes('not found') || errorMsg.includes('不存在') || errorMsg.includes('404')) {
+                return {
+                    message: '文件或文件夹不存在',
+                    suggestion: '可能已被删除或移动'
+                };
+            }
+            
+            // 服务器错误
+            if (errorMsg.includes('500') || errorMsg.includes('502') || errorMsg.includes('503')) {
+                return {
+                    message: '115服务器暂时不可用',
+                    suggestion: '请稍后重试'
+                };
+            }
+            
+            // 默认错误
+            return {
+                message: error.message || error || '操作失败',
+                suggestion: '请重试或联系管理员'
+            };
+        }
+        
+        /**
+         * 显示成功提示
+         * @param {string} message - 成功消息
+         */
+        function showSuccessAlert(message) {
+            alert(`✅ ${message}`);
+        }
+        
+        /**
+         * 显示加载提示
+         * @param {string} elementId - 元素ID
+         * @param {string} message - 加载消息
+         */
+        function showLoading(elementId, message = '加载中...') {
+            const el = document.getElementById(elementId);
+            if (el) {
+                el.innerHTML = `<div style="text-align: center; padding: 40px; color: #999;">
+                    <div style="margin-bottom: 10px;">⏳</div>
+                    <div>${message}</div>
+                </div>`;
+            }
+        }
+        
+        /**
+         * 显示错误消息
+         * @param {string} elementId - 元素ID
+         * @param {string} message - 错误消息
+         */
+        function showError(elementId, message) {
+            const el = document.getElementById(elementId);
+            if (el) {
+                el.innerHTML = `<div style="text-align: center; padding: 40px; color: #dc3545;">
+                    <div style="margin-bottom: 10px;">❌</div>
+                    <div>${message}</div>
+                </div>`;
+            }
+        }
+        
+        // ========== 错误处理工具函数结束 ==========
         
         // 页面加载时从localStorage读取路径
         window.addEventListener('DOMContentLoaded', function() {
@@ -1439,42 +1635,48 @@
             
             const localModule = document.getElementById('localModule');
             const cloudModule = document.getElementById('cloudModule');
+            const settingsModule = document.getElementById('settingsModule');
             const localTab = document.getElementById('localModuleTab');
             const cloudTab = document.getElementById('cloudModuleTab');
+            const settingsTab = document.getElementById('settingsModuleTab');
             
+            // 隐藏所有模块
+            localModule.style.display = 'none';
+            cloudModule.style.display = 'none';
+            settingsModule.style.display = 'none';
+            
+            // 重置所有选项卡样式
+            const tabs = [localTab, cloudTab, settingsTab];
+            tabs.forEach(tab => {
+                tab.style.background = '#e9ecef';
+                tab.style.color = '#6c757d';
+                tab.style.border = '2px solid #dee2e6';
+                tab.style.boxShadow = 'none';
+            });
+            
+            // 显示选中的模块并高亮选项卡
             if (module === 'local') {
-                // 显示本地模块
                 localModule.style.display = 'block';
-                cloudModule.style.display = 'none';
-                
-                // 更新选项卡样式
                 localTab.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
                 localTab.style.color = 'white';
                 localTab.style.border = 'none';
                 localTab.style.boxShadow = '0 4px 15px rgba(102, 126, 234, 0.4)';
-                
-                cloudTab.style.background = '#e9ecef';
-                cloudTab.style.color = '#6c757d';
-                cloudTab.style.border = '2px solid #dee2e6';
-                cloudTab.style.boxShadow = 'none';
-            } else {
-                // 显示115网盘模块
-                localModule.style.display = 'none';
+            } else if (module === 'cloud') {
                 cloudModule.style.display = 'block';
-                
-                // 更新选项卡样式
                 cloudTab.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
                 cloudTab.style.color = 'white';
                 cloudTab.style.border = 'none';
                 cloudTab.style.boxShadow = '0 4px 15px rgba(102, 126, 234, 0.4)';
-                
-                localTab.style.background = '#e9ecef';
-                localTab.style.color = '#6c757d';
-                localTab.style.border = '2px solid #dee2e6';
-                localTab.style.boxShadow = 'none';
-                
                 // 加载115网盘状态
                 loadCloud115Status();
+            } else if (module === 'settings') {
+                settingsModule.style.display = 'block';
+                settingsTab.style.background = 'linear-gradient(135deg, #ff9800 0%, #ff5722 100%)';
+                settingsTab.style.color = 'white';
+                settingsTab.style.border = 'none';
+                settingsTab.style.boxShadow = '0 4px 15px rgba(255, 152, 0, 0.4)';
+                // 加载设置
+                loadSettingsToModule();
             }
         }
         
@@ -1509,6 +1711,252 @@
             if (event && event.target.id !== 'cloud115BrowserOverlay') return;
             const overlay = document.getElementById('cloud115BrowserOverlay');
             overlay.style.display = 'none';
+        }
+        
+        // 显示115网盘操作历史
+        async function showCloudHistory() {
+            const overlay = document.getElementById('cloudHistoryOverlay');
+            overlay.style.display = 'flex';
+            
+            // 加载统计信息和历史记录
+            await loadCloudHistoryStats();
+            await loadCloudHistory();
+        }
+        
+        // 关闭115网盘操作历史
+        function closeCloudHistory(event) {
+            if (event && event.target.id !== 'cloudHistoryOverlay') return;
+            const overlay = document.getElementById('cloudHistoryOverlay');
+            overlay.style.display = 'none';
+        }
+        
+        // 加载历史统计信息
+        async function loadCloudHistoryStats() {
+            try {
+                const response = await fetch('/api/cloud/history/stats', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
+                });
+                
+                const data = await response.json();
+                
+                if (data.success && data.stats) {
+                    const stats = data.stats;
+                    const statsEl = document.getElementById('cloudHistoryStats');
+                    
+                    statsEl.innerHTML = `
+                        <div style="padding: 15px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 8px; color: white; text-align: center;">
+                            <div style="font-size: 24px; font-weight: bold;">${stats.total_operations || 0}</div>
+                            <div style="font-size: 12px; opacity: 0.9;">总操作数</div>
+                        </div>
+                        <div style="padding: 15px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); border-radius: 8px; color: white; text-align: center;">
+                            <div style="font-size: 24px; font-weight: bold;">${stats.recent_24h || 0}</div>
+                            <div style="font-size: 12px; opacity: 0.9;">24小时内</div>
+                        </div>
+                        <div style="padding: 15px; background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); border-radius: 8px; color: white; text-align: center;">
+                            <div style="font-size: 24px; font-weight: bold;">${stats.recent_7d || 0}</div>
+                            <div style="font-size: 12px; opacity: 0.9;">7天内</div>
+                        </div>
+                        <div style="padding: 15px; background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); border-radius: 8px; color: white; text-align: center;">
+                            <div style="font-size: 24px; font-weight: bold;">${(stats.by_status && stats.by_status.success) || 0}</div>
+                            <div style="font-size: 12px; opacity: 0.9;">成功操作</div>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('加载历史统计失败:', error);
+            }
+        }
+        
+        // 加载历史记录列表
+        let currentHistoryPage = 0;
+        const historyPageSize = 50;
+        
+        async function loadCloudHistory(page = 0) {
+            currentHistoryPage = page;
+            const listEl = document.getElementById('cloudHistoryList');
+            listEl.innerHTML = '<div style="text-align: center; padding: 40px; color: #999;">加载中...</div>';
+            
+            try {
+                const typeFilter = document.getElementById('historyTypeFilter').value;
+                const dateFrom = document.getElementById('historyDateFrom').value;
+                const dateTo = document.getElementById('historyDateTo').value;
+                
+                const response = await fetch('/api/cloud/history', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        limit: historyPageSize,
+                        offset: page * historyPageSize,
+                        operation_type: typeFilter || undefined,
+                        date_from: dateFrom || undefined,
+                        date_to: dateTo || undefined
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success && data.history) {
+                    const records = data.history;
+                    
+                    if (records.length === 0) {
+                        listEl.innerHTML = '<div style="text-align: center; padding: 40px; color: #999;">暂无记录</div>';
+                        return;
+                    }
+                    
+                    // 渲染历史记录
+                    let html = '<table style="width: 100%; border-collapse: collapse;">';
+                    html += '<thead style="background: #f0f0f0; position: sticky; top: 0;">';
+                    html += '<tr>';
+                    html += '<th style="padding: 10px; text-align: left; border-bottom: 2px solid #ddd;">时间</th>';
+                    html += '<th style="padding: 10px; text-align: left; border-bottom: 2px solid #ddd;">操作</th>';
+                    html += '<th style="padding: 10px; text-align: left; border-bottom: 2px solid #ddd;">文件名</th>';
+                    html += '<th style="padding: 10px; text-align: left; border-bottom: 2px solid #ddd;">状态</th>';
+                    html += '</tr>';
+                    html += '</thead>';
+                    html += '<tbody>';
+                    
+                    records.forEach(record => {
+                        const opIcon = {
+                            'rename': '✏️',
+                            'move': '📦',
+                            'delete': '🗑️',
+                            'scan': '🔍'
+                        }[record.operation_type] || '📄';
+                        
+                        const opName = {
+                            'rename': '重命名',
+                            'move': '移动',
+                            'delete': '删除',
+                            'scan': '扫描'
+                        }[record.operation_type] || record.operation_type;
+                        
+                        const statusColor = record.status === 'success' ? '#28a745' : '#dc3545';
+                        const statusText = record.status === 'success' ? '✓ 成功' : '✗ 失败';
+                        
+                        html += '<tr style="border-bottom: 1px solid #eee;">';
+                        html += `<td style="padding: 10px; font-size: 12px; color: #666;">${record.timestamp}</td>`;
+                        html += `<td style="padding: 10px;">${opIcon} ${opName}</td>`;
+                        html += `<td style="padding: 10px; font-size: 13px; max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${record.file_name}">${record.file_name}</td>`;
+                        html += `<td style="padding: 10px; color: ${statusColor}; font-weight: 500;">${statusText}</td>`;
+                        html += '</tr>';
+                        
+                        // 如果有新文件名，显示详情
+                        if (record.new_name) {
+                            html += '<tr style="border-bottom: 1px solid #eee; background: #f8f9fa;">';
+                            html += '<td colspan="4" style="padding: 5px 10px 10px 40px; font-size: 12px; color: #666;">';
+                            html += `→ ${record.new_name}`;
+                            html += '</td>';
+                            html += '</tr>';
+                        }
+                        
+                        // 如果有错误信息，显示
+                        if (record.error) {
+                            html += '<tr style="border-bottom: 1px solid #eee; background: #fff3cd;">';
+                            html += '<td colspan="4" style="padding: 5px 10px 10px 40px; font-size: 12px; color: #856404;">';
+                            html += `⚠️ ${record.error}`;
+                            html += '</td>';
+                            html += '</tr>';
+                        }
+                    });
+                    
+                    html += '</tbody>';
+                    html += '</table>';
+                    
+                    listEl.innerHTML = html;
+                    
+                    // 更新分页
+                    updateHistoryPagination(data.total, data.filtered);
+                } else {
+                    listEl.innerHTML = '<div style="text-align: center; padding: 40px; color: #dc3545;">加载失败</div>';
+                }
+            } catch (error) {
+                console.error('加载历史记录失败:', error);
+                listEl.innerHTML = '<div style="text-align: center; padding: 40px; color: #dc3545;">加载失败: ' + error.message + '</div>';
+            }
+        }
+        
+        // 更新分页按钮
+        function updateHistoryPagination(total, filtered) {
+            const paginationEl = document.getElementById('cloudHistoryPagination');
+            const totalPages = Math.ceil(filtered / historyPageSize);
+            
+            if (totalPages <= 1) {
+                paginationEl.innerHTML = '';
+                return;
+            }
+            
+            let html = '';
+            
+            // 上一页
+            if (currentHistoryPage > 0) {
+                html += `<button onclick="loadCloudHistory(${currentHistoryPage - 1})" style="padding: 8px 16px; background: #667eea; color: white; border: none; border-radius: 6px; cursor: pointer;">上一页</button>`;
+            }
+            
+            // 页码信息
+            html += `<span style="line-height: 36px; color: #666;">第 ${currentHistoryPage + 1} / ${totalPages} 页 (共 ${filtered} 条)</span>`;
+            
+            // 下一页
+            if (currentHistoryPage < totalPages - 1) {
+                html += `<button onclick="loadCloudHistory(${currentHistoryPage + 1})" style="padding: 8px 16px; background: #667eea; color: white; border: none; border-radius: 6px; cursor: pointer;">下一页</button>`;
+            }
+            
+            paginationEl.innerHTML = html;
+        }
+        
+        // 导出历史记录为CSV
+        async function exportCloudHistory() {
+            try {
+                const typeFilter = document.getElementById('historyTypeFilter').value;
+                const dateFrom = document.getElementById('historyDateFrom').value;
+                const dateTo = document.getElementById('historyDateTo').value;
+                
+                const response = await fetch('/api/cloud/history', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        limit: 10000,  // 导出所有记录
+                        offset: 0,
+                        operation_type: typeFilter || undefined,
+                        date_from: dateFrom || undefined,
+                        date_to: dateTo || undefined
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success && data.history) {
+                    // 生成CSV内容
+                    let csv = '时间,操作类型,文件名,新文件名,状态,错误信息\n';
+                    
+                    data.history.forEach(record => {
+                        const row = [
+                            record.timestamp,
+                            record.operation_type,
+                            `"${record.file_name.replace(/"/g, '""')}"`,
+                            record.new_name ? `"${record.new_name.replace(/"/g, '""')}"` : '',
+                            record.status,
+                            record.error ? `"${record.error.replace(/"/g, '""')}"` : ''
+                        ];
+                        csv += row.join(',') + '\n';
+                    });
+                    
+                    // 下载CSV文件
+                    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(blob);
+                    link.download = `115网盘操作历史_${new Date().toISOString().split('T')[0]}.csv`;
+                    link.click();
+                    
+                    alert('导出成功！');
+                } else {
+                    alert('导出失败');
+                }
+            } catch (error) {
+                console.error('导出历史记录失败:', error);
+                alert('导出失败: ' + error.message);
+            }
         }
         
         // 加载115网盘文件夹列表
@@ -2249,6 +2697,158 @@
             }
         }
         
+        // 加载设置到设置模块
+        async function loadSettingsToModule() {
+            try {
+                const response = await fetch('/api/get-settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
+                });
+                
+                const data = await response.json();
+                if (data.success && data.settings) {
+                    document.getElementById('tmdbApiKeySettings').value = data.settings.tmdb_api_key || '';
+                    document.getElementById('tmdbProxySettings').value = data.settings.tmdb_proxy || '';
+                    document.getElementById('tmdbProxyEnabledSettings').checked = !!data.settings.tmdb_proxy;
+                    document.getElementById('doubanCookieSettings').value = data.settings.douban_cookie || '';
+                    document.getElementById('updateProxySettings').value = data.settings.update_proxy || '';
+                    document.getElementById('updateProxyEnabledSettings').checked = data.settings.update_proxy_enabled || false;
+                    document.getElementById('autoRestartAfterUpdateSettings').checked = data.settings.auto_restart_after_update !== false;
+                    
+                    // 加载版本号
+                    loadVersionToSettings();
+                }
+            } catch (error) {
+                console.error('加载设置失败:', error);
+            }
+        }
+        
+        // 加载版本号到设置模块
+        async function loadVersionToSettings() {
+            try {
+                const response = await fetch('/api/get-version');
+                const data = await response.json();
+                if (data.version) {
+                    document.getElementById('currentVersionSettings').textContent = 'v' + data.version;
+                }
+            } catch (error) {
+                document.getElementById('currentVersionSettings').textContent = '获取失败';
+            }
+        }
+        
+        // 从设置模块保存设置
+        async function saveSettingsFromModule() {
+            const settings = {
+                tmdb_api_key: document.getElementById('tmdbApiKeySettings').value.trim(),
+                tmdb_proxy: document.getElementById('tmdbProxyEnabledSettings').checked ? document.getElementById('tmdbProxySettings').value.trim() : '',
+                tmdb_proxy_type: 'http',
+                douban_cookie: document.getElementById('doubanCookieSettings').value.trim(),
+                update_proxy: document.getElementById('updateProxySettings').value.trim(),
+                update_proxy_enabled: document.getElementById('updateProxyEnabledSettings').checked,
+                auto_restart_after_update: document.getElementById('autoRestartAfterUpdateSettings').checked
+            };
+            
+            try {
+                const response = await fetch('/api/save-settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ settings })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    showSuccessAlert('设置已保存！\n\n提示：某些设置可能需要重启服务才能生效。');
+                } else {
+                    showErrorAlert('保存失败', data.error || '未知错误');
+                }
+            } catch (error) {
+                showErrorAlert('保存失败', error.message);
+            }
+        }
+        
+        // 在设置模块中检查更新
+        async function checkForUpdatesInSettings() {
+            try {
+                const btn = event.target;
+                btn.disabled = true;
+                btn.textContent = '🔍 检查中...';
+                
+                const response = await fetch('/api/check-update', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
+                });
+                
+                const data = await response.json();
+                
+                if (data.has_update) {
+                    if (confirm(`发现新版本！\n\n当前版本: v${data.current_version}\n最新版本: v${data.latest_version}\n\n是否立即更新？`)) {
+                        await executeUpdateInSettings();
+                    }
+                } else {
+                    showSuccessAlert('已是最新版本！\n\n当前版本: v' + data.current_version);
+                }
+            } catch (error) {
+                showErrorAlert('检查更新失败', error.message);
+            } finally {
+                const btn = event.target;
+                btn.disabled = false;
+                btn.textContent = '🔍 检查更新';
+            }
+        }
+        
+        // 在设置模块中执行更新
+        async function executeUpdateInSettings() {
+            try {
+                const response = await fetch('/api/update', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showSuccessAlert('更新成功！\n\n系统将在 3 秒后自动重启...');
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 3000);
+                } else {
+                    showErrorAlert('更新失败', data.error || '未知错误');
+                }
+            } catch (error) {
+                showErrorAlert('更新失败', error.message);
+            }
+        }
+        
+        // 查看更新历史
+        async function viewUpdateHistory() {
+            try {
+                const response = await fetch('/api/update-history', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
+                });
+                
+                const data = await response.json();
+                
+                if (data.success && data.history) {
+                    let historyText = '📜 更新历史记录\n\n';
+                    data.history.forEach((record, index) => {
+                        historyText += `${index + 1}. ${record.timestamp}\n`;
+                        historyText += `   版本: ${record.old_version} → ${record.new_version}\n`;
+                        historyText += `   状态: ${record.status === 'success' ? '✅ 成功' : '❌ 失败'}\n\n`;
+                    });
+                    alert(historyText);
+                } else {
+                    alert('暂无更新历史记录');
+                }
+            } catch (error) {
+                showErrorAlert('获取更新历史失败', error.message);
+            }
+        }
+        
         async function saveSettings() {
             const settings = {
                 tmdb_api_key: document.getElementById('tmdbApiKey').value.trim(),
@@ -2370,29 +2970,103 @@
             });
         }
         
-        function addLogMessage(message) {
-            const logContainer = document.getElementById('realtimeLog');
+        function addLogMessage(message, type = 'info') {
+            const logContainer = document.getElementById('detailLog');
+            if (!logContainer) return;
+            
             const timestamp = new Date().toLocaleTimeString();
             const logMessage = document.createElement('div');
-            logMessage.className = 'log-message';
-            logMessage.textContent = `[${timestamp}] ${message}`;
+            logMessage.style.marginBottom = '8px';
+            logMessage.style.padding = '8px 12px';
+            logMessage.style.borderRadius = '4px';
+            logMessage.style.borderLeft = '3px solid';
+            
+            // 根据类型设置样式
+            if (type === 'step') {
+                logMessage.style.background = '#e3f2fd';
+                logMessage.style.borderLeftColor = '#2196f3';
+                logMessage.style.fontWeight = '600';
+                logMessage.style.color = '#1976d2';
+            } else if (type === 'rename') {
+                logMessage.style.background = '#fff3e0';
+                logMessage.style.borderLeftColor = '#ff9800';
+                logMessage.style.color = '#e65100';
+            } else if (type === 'move') {
+                logMessage.style.background = '#e8f5e9';
+                logMessage.style.borderLeftColor = '#4caf50';
+                logMessage.style.color = '#2e7d32';
+            } else if (type === 'error') {
+                logMessage.style.background = '#ffebee';
+                logMessage.style.borderLeftColor = '#f44336';
+                logMessage.style.color = '#c62828';
+            } else if (type === 'success') {
+                logMessage.style.background = '#e8f5e9';
+                logMessage.style.borderLeftColor = '#4caf50';
+                logMessage.style.color = '#2e7d32';
+                logMessage.style.fontWeight = '600';
+            } else {
+                logMessage.style.background = '#f5f5f5';
+                logMessage.style.borderLeftColor = '#9e9e9e';
+                logMessage.style.color = '#424242';
+            }
+            
+            logMessage.innerHTML = `<span style="color: #999; font-size: 11px;">[${timestamp}]</span> ${message}`;
             
             logContainer.appendChild(logMessage);
             logContainer.scrollTop = logContainer.scrollHeight;
             
-            // 限制日志条数
-            const messages = logContainer.querySelectorAll('.log-message');
-            if (messages.length > 50) {
-                messages[0].remove();
+            // 限制日志条数（最多500条）
+            const messages = logContainer.children;
+            if (messages.length > 500) {
+                logContainer.removeChild(messages[0]);
             }
+        }
+        
+        // 添加重命名日志（特殊格式）
+        function addRenameLog(oldName, newName) {
+            const message = `${oldName} <span style="color: #ff9800; font-weight: bold;">=========></span> ${newName}`;
+            addLogMessage(message, 'rename');
+        }
+        
+        // 添加移动日志
+        function addMoveLog(fileName, targetPath) {
+            const message = `📦 移动文件: ${fileName}<br><span style="margin-left: 20px; color: #666;">→ ${targetPath}</span>`;
+            addLogMessage(message, 'move');
         }
         
         function nextStep(stepName) {
             if (stepName) {
-                addLogMessage(`✓ ${stepName} 完成`);
+                addLogMessage(`✅ ${stepName} 完成`, 'success');
             }
             currentStepIndex++;
             updateProgressDisplay();
+        }
+        
+        // 更新当前步骤显示
+        function updateCurrentStepDisplay(stepName, detail = '') {
+            const currentStepEl = document.getElementById('currentStep');
+            if (!currentStepEl) return;
+            
+            const stepIcons = {
+                '智能扫描': '📂',
+                '中文标题识别': '🌐',
+                '智能去重': '🎯',
+                '标准化重命名': '📝',
+                '智能分类': '📁',
+                '自动移动': '🚚',
+                '冲突处理': '⚔️',
+                '自动清理': '🧹'
+            };
+            
+            const icon = stepIcons[stepName] || '⚡';
+            
+            currentStepEl.innerHTML = `
+                <div class="step-icon">${icon}</div>
+                <div class="step-info">
+                    <div class="step-title">${stepName}</div>
+                    <div class="step-detail">${detail || '处理中...'}</div>
+                </div>
+            `;
         }
         
         function completeProcessing() {
@@ -2636,12 +3310,23 @@
                 addLogMessage(`✓ 将处理 ${data.results.length} 个文件`);
                 
                 // 步骤3: 智能去重完成
+                updateCurrentStepDisplay('智能去重', `识别到 ${data.toDelete ? data.toDelete.length : 0} 个重复文件`);
+                addLogMessage(`🎯 智能去重完成，识别到 ${data.toDelete ? data.toDelete.length : 0} 个重复文件`, 'step');
+                if (data.toDelete && data.toDelete.length > 0) {
+                    data.toDelete.forEach(d => {
+                        addLogMessage(`🗑️ 标记删除: ${d.name} (${d.reason})`, 'info');
+                    });
+                }
                 nextStep('智能去重');
                 
-                // 步骤4: 标准化重命名 (在API内部完成)
+                // 步骤4: 标准化重命名
+                updateCurrentStepDisplay('标准化重命名', `准备重命名 ${data.results.length} 个文件`);
+                addLogMessage(`📝 标准化重命名完成，生成 ${data.results.length} 个新文件名`, 'step');
                 nextStep('标准化重命名');
                 
-                // 步骤5: 智能分类 (在API内部完成)
+                // 步骤5: 智能分类
+                updateCurrentStepDisplay('智能分类', '根据元数据确定分类目录');
+                addLogMessage(`📁 智能分类完成`, 'step');
                 nextStep('智能分类');
                 
                 // 显示预览
@@ -2708,6 +3393,11 @@
             renameLog = [];
 
             // 先删除低清晰度版本（逐个处理，避免网盘压力）
+            if (toDelete.length > 0) {
+                updateCurrentStepDisplay('智能去重', `正在删除 ${toDelete.length} 个重复文件`);
+                addLogMessage(`🗑️ 开始删除 ${toDelete.length} 个重复文件`, 'step');
+            }
+            
             for (let i = 0; i < toDelete.length; i++) {
                 const item = toDelete[i];
                 showStatus(`正在删除 (${i + 1}/${toDelete.length}): ${item.name}`, 'info');
@@ -2721,6 +3411,7 @@
 
                     if (response.ok) {
                         deleteSuccess++;
+                        addLogMessage(`🗑️ 删除重复文件: ${item.name}`, 'info');
                         renameLog.push({
                             type: 'delete',
                             name: item.name,
@@ -2728,6 +3419,7 @@
                         });
                     } else {
                         deleteFailed++;
+                        addLogMessage(`❌ 删除失败: ${item.name}`, 'error');
                         renameLog.push({
                             type: 'error',
                             name: item.name,
@@ -2736,6 +3428,7 @@
                     }
                 } catch (error) {
                     deleteFailed++;
+                    addLogMessage(`❌ 删除失败: ${item.name} - ${error.message}`, 'error');
                     renameLog.push({
                         type: 'error',
                         name: item.name,
@@ -2750,6 +3443,11 @@
             }
 
             // 再重命名保留的文件（逐个处理）
+            if (results.length > 0) {
+                updateCurrentStepDisplay('自动移动', `正在处理 ${results.length} 个文件`);
+                addLogMessage(`🚚 开始重命名和移动 ${results.length} 个文件`, 'step');
+            }
+            
             for (let i = 0; i < results.length; i++) {
                 const result = results[i];
                 const statusMsg = result.category ? 
@@ -2777,6 +3475,7 @@
                         if (responseData.skipped) {
                             // 文件被跳过，记录路径用于后续清理
                             skippedFiles.push(result.oldPath);
+                            addLogMessage(`⊘ 跳过文件: ${result.oldName} (${responseData.reason})`, 'info');
                             renameLog.push({
                                 type: 'skip',
                                 oldName: result.oldName,
@@ -2787,6 +3486,12 @@
                         } else {
                             // 成功处理
                             renameSuccess++;
+                            // 添加重命名日志
+                            addRenameLog(result.oldName, result.newName);
+                            // 添加移动日志
+                            if (result.category) {
+                                addMoveLog(result.newName, result.newPath);
+                            }
                             renameLog.push({
                                 type: 'rename',
                                 oldName: result.oldName,
@@ -2796,6 +3501,7 @@
                         }
                     } else {
                         renameFailed++;
+                        addLogMessage(`❌ 处理失败: ${result.oldName} - ${responseData.error || '未知错误'}`, 'error');
                         renameLog.push({
                             type: 'error',
                             name: result.oldName,
@@ -2804,6 +3510,7 @@
                     }
                 } catch (error) {
                     renameFailed++;
+                    addLogMessage(`❌ 处理失败: ${result.oldName} - ${error.message}`, 'error');
                     renameLog.push({
                         type: 'error',
                         name: result.oldName,
