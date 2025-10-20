@@ -67,7 +67,7 @@ if ENVIRONMENT == 'cloud':
 elif ENVIRONMENT == 'docker':
     # Docker 容器配置
     HOST = '0.0.0.0'
-    PORT = int(os.environ.get('PORT', 8000))
+    PORT = int(os.environ.get('PORT', 8090))  # 默认 8090，与本地部署保持一致
     DEBUG = False
     print(f"Docker 模式: 监听 {HOST}:{PORT}")
 else:
