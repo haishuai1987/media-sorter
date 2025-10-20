@@ -3819,7 +3819,16 @@
                 }
             } catch (error) {
                 showStatus('更新失败: ' + error.message, 'error');
-                alert('❌ 更新失败\n\n' + error.message + '\n\n请检查网络连接或在设置中配置代理。');
+                
+                // 智能提示：如果是本地修改冲突，提供强制更新选项
+                const errorMsg = error.message.toLowerCase();
+                if (errorMsg.includes('本地修改') || errorMsg.includes('conflict') || errorMsg.includes('uncommitted')) {
+                    if (confirm('❌ 更新失败\n\n' + error.message + '\n\n检测到本地文件冲突。是否使用强制更新？\n\n⚠️ 强制更新会覆盖所有本地修改！')) {
+                        await forceUpdate(useProxy, autoRestart);
+                    }
+                } else {
+                    alert('❌ 更新失败\n\n' + error.message + '\n\n请检查网络连接或在设置中配置代理。');
+                }
             }
         }
         
@@ -3876,7 +3885,52 @@
                 }
             } catch (error) {
                 showStatus('更新失败: ' + error.message, 'error');
-                alert('❌ 更新失败\n\n' + error.message + '\n\n请在设置中配置代理后重试。');
+                
+                // 智能提示：如果是本地修改冲突，提供强制更新选项
+                const errorMsg = error.message.toLowerCase();
+                if (errorMsg.includes('本地修改') || errorMsg.includes('conflict') || errorMsg.includes('uncommitted')) {
+                    if (confirm('❌ 更新失败\n\n' + error.message + '\n\n检测到本地文件冲突。是否使用强制更新？\n\n⚠️ 强制更新会覆盖所有本地修改！')) {
+                        await forceUpdate(false, true);
+                    }
+                } else {
+                    alert('❌ 更新失败\n\n' + error.message + '\n\n请在设置中配置代理后重试。');
+                }
+            }
+        }
+        
+        // 强制更新函数
+        async function forceUpdate(useProxy = false, autoRestart = true) {
+            showStatus('正在执行强制更新...', 'info');
+            
+            try {
+                const response = await fetch('/api/force-update', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        use_proxy: useProxy,
+                        auto_restart: autoRestart
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    if (data.updated) {
+                        showStatus('✅ ' + data.message, 'success');
+                        alert('✅ 强制更新成功！\n\n' + data.message + '\n\n页面将在5秒后自动刷新...');
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 5000);
+                    } else {
+                        showStatus(data.message, 'info');
+                        alert('ℹ️ ' + data.message);
+                    }
+                } else {
+                    throw new Error(data.error || '强制更新失败');
+                }
+            } catch (error) {
+                showStatus('强制更新失败: ' + error.message, 'error');
+                alert('❌ 强制更新失败\n\n' + error.message + '\n\n请联系管理员或手动更新。');
             }
         }
     </script>
