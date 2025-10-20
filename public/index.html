@@ -3433,6 +3433,11 @@
                 const language = document.getElementById('preferredLanguage') ? 
                     document.getElementById('preferredLanguage').value : 'zh';
                 
+                // 验证路径配置
+                if (!mediaLibraryPath && (!movieOutputPath || !tvOutputPath)) {
+                    throw new Error('请先配置媒体库路径！\n\n在"输出配置"区域填写媒体库根路径，例如：/vol02/1000-1-b23abde7/115');
+                }
+                
                 // 调用智能重命名API
                 const response = await fetch('/api/smart-rename', {
                     method: 'POST',
