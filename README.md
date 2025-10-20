@@ -85,7 +85,7 @@ chmod +x install.sh
 python3 app.py
 
 # 4. 访问应用
-# 浏览器打开: http://localhost:8000
+# 浏览器打开: http://localhost:8090
 ```
 
 ### Docker部署
@@ -98,7 +98,7 @@ nano docker-compose.yml
 docker-compose up -d
 
 # 3. 访问应用
-# http://localhost:8000
+# http://localhost:8090
 ```
 
 ### 云服务器部署 ☁️

@@ -8,7 +8,9 @@
 
 ## 基础信息
 
-**Base URL**: `http://localhost:8000`
+**Base URL**: 
+- 本地/NAS：`http://localhost:8090`
+- 云服务器：`http://localhost:8000` 或 `https://your-domain.com`
 
 **Content-Type**: `application/json`
 
@@ -637,7 +639,12 @@ print(data)
 ### cURL
 
 ```bash
-# 检测媒体库结构
+# 检测媒体库结构（本地/NAS）
+curl -X POST http://localhost:8090/api/detect-media-library \
+  -H "Content-Type: application/json" \
+  -d '{"path": "/path/to/media"}'
+
+# 云服务器
 curl -X POST http://localhost:8000/api/detect-media-library \
   -H "Content-Type: application/json" \
   -d '{"path": "/path/to/media"}'
