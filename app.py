@@ -2946,15 +2946,19 @@ class TMDBHelper:
         print(f"{'='*60}")
         
         # 策略1: 优先尝试豆瓣（多策略）
-        douban_result = DoubanHelper.search(title)
-        if douban_result and douban_result['title']:
-            chinese_title = douban_result['title']
-            douban_year = douban_result['year']
-            
-            if any('\u4e00' <= c <= '\u9fff' for c in chinese_title):
-                result = (chinese_title, year or douban_year)
-                TMDBHelper._cache[cache_key] = result
-                return result
+        if DOUBAN_COOKIE and len(DOUBAN_COOKIE.strip()) > 10:
+            print(f"[DEBUG] 豆瓣Cookie已配置，长度: {len(DOUBAN_COOKIE)}")
+            douban_result = DoubanHelper.search(title)
+            if douban_result and douban_result['title']:
+                chinese_title = douban_result['title']
+                douban_year = douban_result['year']
+                
+                if any('\u4e00' <= c <= '\u9fff' for c in chinese_title):
+                    result = (chinese_title, year or douban_year)
+                    TMDBHelper._cache[cache_key] = result
+                    return result
+        else:
+            print(f"[DEBUG] 豆瓣Cookie未配置或过短，跳过豆瓣查询")
         
         # 策略2: TMDB完整标题查询
         print(f"\nTMDB查询...")
