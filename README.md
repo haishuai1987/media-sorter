@@ -103,11 +103,38 @@ docker-compose up -d
 
 ### 云服务器部署 ☁️
 
+#### 方法 1：一键部署（推荐）🚀
+
 **推荐系统**：Ubuntu 22.04 LTS
 
 ```bash
+# 1. 下载部署脚本
+wget https://raw.githubusercontent.com/haishuai1987/media-sorter/main/deploy-cloud.sh
+
+# 2. 运行脚本
+chmod +x deploy-cloud.sh
+./deploy-cloud.sh
+
+# 3. 按提示输入信息
+# - 域名
+# - 是否配置 SSL
+# - 邮箱（如果配置 SSL）
+
+# 4. 等待自动部署完成
+
+# 5. 访问应用
+# https://your-domain.com
+```
+
+详见 [一键部署脚本使用说明](docs/一键部署脚本使用说明.md)
+
+---
+
+#### 方法 2：手动部署
+
+```bash
 # 1. 克隆项目
-git clone https://github.com/your-repo/media-renamer.git
+git clone https://github.com/haishuai1987/media-sorter.git
 cd media-renamer
 
 # 2. 设置环境变量（可选）
