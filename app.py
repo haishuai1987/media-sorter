@@ -3390,6 +3390,10 @@ class SecondaryClassificationDetector:
         Returns:
             str: 实际的目录名称，如果不存在则返回配置名称
         """
+        # 修复：处理None值
+        if not category_name:
+            category_name = '未分类'
+        
         # 精确匹配
         if category_name in self.existing_categories:
             actual_name = self.existing_categories[category_name]
@@ -4992,8 +4996,8 @@ class MediaHandler(SimpleHTTPRequestHandler):
                         metadata = self.parse_media_filename(filename, parent_folder)
                         new_full_path, new_relative_path = self.generate_output_path(
                             metadata, 
-                            movie_output_path=movie_output_path if not use_new_config else None,
-                            tv_output_path=tv_output_path if not use_new_config else None,
+                            movie_output_path=movie_output_path,  # 总是传递，作为备份
+                            tv_output_path=tv_output_path,  # 总是传递，作为备份
                             media_library_path=media_library_path if use_new_config else None,
                             language=language
                         )
@@ -5018,8 +5022,8 @@ class MediaHandler(SimpleHTTPRequestHandler):
                     metadata = self.parse_media_filename(filename, parent_folder)
                     new_full_path, new_relative_path = self.generate_output_path(
                         metadata,
-                        movie_output_path=movie_output_path if not use_new_config else None,
-                        tv_output_path=tv_output_path if not use_new_config else None,
+                        movie_output_path=movie_output_path,  # 总是传递，作为备份
+                        tv_output_path=tv_output_path,  # 总是传递，作为备份
                         media_library_path=media_library_path if use_new_config else None,
                         language=language
                     )
@@ -5044,8 +5048,8 @@ class MediaHandler(SimpleHTTPRequestHandler):
                 metadata = self.parse_media_filename(filename, parent_folder)
                 new_full_path, new_relative_path = self.generate_output_path(
                     metadata,
-                    movie_output_path=movie_output_path if not use_new_config else None,
-                    tv_output_path=tv_output_path if not use_new_config else None,
+                    movie_output_path=movie_output_path,  # 总是传递，作为备份
+                    tv_output_path=tv_output_path,  # 总是传递，作为备份
                     media_library_path=media_library_path if use_new_config else None,
                     language=language
                 )
