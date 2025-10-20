@@ -11,8 +11,71 @@ from urllib.parse import parse_qs
 import cgi
 import time
 from functools import wraps
+import socket
 
-PORT = 8090  # 避免与qBittorrent(8080)冲突
+# 自动检测部署环境
+def detect_environment():
+    """检测部署环境：local（本地）、cloud（云服务器）、docker（容器）"""
+    try:
+        # 检查环境变量
+        deploy_env = os.environ.get('DEPLOY_ENV', '').lower()
+        if deploy_env in ['cloud', 'local', 'docker']:
+            return deploy_env
+        
+        # 检查是否在 Docker 容器中
+        if os.path.exists('/.dockerenv') or os.path.exists('/run/.containerenv'):
+            return 'docker'
+        
+        # 检查云服务器标识
+        cloud_indicators = [
+            '/etc/cloud',  # Cloud-init
+            '/var/lib/cloud',
+        ]
+        if any(os.path.exists(path) for path in cloud_indicators):
+            return 'cloud'
+        
+        # 检查 IP 地址
+        hostname = socket.gethostname()
+        try:
+            local_ip = socket.gethostbyname(hostname)
+            # 私有 IP 地址范围
+            if local_ip.startswith(('192.168.', '10.', '172.16.', '172.17.', '172.18.', 
+                                   '172.19.', '172.20.', '172.21.', '172.22.', '172.23.',
+                                   '172.24.', '172.25.', '172.26.', '172.27.', '172.28.',
+                                   '172.29.', '172.30.', '172.31.', '127.')):
+                return 'local'
+        except:
+            pass
+        
+        # 默认返回 local
+        return 'local'
+    except Exception as e:
+        print(f"环境检测失败: {e}")
+        return 'local'
+
+# 检测环境
+ENVIRONMENT = detect_environment()
+print(f"检测到部署环境: {ENVIRONMENT}")
+
+# 根据环境自动配置
+if ENVIRONMENT == 'cloud':
+    # 云服务器配置
+    HOST = '0.0.0.0'  # 监听所有接口
+    PORT = int(os.environ.get('PORT', 8000))  # 默认 8000，可通过环境变量修改
+    DEBUG = False
+    print(f"云服务器模式: 监听 {HOST}:{PORT}")
+elif ENVIRONMENT == 'docker':
+    # Docker 容器配置
+    HOST = '0.0.0.0'
+    PORT = int(os.environ.get('PORT', 8000))
+    DEBUG = False
+    print(f"Docker 模式: 监听 {HOST}:{PORT}")
+else:
+    # 本地配置
+    HOST = os.environ.get('HOST', '0.0.0.0')  # 默认监听所有接口，方便局域网访问
+    PORT = int(os.environ.get('PORT', 8090))  # 避免与qBittorrent(8080)冲突
+    DEBUG = True
+    print(f"本地模式: 监听 {HOST}:{PORT}")
 
 # Linux/NAS优化配置
 NETWORK_RETRY_COUNT = 3  # 网络操作重试次数
@@ -6001,17 +6064,47 @@ if __name__ == '__main__':
     print('=' * 50)
     print(f'🎬 媒体库文件管理器 {current_version}')
     print('=' * 50)
-    print(f'服务器运行在: http://localhost:{PORT}')
-    print(f'局域网访问: http://你的NAS_IP:{PORT}')
-    print('扫描路径: /vol02/1000-1-b23abde7/待整理')
+    print(f'部署环境: {ENVIRONMENT.upper()}')
+    print(f'监听地址: {HOST}:{PORT}')
+    
+    if ENVIRONMENT == 'cloud':
+        print(f'访问地址: http://your-domain.com (通过 Nginx 反向代理)')
+        print(f'或直接访问: http://your-server-ip:{PORT}')
+    elif ENVIRONMENT == 'docker':
+        print(f'访问地址: http://localhost:{PORT}')
+        print(f'或: http://host-ip:{PORT}')
+    else:
+        print(f'本地访问: http://localhost:{PORT}')
+        print(f'局域网访问: http://你的IP:{PORT}')
+    
     print('')
     print('🌐 中文标题识别: 已启用')
     print('   优先级: 豆瓣 > TMDB')
-    print(f'   豆瓣: 已配置Cookie（不使用代理）')
-    print(f'   TMDB: API Key {TMDB_API_KEY[:10]}...（代理: {TMDB_PROXY}）')
-    print('   功能: 英文标题自动转中文')
+    
+    # 检查配置
+    config = load_config()
+    if config.get('douban_cookie'):
+        print(f'   豆瓣: 已配置Cookie')
+    else:
+        print(f'   豆瓣: 未配置（请在设置中配置）')
+    
+    if config.get('tmdb_api_key'):
+        api_key = config['tmdb_api_key']
+        print(f'   TMDB: API Key {api_key[:10]}...')
+        if config.get('tmdb_proxy'):
+            print(f'   代理: {config["tmdb_proxy"]}')
+    else:
+        print(f'   TMDB: 未配置（请在设置中配置）')
+    
     print('')
     print('按 Ctrl+C 停止服务器')
     print('=' * 50)
-    server = HTTPServer(('0.0.0.0', PORT), MediaHandler)
-    server.serve_forever()
+    
+    try:
+        server = HTTPServer((HOST, PORT), MediaHandler)
+        server.serve_forever()
+    except KeyboardInterrupt:
+        print('\n服务器已停止')
+    except Exception as e:
+        print(f'\n启动失败: {e}')
+        print(f'请检查端口 {PORT} 是否被占用')

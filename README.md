@@ -101,6 +101,38 @@ docker-compose up -d
 # http://localhost:8000
 ```
 
+### 云服务器部署 ☁️
+
+**推荐系统**：Ubuntu 22.04 LTS
+
+```bash
+# 1. 克隆项目
+git clone https://github.com/your-repo/media-renamer.git
+cd media-renamer
+
+# 2. 设置环境变量（可选）
+cp .env.example .env
+nano .env
+
+# 3. 配置 Nginx 反向代理
+sudo apt install nginx
+# 配置文件见文档
+
+# 4. 配置 SSL（可选）
+sudo apt install certbot python3-certbot-nginx
+sudo certbot --nginx -d your-domain.com
+
+# 5. 创建 Systemd 服务
+sudo nano /etc/systemd/system/media-renamer.service
+sudo systemctl enable media-renamer
+sudo systemctl start media-renamer
+
+# 6. 访问应用
+# https://your-domain.com
+```
+
+详见 [云服务器部署指南](docs/云服务器部署指南.md)
+
 ---
 
 ## 📖 使用流程
