@@ -3054,11 +3054,14 @@ class TMDBHelper:
             # 如果TMDB返回的还是英文，尝试豆瓣
             if not any('\u4e00' <= c <= '\u9fff' for c in chinese_title):
                 print(f"  TMDB返回英文，尝试豆瓣...")
-                douban_result = DoubanHelper.search(title)
-                if douban_result and douban_result['title']:
-                    if any('\u4e00' <= c <= '\u9fff' for c in douban_result['title']):
-                        chinese_title = douban_result['title']
-                        print(f"✓ 豆瓣找到: {chinese_title}")
+                if DOUBAN_COOKIE and len(DOUBAN_COOKIE.strip()) > 10:
+                    douban_result = DoubanHelper.search(title)
+                    if douban_result and douban_result['title']:
+                        if any('\u4e00' <= c <= '\u9fff' for c in douban_result['title']):
+                            chinese_title = douban_result['title']
+                            print(f"✓ 豆瓣找到: {chinese_title}")
+                else:
+                    print(f"  豆瓣Cookie未配置，跳过")
             
             # 进行分类
             category = TMDBHelper.classify_media(result, is_tv)
@@ -3073,8 +3076,29 @@ class TMDBHelper:
                 'metadata': result
             }
         
+        # TMDB完全失败，尝试豆瓣作为备选
+        print(f"  TMDB查询失败，尝试豆瓣...")
+        if DOUBAN_COOKIE and len(DOUBAN_COOKIE.strip()) > 10:
+            douban_result = DoubanHelper.search(title)
+            if douban_result and douban_result['title']:
+                if any('\u4e00' <= c <= '\u9fff' for c in douban_result['title']):
+                    chinese_title = douban_result['title']
+                    douban_year = douban_result.get('year', year)
+                    print(f"✓ 豆瓣找到: {chinese_title} ({douban_year})")
+                    
+                    # 豆瓣成功，使用默认分类
+                    default_category = '未分类' if is_tv else '外语电影'
+                    return {
+                        'title': chinese_title,
+                        'year': douban_year,
+                        'category': default_category,
+                        'metadata': {'source': 'douban'}
+                    }
+        else:
+            print(f"  豆瓣Cookie未配置，跳过")
+        
         # 所有查询失败
-        print(f"✗ 查询失败，保留原标题")
+        print(f"✗ 所有查询失败，保留原标题")
         return {
             'title': title,
             'year': year,
