@@ -1,48 +1,1148 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>媒体和字幕文件管理器</title>
-    <link rel="stylesheet" href="/style.css">
-</head>
+    <title>媒体库文件管理器</title>
+    <!-- Favicon - SVG格式 -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='bg' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' style='stop-color:%23667eea'/%3E%3Cstop offset='100%25' style='stop-color:%23764ba2'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='32' height='32' rx='6' fill='url(%23bg)'/%3E%3Cpath d='M 6 10 L 6 22 Q 6 23 7 23 L 25 23 Q 26 23 26 22 L 26 10 Z' fill='%23ffd700' opacity='0.9'/%3E%3Cpath d='M 6 10 L 10 8 L 16 8 L 18 10 Z' fill='%23ffd700'/%3E%3Crect x='10' y='13' width='12' height='6' rx='1' fill='%23ffffff' opacity='0.9'/%3E%3Crect x='11' y='14' width='2' height='1' fill='%23667eea' opacity='0.5'/%3E%3Crect x='14' y='14' width='2' height='1' fill='%23764ba2' opacity='0.5'/%3E%3Crect x='17' y='14' width='2' height='1' fill='%23667eea' opacity='0.5'/%3E%3Ccircle cx='24' cy='10' r='3' fill='%23ffd700'/%3E%3Cpath d='M 24 8 L 24.5 9.5 L 26 10 L 24.5 10.5 L 24 12 L 23.5 10.5 L 22 10 L 23.5 9.5 Z' fill='%23ffffff'/%3E%3C/svg%3E">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .scan-section {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        #folderPath {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        #folderPath:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        #folderPath::placeholder {
+            color: #999;
+        }
+
+        button {
+            padding: 12px 24px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background: #5568d3;
+        }
+
+        .status {
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .status.info {
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+
+        .status.success {
+            background: #e8f5e9;
+            color: #388e3c;
+        }
+
+        .status.error {
+            background: #ffebee;
+            color: #d32f2f;
+        }
+
+        .filter-section {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .filter-btn {
+            padding: 8px 16px;
+            background: #f5f5f5;
+            color: #666;
+            font-size: 13px;
+        }
+
+        .filter-btn.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .file-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .file-item {
+            display: flex;
+            align-items: center;
+            padding: 16px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .file-item:hover {
+            transform: translateX(4px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .file-item.subtitle {
+            border-left-color: #ff9800;
+        }
+
+        .file-icon {
+            font-size: 32px;
+            margin-right: 16px;
+        }
+
+        .file-info {
+            flex: 1;
+        }
+
+        .file-name {
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 4px;
+            word-break: break-all;
+        }
+
+        .file-meta {
+            font-size: 12px;
+            color: #999;
+        }
+
+        .rename-btn {
+            padding: 8px 16px;
+            background: #4caf50;
+            font-size: 13px;
+        }
+
+        .rename-btn:hover {
+            background: #45a049;
+        }
+
+        .no-files {
+            text-align: center;
+            color: #999;
+            padding: 40px;
+        }
+
+        .file-item.unsupported {
+            border-left-color: #f44336;
+            opacity: 0.7;
+        }
+
+        .delete-btn {
+            padding: 8px 16px;
+            background: #f44336;
+            font-size: 13px;
+            margin-left: 8px;
+        }
+
+        .delete-btn:hover {
+            background: #d32f2f;
+        }
+
+        .info-box {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 12px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+            font-size: 13px;
+            color: #856404;
+        }
+
+        .folder-browser-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .folder-browser-overlay.show {
+            display: flex;
+        }
+
+        .folder-browser {
+            background: white;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .folder-browser-header {
+            padding: 20px;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .folder-browser-header h3 {
+            margin: 0;
+            color: #333;
+        }
+
+        .folder-browser-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #999;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+        }
+
+        .folder-browser-close:hover {
+            color: #333;
+        }
+
+        .folder-browser-path {
+            padding: 15px 20px;
+            background: #f5f5f5;
+            border-bottom: 1px solid #e0e0e0;
+            font-family: monospace;
+            font-size: 13px;
+            color: #666;
+            word-break: break-all;
+        }
+
+        .folder-browser-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+
+        .folder-item {
+            padding: 12px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: background 0.2s;
+        }
+
+        .folder-item:hover {
+            background: #f0f4ff;
+        }
+
+        .folder-item-icon {
+            font-size: 20px;
+        }
+
+        .folder-item-name {
+            flex: 1;
+            color: #333;
+        }
+
+        .folder-browser-footer {
+            padding: 15px 20px;
+            border-top: 1px solid #e0e0e0;
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .folder-browser-footer button {
+            padding: 10px 20px;
+        }
+        
+        /* 进度弹窗样式 */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(5px);
+        }
+        
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: modalSlideIn 0.3s ease-out;
+        }
+        
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-50px) scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 25px;
+            border-bottom: 2px solid #f0f0f0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 12px 12px 0 0;
+        }
+        
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            color: white;
+            cursor: pointer;
+            padding: 5px 10px;
+            border-radius: 50%;
+            transition: background 0.2s;
+        }
+        
+        .close-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .modal-body {
+            padding: 25px;
+        }
+        
+        .progress-section {
+            margin-bottom: 25px;
+        }
+        
+        .progress-section h3 {
+            margin: 0 0 15px 0;
+            color: #333;
+            font-size: 16px;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #f0f0f0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            width: 0%;
+            transition: width 0.5s ease;
+            border-radius: 10px;
+        }
+        
+        .progress-text {
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .current-step {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .step-icon {
+            font-size: 24px;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        
+        .step-info {
+            flex: 1;
+        }
+        
+        .step-title {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        
+        .step-detail {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .detail-progress {
+            display: grid;
+            gap: 8px;
+        }
+        
+        .progress-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 15px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            transition: all 0.3s;
+        }
+        
+        .progress-item.active {
+            background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
+            border-left: 3px solid #667eea;
+        }
+        
+        .progress-item.completed {
+            background: linear-gradient(135deg, #28a74515 0%, #20c99715 100%);
+            border-left: 3px solid #28a745;
+        }
+        
+        .progress-icon {
+            font-size: 16px;
+            width: 20px;
+            text-align: center;
+        }
+        
+        .progress-label {
+            flex: 1;
+            font-weight: 500;
+            color: #333;
+        }
+        
+        .progress-status {
+            font-size: 12px;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-weight: 500;
+        }
+        
+        .progress-status.waiting {
+            background: #f8f9fa;
+            color: #6c757d;
+        }
+        
+        .progress-status.active {
+            background: #667eea;
+            color: white;
+            animation: blink 1.5s infinite;
+        }
+        
+        .progress-status.completed {
+            background: #28a745;
+            color: white;
+        }
+        
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        .realtime-log {
+            background: #1e1e1e;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            max-height: 200px;
+            overflow-y: auto;
+            line-height: 1.4;
+        }
+        
+        .log-message {
+            margin-bottom: 5px;
+        }
+        
+        .log-message:last-child {
+            margin-bottom: 0;
+        }
+        
+        /* 按钮悬停效果 */
+        button:hover {
+            transform: translateY(-2px);
+        }
+        
+        /* 设置弹窗样式 */
+        .settings-section {
+            margin-bottom: 25px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        
+        .settings-section h3 {
+            margin: 0 0 15px 0;
+            color: #333;
+            font-size: 16px;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group:last-child {
+            margin-bottom: 0;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+            font-weight: 500;
+            font-size: 14px;
+        }
+        
+        .form-group input[type="text"],
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: inherit;
+            transition: border-color 0.3s;
+        }
+        
+        .form-group input[type="text"]:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .form-group textarea {
+            resize: vertical;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+        
+        .form-group small {
+            display: block;
+            margin-top: 5px;
+            color: #666;
+            font-size: 12px;
+        }
+        
+        .form-group small a {
+            color: #667eea;
+            text-decoration: none;
+        }
+        
+        .form-group small a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
 <body>
     <div class="container">
-        <h1>📁 媒体和字幕文件管理器</h1>
-
-        <!-- 115网盘登录区域 -->
-        <div class="login-section">
-            <button onclick="showQRCodeModal()" class="login-btn">🔐 115网盘扫码登录</button>
+        <h1 style="display: flex; align-items: center; justify-content: center; gap: 15px;">
+            <img src="/logo.svg" alt="Logo" style="width: 50px; height: 50px;">
+            <span>媒体库文件管理器 <span id="headerVersion">V1.0.1</span></span>
+        </h1>
+        
+        <!-- 模块切换选项卡 -->
+        <div style="margin-bottom: 30px; display: flex; justify-content: center; gap: 10px;">
+            <button id="localModuleTab" onclick="switchModule('local')" style="flex: 1; max-width: 250px; padding: 15px 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 10px; cursor: pointer; font-size: 16px; font-weight: 600; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4); transition: all 0.3s;">
+                💻 本地整理
+            </button>
+            <button id="cloudModuleTab" onclick="switchModule('cloud')" style="flex: 1; max-width: 250px; padding: 15px 30px; background: #e9ecef; color: #6c757d; border: 2px solid #dee2e6; border-radius: 10px; cursor: pointer; font-size: 16px; font-weight: 600; transition: all 0.3s;">
+                ☁️ 115网盘整理
+            </button>
+        </div>
+        
+        <!-- 本地整理模块 -->
+        <div id="localModule" style="display: block;">
+        <div style="margin-bottom: 20px;">
+            <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #333;">
+                📂 扫描路径：
+            </label>
+            <div style="display: flex; gap: 10px;">
+                <input type="text" id="folderPath" placeholder="输入文件夹路径，例如：/vol02/1000-1-b23abde7/待整理" 
+                       style="flex: 1; padding: 12px 16px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px;">
+                <button onclick="openFolderBrowser('scan')" style="padding: 12px 20px; background: #667eea;">
+                    📁 浏览
+                </button>
+            </div>
         </div>
 
-        <div class="scan-section">
-            <input type="text" id="folderPath" placeholder="输入文件夹路径，例如：/media/videos" />
-            <button onclick="scanFolder()">扫描文件夹</button>
+        <div style="margin-bottom: 20px;">
+            <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #333;">
+                🎬 电影输出路径：
+            </label>
+            <div style="display: flex; gap: 10px;">
+                <input type="text" id="movieOutputPath" placeholder="输入电影输出路径，例如：/vol02/1000-1-b23abde7/电影" 
+                       style="flex: 1; padding: 12px 16px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px;">
+                <button onclick="openFolderBrowser('movie')" style="padding: 12px 20px; background: #667eea;">
+                    📁 浏览
+                </button>
+            </div>
         </div>
+
+        <div style="margin-bottom: 20px;">
+            <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #333;">
+                📺 电视剧输出路径：
+            </label>
+            <div style="display: flex; gap: 10px;">
+                <input type="text" id="tvOutputPath" placeholder="输入电视剧输出路径，例如：/vol02/1000-1-b23abde7/电视剧" 
+                       style="flex: 1; padding: 12px 16px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px;">
+                <button onclick="openFolderBrowser('tv')" style="padding: 12px 20px; background: #667eea;">
+                    📁 浏览
+                </button>
+            </div>
+        </div>
+
+        <div style="margin-bottom: 20px; padding: 20px; background: #f8f9fa; border-radius: 12px; border: 2px solid #e9ecef;">
+            <div style="display: flex; align-items: center; margin-bottom: 12px;">
+                <span style="font-size: 20px; margin-right: 8px;">⚙️</span>
+                <label style="font-weight: 600; color: #333; font-size: 16px;">
+                    文件冲突处理策略
+                </label>
+            </div>
+            
+            <select id="conflictStrategy" style="width: 100%; padding: 12px 16px; border: 2px solid #dee2e6; border-radius: 8px; font-size: 15px; background: white; cursor: pointer; transition: border-color 0.3s;">
+                <option value="auto">🤖 自动比较（推荐）- 智能评分，保留最佳质量</option>
+                <option value="skip">⏭️ 跳过 - 保留旧文件，不处理新文件</option>
+                <option value="replace">🔄 替换 - 直接用新文件替换旧文件</option>
+                <option value="keep_both">📦 保留两个 - 新文件添加版本号后缀</option>
+            </select>
+            
+            <div style="margin-top: 12px; padding: 12px; background: white; border-radius: 6px; border-left: 4px solid #667eea;">
+                <div style="font-weight: 600; color: #667eea; margin-bottom: 8px;">📊 策略说明：</div>
+                <div style="font-size: 13px; color: #495057; line-height: 1.8;">
+                    <strong>🤖 自动比较</strong>：综合评分系统<br>
+                    <span style="margin-left: 20px;">• 分辨率：4K(2160分) > 1080p(1080分) > 720p(720分)</span><br>
+                    <span style="margin-left: 20px;">• 来源：REMUX(100分) > BluRay(80分) > WEB-DL(60分) > WEBRip(40分)</span><br>
+                    <span style="margin-left: 20px;">• 编码：H.265/HEVC(+10分) > H.264(0分)</span><br>
+                    <span style="margin-left: 20px;">• 大小：评分相同时，文件越大越好（差异<1MB视为相同）</span><br>
+                    <span style="margin-left: 20px; color: #28a745;">✓ 适合：日常使用，自动保留最佳版本</span><br><br>
+                    
+                    <strong>⏭️ 跳过</strong>：保守策略<br>
+                    <span style="margin-left: 20px;">• 保留目标目录中的旧文件</span><br>
+                    <span style="margin-left: 20px;">• 不处理待整理目录中的新文件</span><br>
+                    <span style="margin-left: 20px; color: #28a745;">✓ 适合：增量更新，只添加新集数</span><br><br>
+                    
+                    <strong>🔄 替换</strong>：激进策略<br>
+                    <span style="margin-left: 20px;">• 直接用新文件替换旧文件</span><br>
+                    <span style="margin-left: 20px;">• 不进行质量比较</span><br>
+                    <span style="margin-left: 20px; color: #28a745;">✓ 适合：重新下载更好的版本</span><br><br>
+                    
+                    <strong>📦 保留两个</strong>：收藏策略<br>
+                    <span style="margin-left: 20px;">• 保留旧文件</span><br>
+                    <span style="margin-left: 20px;">• 新文件添加版本号（.v1, .v2...）</span><br>
+                    <span style="margin-left: 20px; color: #28a745;">✓ 适合：多版本对比，不同字幕组</span>
+                </div>
+            </div>
+        </div>
+
+        <div style="text-align: center; margin-bottom: 20px; display: flex; gap: 15px; justify-content: center; align-items: center;">
+            <button onclick="startAutoRename()" style="font-size: 16px; padding: 14px 36px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4); border: none; border-radius: 8px; color: white; cursor: pointer; transition: transform 0.2s; font-weight: 500;">
+                🚀 一键整理入库
+            </button>
+            <button onclick="showProgressModal()" style="font-size: 16px; padding: 14px 36px; background: linear-gradient(135deg, #28a745 0%, #20c997 100%); box-shadow: 0 4px 15px rgba(40, 167, 69, 0.4); border: none; border-radius: 8px; color: white; cursor: pointer; transition: transform 0.2s; font-weight: 500;">
+                📊 整理详情
+            </button>
+            <button onclick="showSettingsModal()" style="font-size: 16px; padding: 14px 36px; background: linear-gradient(135deg, #ff9800 0%, #ff5722 100%); box-shadow: 0 4px 15px rgba(255, 152, 0, 0.4); border: none; border-radius: 8px; color: white; cursor: pointer; transition: transform 0.2s; font-weight: 500;">
+                ⚙️ 设置
+            </button>
+            <button onclick="checkUpdate()" style="font-size: 16px; padding: 14px 36px; background: linear-gradient(135deg, #6c757d 0%, #495057 100%); box-shadow: 0 4px 15px rgba(108, 117, 125, 0.4); border: none; border-radius: 8px; color: white; cursor: pointer; transition: transform 0.2s; font-weight: 500;">
+                🔄 更新
+            </button>
+        </div>
+
+        <!-- 功能说明（可折叠） -->
+        <div style="margin-bottom: 20px;">
+            <div onclick="toggleFunctionInfo()" style="cursor: pointer; padding: 15px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 8px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);">
+                <div style="display: flex; align-items: center;">
+                    <span style="font-size: 20px; margin-right: 10px; color: white;">📖</span>
+                    <strong style="font-size: 16px; color: white;">功能说明 - 完整处理流程</strong>
+                </div>
+                <span id="functionInfoToggle" style="color: white; font-size: 20px;">▼</span>
+            </div>
+            
+            <div id="functionInfoContent" class="info-box" style="display: none; margin-top: 10px; padding: 20px; border: 2px solid #667eea; border-radius: 8px;">
+                <div style="background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%); padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                    <strong style="color: #667eea;">📂 步骤1：智能扫描</strong><br>
+                    • 递归扫描待整理目录的所有子文件夹<br>
+                    • 自动识别媒体文件（视频）和字幕文件<br>
+                    • 自动删除不支持的文件格式（如txt、jpg等）<br>
+                    • 支持格式：mp4, mkv, ts, iso, rmvb, avi, mov, mpeg, mpg, wmv, 3gp, asf, m4v, flv, m2ts, tp, f4v, srt, ssa, ass
+                </div>
+
+                <div style="background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%); padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                    <strong style="color: #667eea;">🌐 步骤2：中文标题识别</strong><br>
+                    • <strong>豆瓣优先</strong>：完整标题查询 → 清理标题 → 渐进缩短 → 关键词查询<br>
+                    • <strong>TMDB备用</strong>：完整标题查询 → 不带年份 → 渐进缩短<br>
+                    • <strong>智能缓存</strong>：相同标题不重复查询，提高效率<br>
+                    • <strong>支持超长标题</strong>：如 "Apocalypse Bringer Mynoghra World Conquest..." → "异世界默示录麦诺格拉"<br>
+                    • <strong>获取元数据</strong>：同时获取genre_ids、origin_country、original_language用于后续分类
+                </div>
+
+                <div style="background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%); padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                    <strong style="color: #667eea;">🎯 步骤3：智能去重</strong><br>
+                    • <strong>识别重复</strong>：相同标题+年份+季集 = 同一影片<br>
+                    • <strong>质量评分</strong>：分辨率(4K=2160分) + 来源(REMUX=100分) + 编码(H.265=+10分) + 文件大小<br>
+                    • <strong>自动保留</strong>：保留评分最高的版本<br>
+                    • <strong>自动删除</strong>：删除低质量版本，释放空间<br>
+                    • <strong>减少处理量</strong>：去重后只处理保留的文件，提高效率
+                </div>
+
+                <div style="background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%); padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                    <strong style="color: #667eea;">📝 步骤4：标准化重命名</strong><br>
+                    • <strong>电影格式</strong>：标题 (年份)/标题 (年份) - 分辨率.语言.扩展名<br>
+                      <small style="color: #666;">示例：铃芽之旅 (2022)/铃芽之旅 (2022) - 1080p.chs.mkv</small><br>
+                    • <strong>电视剧格式</strong>：标题 (年份)/Season X/标题 - S0XE0X - 第 X 集.语言.扩展名<br>
+                      <small style="color: #666;">示例：异世界默示录麦诺格拉 (2025)/Season 1/异世界默示录麦诺格拉 - S01E01 - 第 01 集.mkv</small><br>
+                    • <strong>符合规范</strong>：完美兼容Emby、Jellyfin、Plex等媒体服务器<br>
+                    • <strong>生成路径</strong>：根据模板生成标准化的文件名和目录结构
+                </div>
+
+                <div style="background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%); padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                    <strong style="color: #667eea;">📁 步骤5：智能分类</strong><br>
+                    • <strong>基于TMDB元数据</strong>：genre_ids（类型）+ origin_country（国家）+ original_language（语言）<br>
+                    • <strong>电影分类</strong>：动画电影、华语电影、外语电影<br>
+                    • <strong>电视剧分类</strong>：国漫、日番、纪录片、儿童、综艺、国产剧、欧美剧、日韩剧、未分类<br>
+                    • <strong>确定目标</strong>：根据分类确定最终的输出目录路径
+                </div>
+
+                <div style="background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%); padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                    <strong style="color: #667eea;">🚚 步骤6：自动移动</strong><br>
+                    • <strong>电影</strong>：移动到 电影输出路径/分类目录/标题文件夹/<br>
+                    • <strong>电视剧</strong>：移动到 电视剧输出路径/分类目录/标题文件夹/Season X/<br>
+                    • <strong>自动创建</strong>：目标目录结构自动创建<br>
+                    • <strong>网盘优化</strong>：操作间隔和延迟验证，确保网盘同步成功<br>
+                    • <strong>触发冲突检测</strong>：移动时检查目标位置是否已有同名文件
+                </div>
+
+                <div style="background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%); padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                    <strong style="color: #667eea;">⚔️ 步骤7：冲突处理</strong><br>
+                    • <strong>自动比较</strong>：智能评分，保留最佳质量（评分相同且大小差异<1MB视为相同文件）<br>
+                    • <strong>跳过</strong>：保留旧文件，不处理新文件（适合增量更新）<br>
+                    • <strong>替换</strong>：直接用新文件替换旧文件（适合重新下载）<br>
+                    • <strong>保留两个</strong>：新文件添加版本号.v1（适合多版本对比）<br>
+                    • <strong>实时决策</strong>：在移动过程中遇到冲突时立即处理
+                </div>
+
+                <div style="background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%); padding: 15px; border-radius: 8px;">
+                    <strong style="color: #667eea;">🧹 步骤8：自动清理</strong><br>
+                    • <strong>清理跳过的文件</strong>：删除因质量相同或较差而跳过的文件<br>
+                    • <strong>清理空文件夹</strong>：递归删除所有空文件夹（从底层向上）<br>
+                    • <strong>释放空间</strong>：最大化释放磁盘空间<br>
+                    • <strong>保持整洁</strong>：待整理目录处理完成后自动清空
+                </div>
+
+                <div style="margin-top: 15px; padding: 12px; background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px;">
+                    <strong style="color: #856404;">💡 使用提示</strong><br>
+                    <small style="color: #856404;">
+                    • <strong>首次使用</strong>：点击"设置"配置API密钥 → 配置三个路径 → 选择"自动比较"策略 → 点击"一键整理入库"<br>
+                    • <strong>日常使用</strong>：新文件放入待整理目录 → 点击按钮 → 自动完成所有操作<br>
+                    • <strong>增量更新</strong>：使用"跳过"策略，只处理新增文件，不影响已整理的库<br>
+                    • <strong>网盘用户</strong>：处理过程较慢属正常现象，系统已针对网盘优化<br>
+                    • <strong>分享给朋友</strong>：每个用户需要在"设置"中配置自己的TMDB API Key和豆瓣Cookie
+                    </small>
+                </div>
+            </div>
+        </div>
+        </div>
+        <!-- 本地整理模块结束 -->
+        
+        <!-- 115网盘整理模块 -->
+        <div id="cloudModule" style="display: none;">
+            <div style="margin-bottom: 20px; padding: 20px; background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%); border-radius: 12px; border: 2px solid #667eea;">
+                <div style="display: flex; align-items: center; margin-bottom: 15px;">
+                    <span style="font-size: 24px; margin-right: 10px;">☁️</span>
+                    <h3 style="margin: 0; color: #667eea;">115网盘云端整理</h3>
+                </div>
+                <p style="margin: 0; color: #666; line-height: 1.6;">
+                    纯云端操作，无需下载文件到本地。通过115 API直接在云端完成扫描、识别、重命名和分类整理。
+                </p>
+            </div>
+            
+            <!-- 115网盘Cookie配置 -->
+            <div style="margin-bottom: 20px; padding: 20px; background: white; border-radius: 12px; border: 2px solid #e0e0e0;">
+                <h4 style="margin: 0 0 15px 0; color: #333; display: flex; align-items: center; gap: 10px;">
+                    <span>🔐</span>
+                    <span>115网盘登录配置</span>
+                </h4>
+                
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #333; display: flex; align-items: center; gap: 8px;">
+                        <span>115 Cookie</span>
+                        <span id="cloud115StatusIndicator" style="width: 10px; height: 10px; border-radius: 50%; background: #ccc;" title="Cookie状态"></span>
+                        <span id="cloud115StatusText" style="font-size: 12px; font-weight: normal; color: #666;"></span>
+                    </label>
+                    <div style="position: relative; display: flex; gap: 8px; align-items: center;">
+                        <input type="password" id="cloud115CookieInline" placeholder="粘贴115网盘Cookie，将自动验证..." 
+                               style="flex: 1; padding: 12px 120px 12px 16px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px; font-family: monospace;"
+                               oninput="autoVerifyCloud115Cookie()">
+                        <div style="position: absolute; right: 60px; display: flex; gap: 8px; align-items: center;">
+                            <button onclick="toggleCookieVisibility()" title="显示/隐藏Cookie" 
+                                    style="padding: 8px; background: transparent; border: none; cursor: pointer; font-size: 18px;">
+                                👁️
+                            </button>
+                            <button onclick="copyCookie()" title="复制Cookie" 
+                                    style="padding: 8px; background: transparent; border: none; cursor: pointer; font-size: 18px;">
+                                📋
+                            </button>
+                        </div>
+                        <button onclick="showQRCodeLogin()" title="扫码登录" 
+                                style="padding: 12px 16px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 20px; white-space: nowrap;">
+                            📱
+                        </button>
+                    </div>
+                    <small style="color: #666; display: block; margin-top: 5px;">
+                        点击图标切换显示、复制或扫码登录 | 手动获取: 登录115网盘 → F12 → Application → Cookies
+                    </small>
+                </div>
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #333;">
+                    ☁️ 115网盘文件夹：
+                </label>
+                <div style="display: flex; gap: 10px;">
+                    <input type="text" id="cloud115FolderPath" placeholder="选择要整理的115网盘文件夹" readonly
+                           style="flex: 1; padding: 12px 16px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px; background: #f8f9fa; cursor: pointer;"
+                           onclick="openCloud115Browser()">
+                    <button onclick="openCloud115Browser()" style="padding: 12px 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;">
+                        📁 浏览网盘
+                    </button>
+                </div>
+                <small style="color: #666; margin-top: 5px; display: block;">点击浏览按钮选择115网盘中要整理的文件夹</small>
+            </div>
+            
+            <div style="text-align: center; margin-bottom: 20px;">
+                <button onclick="startCloud115Organize()" style="font-size: 16px; padding: 14px 36px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4); border: none; border-radius: 8px; color: white; cursor: pointer; transition: transform 0.2s; font-weight: 500;">
+                    🚀 开始云端整理
+                </button>
+            </div>
+            
+            <div style="margin-bottom: 20px; padding: 20px; background: #fff3cd; border-radius: 12px; border-left: 4px solid #ffc107;">
+                <strong style="color: #856404;">💡 115网盘整理说明</strong><br>
+                <small style="color: #856404; line-height: 1.8;">
+                • <strong>首次使用</strong>：在"设置"中配置115网盘Cookie<br>
+                • <strong>纯云端操作</strong>：所有操作通过115 API完成，不占用本地空间<br>
+                • <strong>智能识别</strong>：自动识别媒体文件，获取中文标题<br>
+                • <strong>标准化命名</strong>：按照Plex/Jellyfin/Emby标准格式重命名<br>
+                • <strong>自动分类</strong>：电影和电视剧自动分类到不同文件夹
+                </small>
+            </div>
+        </div>
+        <!-- 115网盘整理模块结束 -->
 
         <div id="status" class="status"></div>
 
-        <div class="filter-section">
-            <button class="filter-btn active" onclick="filterFiles('all')">全部</button>
-            <button class="filter-btn" onclick="filterFiles('media')">媒体文件</button>
-            <button class="filter-btn" onclick="filterFiles('subtitle')">字幕文件</button>
+        <!-- 整理详情弹窗 -->
+        <div id="progressModal" class="modal-overlay" style="display: none;">
+            <div class="modal-content" style="width: 90%; max-width: 800px; max-height: 80vh; overflow-y: auto;">
+                <div class="modal-header">
+                    <h2 style="margin: 0; display: flex; align-items: center; gap: 10px;">
+                        <span>📊</span>
+                        <span>整理详情</span>
+                    </h2>
+                    <button onclick="closeProgressModal()" class="close-btn">×</button>
+                </div>
+                
+                <div class="modal-body">
+                    <!-- 整体进度 -->
+                    <div class="progress-section">
+                        <h3>🚀 整体进度</h3>
+                        <div class="progress-bar">
+                            <div id="overallProgress" class="progress-fill"></div>
+                        </div>
+                        <div id="overallStatus" class="progress-text">准备开始...</div>
+                    </div>
+                    
+                    <!-- 当前步骤 -->
+                    <div class="progress-section">
+                        <h3>⚡ 当前步骤</h3>
+                        <div id="currentStep" class="current-step">
+                            <div class="step-icon">📂</div>
+                            <div class="step-info">
+                                <div class="step-title">等待开始</div>
+                                <div class="step-detail">点击"一键整理入库"开始处理</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 详细进度 -->
+                    <div class="progress-section">
+                        <h3>📋 详细进度</h3>
+                        <div id="detailProgress" class="detail-progress">
+                            <div class="progress-item">
+                                <span class="progress-icon">📂</span>
+                                <span class="progress-label">智能扫描</span>
+                                <span class="progress-status waiting">等待中</span>
+                            </div>
+                            <div class="progress-item">
+                                <span class="progress-icon">🌐</span>
+                                <span class="progress-label">中文标题识别</span>
+                                <span class="progress-status waiting">等待中</span>
+                            </div>
+                            <div class="progress-item">
+                                <span class="progress-icon">🎯</span>
+                                <span class="progress-label">智能去重</span>
+                                <span class="progress-status waiting">等待中</span>
+                            </div>
+                            <div class="progress-item">
+                                <span class="progress-icon">📝</span>
+                                <span class="progress-label">标准化重命名</span>
+                                <span class="progress-status waiting">等待中</span>
+                            </div>
+                            <div class="progress-item">
+                                <span class="progress-icon">📁</span>
+                                <span class="progress-label">智能分类</span>
+                                <span class="progress-status waiting">等待中</span>
+                            </div>
+                            <div class="progress-item">
+                                <span class="progress-icon">🚚</span>
+                                <span class="progress-label">自动移动</span>
+                                <span class="progress-status waiting">等待中</span>
+                            </div>
+                            <div class="progress-item">
+                                <span class="progress-icon">⚔️</span>
+                                <span class="progress-label">冲突处理</span>
+                                <span class="progress-status waiting">等待中</span>
+                            </div>
+                            <div class="progress-item">
+                                <span class="progress-icon">🧹</span>
+                                <span class="progress-label">自动清理</span>
+                                <span class="progress-status waiting">等待中</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 实时日志 -->
+                    <div class="progress-section">
+                        <h3>📝 实时日志</h3>
+                        <div id="realtimeLog" class="realtime-log">
+                            <div class="log-message">等待开始处理...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
-
-        <div id="fileList" class="file-list"></div>
     </div>
 
-    <!-- 二维码登录弹窗 -->
-    <div id="qrcodeModal" class="modal">
-        <div class="modal-content">
-            <span class="close" onclick="closeQRCodeModal()">&times;</span>
-            <h2>115网盘扫码登录</h2>
-            <div id="qrcodeContainer">
-                <div class="qrcode-loading">正在生成二维码...</div>
+    <!-- 设置弹窗 -->
+    <div id="settingsModal" class="modal-overlay" style="display: none;">
+        <div class="modal-content" style="width: 90%; max-width: 600px; max-height: 85vh; display: flex; flex-direction: column;">
+            <div class="modal-header">
+                <h2 style="margin: 0; display: flex; align-items: center; gap: 10px;">
+                    <span>⚙️</span>
+                    <span>系统设置</span>
+                </h2>
+                <button onclick="closeSettingsModal()" class="close-btn">×</button>
             </div>
-            <div id="qrcodeStatus" class="qrcode-status"></div>
-            <p class="qrcode-tip">请使用115手机客户端扫描二维码</p>
+            
+            <div class="modal-body" style="overflow-y: auto; flex: 1;">
+                <!-- TMDB设置 -->
+                <div class="settings-section">
+                    <h3>🎬 TMDB配置</h3>
+                    <div class="form-group">
+                        <label>API Key:</label>
+                        <input type="text" id="tmdbApiKey" placeholder="输入TMDB API Key">
+                        <small>获取地址: <a href="https://www.themoviedb.org/settings/api" target="_blank">TMDB API</a></small>
+                    </div>
+                    <div class="form-group">
+                        <label>代理地址:</label>
+                        <input type="text" id="tmdbProxy" placeholder="例如: http://192.168.1.1:7890">
+                        <small>留空则不使用代理</small>
+                    </div>
+                    <div class="form-group">
+                        <label>代理类型:</label>
+                        <select id="tmdbProxyType">
+                            <option value="http">HTTP/HTTPS</option>
+                            <option value="socks5">SOCKS5</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- 豆瓣设置 -->
+                <div class="settings-section">
+                    <h3>🎭 豆瓣配置</h3>
+                    <div class="form-group">
+                        <label>Cookie:</label>
+                        <textarea id="doubanCookie" rows="3" placeholder="输入豆瓣Cookie"></textarea>
+                        <small>获取方法: 登录豆瓣 → F12开发者工具 → Network → 复制Cookie</small>
+                    </div>
+                </div>
+                
+                <!-- 115网盘设置 -->
+                <div class="settings-section">
+                    <h3>☁️ 115网盘配置</h3>
+                    <div class="form-group">
+                        <label>登录状态:</label>
+                        <div id="cloud115Status" style="padding: 10px; background: #f8f9fa; border-radius: 6px; color: #6c757d;">
+                            未配置
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Cookie:</label>
+                        <textarea id="cloud115Cookie" rows="3" placeholder="输入115网盘Cookie"></textarea>
+                        <small>获取方法: 登录115网盘 → F12开发者工具 → Application → Cookies → 复制所有Cookie</small>
+                    </div>
+                    <div style="margin-top: 15px;">
+                        <button onclick="verifyCloud115Cookie()" style="width: 100%; padding: 12px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500;">
+                            🔍 验证Cookie
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- 系统更新设置 -->
+                <div class="settings-section">
+                    <h3>🔄 系统更新配置</h3>
+                    <div class="form-group">
+                        <label>当前版本:</label>
+                        <div style="padding: 10px; background: #f0f4ff; border-radius: 6px; font-weight: 600; color: #667eea;" id="currentVersion">
+                            加载中...
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="updateProxyEnabled" style="width: auto; margin-right: 8px;">
+                            启用更新代理
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label>更新代理地址:</label>
+                        <input type="text" id="updateProxy" placeholder="例如: http://127.0.0.1:7890">
+                        <small>用于访问GitHub，直连失败时自动切换代理</small>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="autoRestartAfterUpdate" style="width: auto; margin-right: 8px;" checked>
+                            更新后自动重启服务
+                        </label>
+                    </div>
+                    <div style="margin-top: 15px;">
+                        <button onclick="checkForUpdates()" style="width: 100%; padding: 12px; background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500;">
+                            🔍 检查更新
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 按钮区域（固定在底部） -->
+            <div style="display: flex; gap: 10px; justify-content: flex-end; padding: 20px 25px; border-top: 2px solid #f0f0f0; background: #fafafa; border-radius: 0 0 12px 12px;">
+                <button onclick="closeSettingsModal()" style="padding: 10px 20px; background: #6c757d; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                    取消
+                </button>
+                <button onclick="saveSettings()" style="padding: 10px 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 6px; cursor: pointer;">
+                    保存设置
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 文件夹浏览器弹窗 -->
+    <div id="folderBrowserOverlay" class="folder-browser-overlay" onclick="closeFolderBrowser(event)">
+        <div class="folder-browser" onclick="event.stopPropagation()">
+            <div class="folder-browser-header">
+                <h3>📁 选择文件夹</h3>
+                <button class="folder-browser-close" onclick="closeFolderBrowser()">×</button>
+            </div>
+            <div class="folder-browser-path" id="currentBrowserPath">/</div>
+            <div class="folder-browser-list" id="folderList">
+                <div style="text-align: center; padding: 40px; color: #999;">
+                    加载中...
+                </div>
+            </div>
+            <div class="folder-browser-footer">
+                <button onclick="closeFolderBrowser()" style="background: #999;">取消</button>
+                <button onclick="selectCurrentFolder()" style="background: #4caf50;">选择此文件夹</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 115网盘浏览器弹窗 -->
+    <div id="cloud115BrowserOverlay" class="folder-browser-overlay" style="display: none;" onclick="closeCloud115Browser(event)">
+        <div class="folder-browser" onclick="event.stopPropagation()">
+            <div class="folder-browser-header">
+                <h3>☁️ 选择115网盘文件夹</h3>
+                <button class="folder-browser-close" onclick="closeCloud115Browser()">×</button>
+            </div>
+            <div class="folder-browser-path" id="cloud115BrowserPath">
+                <span onclick="navigateCloud115Folder('0')" style="cursor: pointer; color: #667eea;">🏠 根目录</span>
+            </div>
+            <div class="folder-browser-list" id="cloud115FolderList">
+                <div style="text-align: center; padding: 40px; color: #999;">
+                    加载中...
+                </div>
+            </div>
+            <div class="folder-browser-footer">
+                <button onclick="closeCloud115Browser()" style="background: #999;">取消</button>
+                <button onclick="selectCloud115Folder()" style="background: #667eea;">选择此文件夹</button>
+            </div>
         </div>
     </div>
 
@@ -50,189 +1150,100 @@
         let currentFiles = [];
         let currentFilter = 'all';
         let currentFolder = '';
-        let qrcodeData = null;
-        let qrcodeCheckInterval = null;
+        let renameLog = [];
 
-        // ========== 二维码登录功能 ==========
-        async function showQRCodeModal() {
-            const modal = document.getElementById('qrcodeModal');
-            modal.style.display = 'block';
+        // 当前模块
+        let currentModule = 'local';
+        
+        // 页面加载时从localStorage读取路径
+        window.addEventListener('DOMContentLoaded', function() {
+            // 加载并显示版本号
+            loadHeaderVersion();
             
-            // 生成二维码
-            await generateQRCode();
-        }
-
-        function closeQRCodeModal() {
-            const modal = document.getElementById('qrcodeModal');
-            modal.style.display = 'none';
+            // 加载模块选择
+            const savedModule = localStorage.getItem('currentModule') || 'local';
+            switchModule(savedModule);
             
-            // 停止轮询
-            if (qrcodeCheckInterval) {
-                clearInterval(qrcodeCheckInterval);
-                qrcodeCheckInterval = null;
+            // 扫描路径
+            const savedPath = localStorage.getItem('scanPath');
+            const folderPathInput = document.getElementById('folderPath');
+            
+            if (savedPath) {
+                folderPathInput.value = savedPath;
+                currentFolder = savedPath;
+            } else {
+                // 默认路径
+                const defaultPath = '/vol02/1000-1-b23abde7/待整理';
+                folderPathInput.value = defaultPath;
+                currentFolder = defaultPath;
             }
-        }
 
-        async function generateQRCode() {
-            const container = document.getElementById('qrcodeContainer');
-            const statusDiv = document.getElementById('qrcodeStatus');
-            
-            container.innerHTML = '<div class="qrcode-loading">正在生成二维码...</div>';
-            statusDiv.textContent = '';
-            
+            // 电影输出路径
+            const savedMoviePath = localStorage.getItem('movieOutputPath');
+            const moviePathInput = document.getElementById('movieOutputPath');
+            if (savedMoviePath) {
+                moviePathInput.value = savedMoviePath;
+            } else {
+                moviePathInput.value = '/vol02/1000-1-b23abde7/电影';
+            }
+
+            // 电视剧输出路径
+            const savedTvPath = localStorage.getItem('tvOutputPath');
+            const tvPathInput = document.getElementById('tvOutputPath');
+            if (savedTvPath) {
+                tvPathInput.value = savedTvPath;
+            } else {
+                tvPathInput.value = '/vol02/1000-1-b23abde7/电视剧';
+            }
+        });
+        
+        // 加载并显示标题中的版本号
+        async function loadHeaderVersion() {
             try {
-                const response = await fetch('/api/qrcode/start', {
+                const response = await fetch('/api/get-version', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ app: 'android' })
+                    body: JSON.stringify({})
                 });
                 
                 const data = await response.json();
-                
                 if (data.success) {
-                    qrcodeData = data;
-                    
-                    // 显示二维码图片（直接使用115的图片URL）
-                    container.innerHTML = `<img src="${data.qr_url}" alt="二维码" class="qrcode-image">`;
-                    statusDiv.textContent = '等待扫码...';
-                    statusDiv.className = 'qrcode-status waiting';
-                    
-                    // 开始轮询检查状态
-                    startQRCodeCheck();
-                } else {
-                    container.innerHTML = '<div class="qrcode-error">生成二维码失败</div>';
-                    statusDiv.textContent = data.error || '未知错误';
-                    statusDiv.className = 'qrcode-status error';
-                }
-            } catch (error) {
-                container.innerHTML = '<div class="qrcode-error">网络错误</div>';
-                statusDiv.textContent = error.message;
-                statusDiv.className = 'qrcode-status error';
-            }
-        }
-
-        function startQRCodeCheck() {
-            // 每2秒检查一次状态
-            qrcodeCheckInterval = setInterval(async () => {
-                await checkQRCodeStatus();
-            }, 2000);
-        }
-
-        async function checkQRCodeStatus() {
-            if (!qrcodeData) return;
-            
-            try {
-                const response = await fetch('/api/qrcode/check', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        uid: qrcodeData.uid,
-                        time: qrcodeData.time,
-                        sign: qrcodeData.sign
-                    })
-                });
-                
-                const data = await response.json();
-                const statusDiv = document.getElementById('qrcodeStatus');
-                
-                if (data.success) {
-                    const status = data.status;
-                    
-                    if (status === 0) {
-                        // 等待扫码
-                        statusDiv.textContent = '等待扫码...';
-                        statusDiv.className = 'qrcode-status waiting';
-                    } else if (status === 1) {
-                        // 已扫码，等待确认
-                        statusDiv.textContent = '已扫码，请在手机上确认';
-                        statusDiv.className = 'qrcode-status scanned';
-                    } else if (status === 2) {
-                        // 登录成功
-                        statusDiv.textContent = '登录成功！正在获取Cookie...';
-                        statusDiv.className = 'qrcode-status success';
-                        
-                        // 停止轮询
-                        clearInterval(qrcodeCheckInterval);
-                        qrcodeCheckInterval = null;
-                        
-                        // 获取Cookie
-                        await finishQRCodeLogin();
-                    } else if (status === -1) {
-                        // 二维码过期
-                        statusDiv.textContent = '二维码已过期，请重新生成';
-                        statusDiv.className = 'qrcode-status error';
-                        clearInterval(qrcodeCheckInterval);
-                        qrcodeCheckInterval = null;
-                    } else if (status === -2) {
-                        // 用户取消
-                        statusDiv.textContent = '用户取消登录';
-                        statusDiv.className = 'qrcode-status error';
-                        clearInterval(qrcodeCheckInterval);
-                        qrcodeCheckInterval = null;
+                    const headerVersionEl = document.getElementById('headerVersion');
+                    if (headerVersionEl) {
+                        headerVersionEl.textContent = data.current_version;
                     }
                 }
             } catch (error) {
-                console.error('检查状态失败:', error);
+                console.error('加载版本号失败:', error);
             }
         }
 
-        async function finishQRCodeLogin() {
-            const statusDiv = document.getElementById('qrcodeStatus');
-            
-            try {
-                const response = await fetch('/api/qrcode/finish', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        uid: qrcodeData.uid,
-                        app: qrcodeData.app
-                    })
-                });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    statusDiv.textContent = '✅ Cookie已保存！';
-                    statusDiv.className = 'qrcode-status success';
-                    
-                    // 3秒后关闭弹窗
-                    setTimeout(() => {
-                        closeQRCodeModal();
-                        showStatus('115网盘登录成功！', 'success');
-                    }, 3000);
-                } else {
-                    statusDiv.textContent = '获取Cookie失败: ' + (data.error || '未知错误');
-                    statusDiv.className = 'qrcode-status error';
-                }
-            } catch (error) {
-                statusDiv.textContent = '网络错误: ' + error.message;
-                statusDiv.className = 'qrcode-status error';
-            }
-        }
-
-        // 点击弹窗外部关闭
-        window.onclick = function(event) {
-            const modal = document.getElementById('qrcodeModal');
-            if (event.target === modal) {
-                closeQRCodeModal();
-            }
-        }
-
-        // ========== 原有功能 ==========
-        async function scanFolder() {
+        // 保存路径到localStorage
+        function savePath() {
             const folderPath = document.getElementById('folderPath').value.trim();
-            if (!folderPath) {
-                showStatus('请输入文件夹路径', 'error');
-                return;
+            if (folderPath) {
+                localStorage.setItem('scanPath', folderPath);
+                currentFolder = folderPath;
             }
+        }
 
-            showStatus('正在扫描...', 'info');
+        async function scanFolder() {
+            const folderPath = currentFolder;
+
+            const autoDelete = document.getElementById('autoDelete').checked;
+            const recursive = document.getElementById('recursive').checked;
+
+            showStatus('正在' + (recursive ? '递归' : '') + '扫描网盘文件' + (autoDelete ? '并清理不支持的文件' : '') + '（可能需要较长时间）...', 'info');
 
             try {
-                const response = await fetch('/api/scan', {
+                const response = await fetch('/api/scan-all', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ folderPath })
+                    body: JSON.stringify({ 
+                        folderPath,
+                        autoDelete,
+                        recursive
+                    })
                 });
 
                 const data = await response.json();
@@ -241,13 +1252,96 @@
                     throw new Error(data.error);
                 }
 
-                currentFiles = data.files;
+                currentFiles = data.supported;
                 currentFolder = data.folderPath;
-                showStatus(`找到 ${currentFiles.length} 个文件`, 'success');
+                
+                const supportedCount = data.supported.length;
+                const deletedCount = data.deleted.length;
+                const errorCount = data.deleteErrors.length;
+                
+                let statusMsg = `找到 ${supportedCount} 个支持的文件`;
+                
+                if (autoDelete && deletedCount > 0) {
+                    statusMsg += `，已自动删除 ${deletedCount} 个不支持的文件`;
+                    if (errorCount > 0) {
+                        statusMsg += `（${errorCount} 个删除失败）`;
+                    }
+                } else if (data.unsupported.length > 0) {
+                    statusMsg += `，发现 ${data.unsupported.length} 个不支持的文件`;
+                }
+                
+                showStatus(statusMsg, deletedCount > 0 ? 'success' : 'info');
                 displayFiles();
             } catch (error) {
                 showStatus('错误: ' + error.message, 'error');
             }
+        }
+
+        async function deleteFile(filePath, fileName) {
+            if (!confirm(`确定要删除文件 "${fileName}" 吗？此操作不可恢复！`)) {
+                return;
+            }
+
+            showStatus('正在删除...', 'info');
+
+            try {
+                const response = await fetch('/api/delete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ filePath })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error);
+                }
+
+                showStatus('删除成功', 'success');
+                scanFolder();
+            } catch (error) {
+                showStatus('错误: ' + error.message, 'error');
+            }
+        }
+
+        async function deleteUnsupportedFiles() {
+            const unsupported = currentFiles.filter(f => f.type === 'unsupported');
+            
+            if (unsupported.length === 0) {
+                showStatus('没有不支持的文件', 'info');
+                return;
+            }
+
+            const fileList = unsupported.map(f => f.name).join('\n');
+            if (!confirm(`确定要删除以下 ${unsupported.length} 个不支持的文件吗？\n\n${fileList.substring(0, 300)}${fileList.length > 300 ? '\n...' : ''}\n\n此操作不可恢复！`)) {
+                return;
+            }
+
+            showStatus(`正在删除 ${unsupported.length} 个文件...`, 'info');
+
+            let success = 0;
+            let failed = 0;
+
+            for (const file of unsupported) {
+                try {
+                    const response = await fetch('/api/delete', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ filePath: file.path })
+                    });
+
+                    if (response.ok) {
+                        success++;
+                    } else {
+                        failed++;
+                    }
+                } catch (error) {
+                    failed++;
+                }
+            }
+
+            showStatus(`删除完成：成功 ${success} 个，失败 ${failed} 个`, success > 0 ? 'success' : 'error');
+            scanFolder();
         }
 
         function filterFiles(type) {
@@ -259,8 +1353,8 @@
 
         function displayFiles() {
             const fileList = document.getElementById('fileList');
-            const filtered = currentFilter === 'all'
-                ? currentFiles
+            const filtered = currentFilter === 'all' 
+                ? currentFiles 
                 : currentFiles.filter(f => f.type === currentFilter);
 
             if (filtered.length === 0) {
@@ -268,16 +1362,23 @@
                 return;
             }
 
-            fileList.innerHTML = filtered.map(file => `
-                <div class="file-item ${file.type}">
-                    <div class="file-icon">${file.type === 'media' ? '🎬' : '📝'}</div>
-                    <div class="file-info">
-                        <div class="file-name" id="name-${file.path}">${file.name}</div>
-                        <div class="file-meta">${formatSize(file.size)} · ${formatDate(file.modified)}</div>
+            fileList.innerHTML = filtered.map(file => {
+                const safePath = file.path.replace(/'/g, "\\'");
+                const safeName = file.name.replace(/'/g, "\\'");
+                const icon = file.type === 'media' ? '🎬' : '📝';
+                
+                return `
+                    <div class="file-item ${file.type}">
+                        <div class="file-icon">${icon}</div>
+                        <div class="file-info">
+                            <div class="file-name">${escapeHtml(file.name)}</div>
+                            <div class="file-meta">${formatSize(file.size)} · ${formatDate(file.modified)}</div>
+                        </div>
+                        <button class="rename-btn" onclick="renameFile('${safePath}', '${safeName}')">重命名</button>
+                        <button class="delete-btn" onclick="deleteFile('${safePath}', '${safeName}')">删除</button>
                     </div>
-                    <button class="rename-btn" onclick="renameFile('${escapeHtml(file.path)}', '${escapeHtml(file.name)}')">重命名</button>
-                </div>
-            `).join('');
+                `;
+            }).join('');
         }
 
         async function renameFile(filePath, oldName) {
@@ -300,7 +1401,7 @@
                 }
 
                 showStatus('重命名成功', 'success');
-                scanFolder(); // 重新扫描
+                scanFolder();
             } catch (error) {
                 showStatus('错误: ' + error.message, 'error');
             }
@@ -320,15 +1421,1754 @@
             return (bytes / (1024 * 1024 * 1024)).toFixed(1) + ' GB';
         }
 
-        function formatDate(dateString) {
-            const date = new Date(dateString);
+        function formatDate(timestamp) {
+            const date = new Date(timestamp * 1000);
             return date.toLocaleString('zh-CN');
         }
 
         function escapeHtml(text) {
-            return text.replace(/'/g, "\\'");
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // 模块切换函数
+        function switchModule(module) {
+            currentModule = module;
+            localStorage.setItem('currentModule', module);
+            
+            const localModule = document.getElementById('localModule');
+            const cloudModule = document.getElementById('cloudModule');
+            const localTab = document.getElementById('localModuleTab');
+            const cloudTab = document.getElementById('cloudModuleTab');
+            
+            if (module === 'local') {
+                // 显示本地模块
+                localModule.style.display = 'block';
+                cloudModule.style.display = 'none';
+                
+                // 更新选项卡样式
+                localTab.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+                localTab.style.color = 'white';
+                localTab.style.border = 'none';
+                localTab.style.boxShadow = '0 4px 15px rgba(102, 126, 234, 0.4)';
+                
+                cloudTab.style.background = '#e9ecef';
+                cloudTab.style.color = '#6c757d';
+                cloudTab.style.border = '2px solid #dee2e6';
+                cloudTab.style.boxShadow = 'none';
+            } else {
+                // 显示115网盘模块
+                localModule.style.display = 'none';
+                cloudModule.style.display = 'block';
+                
+                // 更新选项卡样式
+                cloudTab.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+                cloudTab.style.color = 'white';
+                cloudTab.style.border = 'none';
+                cloudTab.style.boxShadow = '0 4px 15px rgba(102, 126, 234, 0.4)';
+                
+                localTab.style.background = '#e9ecef';
+                localTab.style.color = '#6c757d';
+                localTab.style.border = '2px solid #dee2e6';
+                localTab.style.boxShadow = 'none';
+                
+                // 加载115网盘状态
+                loadCloud115Status();
+            }
+        }
+        
+        // 页面加载完成后初始化
+        window.addEventListener('DOMContentLoaded', function() {
+            // 恢复上次选择的模块
+            const savedModule = localStorage.getItem('currentModule') || 'local';
+            switchModule(savedModule);
+        });
+        
+        // 115网盘浏览器相关变量
+        let currentCloud115FolderId = '0';
+        let currentCloud115FolderName = '根目录';
+        let cloud115FolderHistory = [{ id: '0', name: '根目录' }];
+        
+        // 打开115网盘浏览器
+        async function openCloud115Browser() {
+            const overlay = document.getElementById('cloud115BrowserOverlay');
+            overlay.style.display = 'flex';
+            
+            // 重置到根目录
+            currentCloud115FolderId = '0';
+            currentCloud115FolderName = '根目录';
+            cloud115FolderHistory = [{ id: '0', name: '根目录' }];
+            
+            // 加载根目录
+            await loadCloud115Folders('0');
+        }
+        
+        // 关闭115网盘浏览器
+        function closeCloud115Browser(event) {
+            if (event && event.target.id !== 'cloud115BrowserOverlay') return;
+            const overlay = document.getElementById('cloud115BrowserOverlay');
+            overlay.style.display = 'none';
+        }
+        
+        // 加载115网盘文件夹列表
+        async function loadCloud115Folders(folderId) {
+            const listEl = document.getElementById('cloud115FolderList');
+            listEl.innerHTML = '<div style="text-align: center; padding: 40px; color: #999;">加载中...</div>';
+            
+            try {
+                const response = await fetch('/api/cloud/list-files', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ folder_id: folderId, limit: 1000 })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success && data.data) {
+                    const allFiles = data.data.files || [];
+                    const folders = allFiles.filter(f => f.is_dir);
+                    const files = allFiles.filter(f => !f.is_dir);
+                    
+                    if (allFiles.length === 0) {
+                        listEl.innerHTML = '<div style="text-align: center; padding: 40px; color: #999;">此文件夹为空</div>';
+                        return;
+                    }
+                    
+                    let html = '<div style="padding: 10px;">';
+                    
+                    // 添加返回上级按钮
+                    if (cloud115FolderHistory.length > 1) {
+                        html += `
+                            <div onclick="goBackCloud115Folder()" style="padding: 12px; margin-bottom: 5px; background: #f8f9fa; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: background 0.2s;" onmouseover="this.style.background='#e9ecef'" onmouseout="this.style.background='#f8f9fa'">
+                                <span style="font-size: 20px;">⬆️</span>
+                                <span style="font-weight: 500;">返回上级</span>
+                            </div>
+                        `;
+                    }
+                    
+                    // 显示文件夹列表
+                    folders.forEach(folder => {
+                        const fileCount = folder.file_count > 0 ? ` (${folder.file_count}项)` : '';
+                        const safeName = folder.name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                        html += `
+                            <div onclick="navigateCloud115Folder('${folder.fid}', '${safeName}')" style="padding: 12px; margin-bottom: 5px; background: white; border: 1px solid #e0e0e0; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: all 0.2s;" onmouseover="this.style.background='#f0f4ff'; this.style.borderColor='#667eea'" onmouseout="this.style.background='white'; this.style.borderColor='#e0e0e0'">
+                                <span style="font-size: 20px;">📁</span>
+                                <div style="flex: 1;">
+                                    <div style="font-weight: 500; color: #333;">${folder.name}</div>
+                                    <small style="color: #999;">${fileCount}</small>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    
+                    // 显示文件列表
+                    files.forEach(file => {
+                        const fileSize = file.size > 0 ? formatFileSize(file.size) : '';
+                        const safeName = file.name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                        const fileIcon = getFileIcon(file.name);
+                        html += `
+                            <div style="padding: 12px; margin-bottom: 5px; background: white; border: 1px solid #e0e0e0; border-radius: 6px; display: flex; align-items: center; gap: 10px;">
+                                <span style="font-size: 20px;">${fileIcon}</span>
+                                <div style="flex: 1;">
+                                    <div style="font-weight: 500; color: #333;">${file.name}</div>
+                                    <small style="color: #999;">${fileSize}</small>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    
+                    html += '</div>';
+                    listEl.innerHTML = html;
+                } else {
+                    listEl.innerHTML = `<div style="text-align: center; padding: 40px; color: #d32f2f;">${data.error || '加载失败'}</div>`;
+                }
+            } catch (error) {
+                listEl.innerHTML = `<div style="text-align: center; padding: 40px; color: #d32f2f;">加载失败: ${error.message}</div>`;
+            }
+        }
+        
+        // 导航到指定文件夹
+        async function navigateCloud115Folder(folderId, folderName = '') {
+            currentCloud115FolderId = folderId;
+            
+            if (folderId === '0') {
+                currentCloud115FolderName = '根目录';
+                cloud115FolderHistory = [{ id: '0', name: '根目录' }];
+            } else {
+                currentCloud115FolderName = folderName;
+                cloud115FolderHistory.push({ id: folderId, name: folderName });
+            }
+            
+            // 更新路径显示
+            updateCloud115BrowserPath();
+            
+            // 加载文件夹内容
+            await loadCloud115Folders(folderId);
+        }
+        
+        // 返回上级文件夹
+        async function goBackCloud115Folder() {
+            if (cloud115FolderHistory.length > 1) {
+                cloud115FolderHistory.pop();
+                const parent = cloud115FolderHistory[cloud115FolderHistory.length - 1];
+                currentCloud115FolderId = parent.id;
+                currentCloud115FolderName = parent.name;
+                
+                updateCloud115BrowserPath();
+                await loadCloud115Folders(currentCloud115FolderId);
+            }
+        }
+        
+        // 更新路径显示
+        function updateCloud115BrowserPath() {
+            const pathEl = document.getElementById('cloud115BrowserPath');
+            let html = '<span onclick="navigateCloud115Folder(\'0\')" style="cursor: pointer; color: #667eea;">🏠 根目录</span>';
+            
+            for (let i = 1; i < cloud115FolderHistory.length; i++) {
+                const folder = cloud115FolderHistory[i];
+                html += ` <span style="color: #999;">›</span> <span style="color: #333;">${folder.name}</span>`;
+            }
+            
+            pathEl.innerHTML = html;
+        }
+        
+        // 格式化文件大小
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return (bytes / Math.pow(k, i)).toFixed(2) + ' ' + sizes[i];
+        }
+        
+        // 根据文件扩展名获取图标
+        function getFileIcon(filename) {
+            const ext = filename.split('.').pop().toLowerCase();
+            const iconMap = {
+                'mp4': '🎬', 'mkv': '🎬', 'avi': '🎬', 'mov': '🎬', 'wmv': '🎬', 'flv': '🎬', 'webm': '🎬',
+                'mp3': '🎵', 'wav': '🎵', 'flac': '🎵', 'aac': '🎵', 'm4a': '🎵',
+                'jpg': '🖼️', 'jpeg': '🖼️', 'png': '🖼️', 'gif': '🖼️', 'bmp': '🖼️', 'webp': '🖼️',
+                'pdf': '📄', 'doc': '📄', 'docx': '📄', 'txt': '📄', 'rtf': '📄',
+                'zip': '📦', 'rar': '📦', '7z': '📦', 'tar': '📦', 'gz': '📦',
+                'exe': '⚙️', 'msi': '⚙️', 'apk': '⚙️',
+            };
+            return iconMap[ext] || '📄';
+        }
+        
+        // 选择当前文件夹
+        function selectCloud115Folder() {
+            const input = document.getElementById('cloud115FolderPath');
+            const pathText = cloud115FolderHistory.map(f => f.name).join(' / ');
+            input.value = pathText;
+            input.dataset.folderId = currentCloud115FolderId;
+            
+            closeCloud115Browser();
+        }
+        
+        // 开始115网盘整理
+        async function startCloud115Organize() {
+            const input = document.getElementById('cloud115FolderPath');
+            const folderPath = input.value;
+            const folderId = input.dataset.folderId;
+            
+            if (!folderPath || !folderId) {
+                alert('请先选择要整理的115网盘文件夹');
+                return;
+            }
+            
+            // 确认开始整理
+            if (!confirm(`确定要整理文件夹: ${folderPath}?\n\n系统将自动完成：\n1. 扫描文件\n2. 识别标题\n3. 智能去重\n4. 标准化重命名\n5. 自动分类\n\n此操作不可撤销！`)) {
+                return;
+            }
+            
+            // 显示进度弹窗
+            showCloud115Progress();
+            
+            try {
+                // 步骤1: 扫描文件
+                updateCloud115Progress(1, '正在扫描文件夹...', 0);
+                const scanResult = await fetch('/api/cloud/scan', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        folder_id: folderId,
+                        recursive: true,
+                        max_depth: 10
+                    })
+                });
+                
+                const scanData = await scanResult.json();
+                if (!scanData.success) {
+                    throw new Error(scanData.error || '扫描失败');
+                }
+                
+                const stats = scanData.data.stats;
+                updateCloud115Progress(1, `扫描完成：找到 ${stats.video_files} 个视频文件`, 100);
+                
+                if (stats.video_files === 0) {
+                    alert('未找到视频文件');
+                    closeCloud115Progress();
+                    return;
+                }
+                
+                // 步骤2-5: 智能整理（去重、重命名、分类）
+                updateCloud115Progress(2, '正在智能整理...', 0);
+                const organizeResult = await fetch('/api/cloud/smart-organize', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        folder_id: folderId,
+                        target_folder_id: folderId,
+                        enable_rename: true,
+                        enable_dedupe: true
+                    })
+                });
+                
+                const organizeData = await organizeResult.json();
+                if (!organizeData.success) {
+                    throw new Error(organizeData.error || '整理失败');
+                }
+                
+                const result = organizeData.data;
+                updateCloud115Progress(2, '整理完成！', 100);
+                
+                // 显示结果
+                const summary = `
+整理完成！
+
+📊 统计信息：
+- 扫描文件：${result.scan_stats.total_files} 个
+- 视频文件：${result.scan_stats.video_files} 个
+- 删除重复：${result.duplicates_removed} 个
+- 重命名：${result.files_renamed} 个
+- 移动分类：${result.files_moved} 个
+
+✅ 所有文件已按分类整理完成！
+                `.trim();
+                
+                setTimeout(() => {
+                    closeCloud115Progress();
+                    alert(summary);
+                }, 1000);
+                
+            } catch (error) {
+                console.error('整理失败:', error);
+                updateCloud115Progress(0, `错误: ${error.message}`, 0);
+                setTimeout(() => {
+                    closeCloud115Progress();
+                    alert(`整理失败: ${error.message}`);
+                }, 2000);
+            }
+        }
+        
+        // 显示115网盘整理进度弹窗
+        function showCloud115Progress() {
+            const modal = document.getElementById('cloud115ProgressModal');
+            if (!modal) {
+                // 创建进度弹窗
+                const modalHtml = `
+                    <div id="cloud115ProgressModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000; justify-content: center; align-items: center;">
+                        <div style="background: white; padding: 30px; border-radius: 12px; min-width: 400px; max-width: 600px;">
+                            <h3 style="margin: 0 0 20px 0; color: #333;">115网盘整理进度</h3>
+                            <div id="cloud115ProgressSteps"></div>
+                            <div style="margin-top: 20px; text-align: right;">
+                                <button onclick="closeCloud115Progress()" style="padding: 8px 20px; background: #667eea; color: white; border: none; border-radius: 6px; cursor: pointer;">关闭</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                document.body.insertAdjacentHTML('beforeend', modalHtml);
+            }
+            
+            // 初始化步骤
+            const stepsHtml = `
+                <div class="progress-step" id="step1">
+                    <div style="display: flex; align-items: center; margin-bottom: 10px;">
+                        <span style="font-weight: 500;">1. 扫描文件</span>
+                        <span id="step1-status" style="margin-left: auto; color: #999;">等待中...</span>
+                    </div>
+                    <div style="background: #f0f0f0; height: 6px; border-radius: 3px; overflow: hidden;">
+                        <div id="step1-bar" style="background: #667eea; height: 100%; width: 0%; transition: width 0.3s;"></div>
+                    </div>
+                </div>
+                <div class="progress-step" id="step2" style="margin-top: 20px;">
+                    <div style="display: flex; align-items: center; margin-bottom: 10px;">
+                        <span style="font-weight: 500;">2. 智能整理</span>
+                        <span id="step2-status" style="margin-left: auto; color: #999;">等待中...</span>
+                    </div>
+                    <div style="background: #f0f0f0; height: 6px; border-radius: 3px; overflow: hidden;">
+                        <div id="step2-bar" style="background: #667eea; height: 100%; width: 0%; transition: width 0.3s;"></div>
+                    </div>
+                </div>
+            `;
+            document.getElementById('cloud115ProgressSteps').innerHTML = stepsHtml;
+            document.getElementById('cloud115ProgressModal').style.display = 'flex';
+        }
+        
+        // 更新115网盘整理进度
+        function updateCloud115Progress(step, status, progress) {
+            const statusEl = document.getElementById(`step${step}-status`);
+            const barEl = document.getElementById(`step${step}-bar`);
+            
+            if (statusEl) statusEl.textContent = status;
+            if (barEl) barEl.style.width = `${progress}%`;
+        }
+        
+        // 关闭115网盘整理进度弹窗
+        function closeCloud115Progress() {
+            const modal = document.getElementById('cloud115ProgressModal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        }
+        
+        // 折叠/展开功能说明
+        function toggleFunctionInfo() {
+            const content = document.getElementById('functionInfoContent');
+            const toggle = document.getElementById('functionInfoToggle');
+            
+            if (content.style.display === 'none') {
+                content.style.display = 'block';
+                toggle.textContent = '▲';
+            } else {
+                content.style.display = 'none';
+                toggle.textContent = '▼';
+            }
+        }
+        
+        // 进度弹窗管理
+        let progressModal = null;
+        let currentStepIndex = 0;
+        let isProcessing = false;
+        
+        const steps = [
+            { icon: '📂', title: '智能扫描', detail: '扫描待整理目录中的所有媒体文件' },
+            { icon: '🌐', title: '中文标题识别', detail: '通过豆瓣和TMDB获取中文标题' },
+            { icon: '🎯', title: '智能去重', detail: '识别重复文件，保留最佳质量版本' },
+            { icon: '📝', title: '标准化重命名', detail: '按照规范格式生成新文件名' },
+            { icon: '📁', title: '智能分类', detail: '根据元数据确定分类目录' },
+            { icon: '🚚', title: '自动移动', detail: '移动文件到目标分类目录' },
+            { icon: '⚔️', title: '冲突处理', detail: '处理同名文件冲突' },
+            { icon: '🧹', title: '自动清理', detail: '清理跳过的文件和空文件夹' }
+        ];
+        
+        function showProgressModal() {
+            progressModal = document.getElementById('progressModal');
+            progressModal.style.display = 'flex';
+            
+            // 如果正在处理，显示当前进度
+            if (isProcessing) {
+                updateProgressDisplay();
+            } else {
+                resetProgressDisplay();
+            }
+        }
+        
+        function closeProgressModal() {
+            if (progressModal) {
+                progressModal.style.display = 'none';
+            }
+        }
+        
+        // 设置弹窗管理
+        async function showSettingsModal() {
+            const modal = document.getElementById('settingsModal');
+            modal.style.display = 'flex';
+            
+            // 加载当前设置
+            try {
+                const response = await fetch('/api/get-settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
+                });
+                
+                const data = await response.json();
+                if (data.success && data.settings) {
+                    document.getElementById('tmdbApiKey').value = data.settings.tmdb_api_key || '';
+                    document.getElementById('tmdbProxy').value = data.settings.tmdb_proxy || '';
+                    document.getElementById('tmdbProxyType').value = data.settings.tmdb_proxy_type || 'http';
+                    document.getElementById('doubanCookie').value = data.settings.douban_cookie || '';
+                    document.getElementById('updateProxy').value = data.settings.update_proxy || '';
+                    document.getElementById('updateProxyEnabled').checked = data.settings.update_proxy_enabled || false;
+                    document.getElementById('autoRestartAfterUpdate').checked = data.settings.auto_restart_after_update !== false;
+                    
+                    // 加载115网盘Cookie（显示为已配置状态，不显示实际内容）
+                    if (data.settings.cloud_115_cookie) {
+                        document.getElementById('cloud115Cookie').value = ''; // 不显示加密的Cookie
+                        document.getElementById('cloud115Cookie').placeholder = '已配置（重新输入可更新）';
+                        // 更新状态显示
+                        const statusEl = document.getElementById('cloud115Status');
+                        statusEl.innerHTML = '✅ 已配置<br><small>刷新页面后请重新验证以查看详细信息</small>';
+                        statusEl.style.background = '#d4edda';
+                        statusEl.style.color = '#155724';
+                    }
+                }
+            } catch (error) {
+                console.error('加载设置失败:', error);
+            }
+            
+            // 加载当前版本
+            loadCurrentVersion();
+        }
+        
+        function closeSettingsModal() {
+            const modal = document.getElementById('settingsModal');
+            modal.style.display = 'none';
+        }
+        
+        // 115网盘Cookie验证（设置弹窗中）
+        async function verifyCloud115Cookie() {
+            const cookie = document.getElementById('cloud115Cookie').value.trim();
+            
+            if (!cookie) {
+                alert('请先输入115网盘Cookie');
+                return;
+            }
+            
+            const btn = event.target;
+            btn.disabled = true;
+            btn.textContent = '🔍 验证中...';
+            
+            const statusEl = document.getElementById('cloud115Status');
+            statusEl.textContent = '验证中...';
+            statusEl.style.background = '#fff3cd';
+            statusEl.style.color = '#856404';
+            
+            try {
+                const response = await fetch('/api/cloud/verify-cookie', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ cookie })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    const userInfo = data.user_info;
+                    const spaceUsed = (userInfo.space_used / (1024**3)).toFixed(2);
+                    const spaceTotal = (userInfo.space_total / (1024**3)).toFixed(2);
+                    
+                    statusEl.innerHTML = `
+                        ✅ 已登录<br>
+                        <small>用户: ${userInfo.username || userInfo.user_id}</small><br>
+                        <small>空间: ${spaceUsed}GB / ${spaceTotal}GB</small>
+                    `;
+                    statusEl.style.background = '#d4edda';
+                    statusEl.style.color = '#155724';
+                    
+                    alert('✅ Cookie验证成功！\n\n用户: ' + (userInfo.username || userInfo.user_id) + '\n空间: ' + spaceUsed + 'GB / ' + spaceTotal + 'GB');
+                } else {
+                    statusEl.textContent = '❌ ' + (data.error || 'Cookie无效');
+                    statusEl.style.background = '#f8d7da';
+                    statusEl.style.color = '#721c24';
+                    
+                    alert('❌ Cookie验证失败\n\n' + (data.error || 'Cookie无效或已过期'));
+                }
+            } catch (error) {
+                statusEl.textContent = '❌ 验证失败';
+                statusEl.style.background = '#f8d7da';
+                statusEl.style.color = '#721c24';
+                
+                alert('❌ 验证失败\n\n' + error.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🔍 验证Cookie';
+            }
+        }
+        
+        // 自动验证115网盘Cookie（带防抖）
+        let cloud115VerifyTimer = null;
+        async function autoVerifyCloud115Cookie() {
+            const cookie = document.getElementById('cloud115CookieInline').value.trim();
+            const indicator = document.getElementById('cloud115StatusIndicator');
+            const statusText = document.getElementById('cloud115StatusText');
+            
+            // 清除之前的定时器
+            if (cloud115VerifyTimer) {
+                clearTimeout(cloud115VerifyTimer);
+            }
+            
+            if (!cookie) {
+                indicator.style.background = '#ccc';
+                statusText.textContent = '未配置';
+                statusText.style.color = '#666';
+                return;
+            }
+            
+            // 显示等待状态
+            indicator.style.background = '#ffc107';
+            statusText.textContent = '验证中...';
+            statusText.style.color = '#856404';
+            
+            // 设置防抖：1秒后自动验证
+            cloud115VerifyTimer = setTimeout(async () => {
+                try {
+                    const response = await fetch('/api/cloud/verify-cookie', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ cookie })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        const userInfo = data.user_info;
+                        const spaceUsed = (userInfo.space_used / (1024**3)).toFixed(2);
+                        const spaceTotal = (userInfo.space_total / (1024**3)).toFixed(2);
+                        
+                        indicator.style.background = '#28a745';
+                        statusText.textContent = `已登录 | ${userInfo.username || userInfo.user_id} | ${spaceUsed}GB/${spaceTotal}GB`;
+                        statusText.style.color = '#155724';
+                    } else {
+                        indicator.style.background = '#dc3545';
+                        statusText.textContent = 'Cookie无效';
+                        statusText.style.color = '#721c24';
+                    }
+                } catch (error) {
+                    indicator.style.background = '#dc3545';
+                    statusText.textContent = '验证失败';
+                    statusText.style.color = '#721c24';
+                }
+            }, 1000); // 1秒防抖
+        }
+        
+        // 切换Cookie显示/隐藏
+        function toggleCookieVisibility() {
+            const input = document.getElementById('cloud115CookieInline');
+            const btn = event.target;
+            
+            if (input.type === 'password') {
+                input.type = 'text';
+                btn.textContent = '🙈'; // 闭眼（隐藏）
+                btn.title = '隐藏Cookie';
+            } else {
+                input.type = 'password';
+                btn.textContent = '👁️'; // 睁眼（显示）
+                btn.title = '显示Cookie';
+            }
+        }
+        
+        // 复制Cookie
+        async function copyCookie() {
+            const input = document.getElementById('cloud115CookieInline');
+            const cookie = input.value;
+            
+            if (!cookie) {
+                alert('Cookie为空，无法复制');
+                return;
+            }
+            
+            try {
+                await navigator.clipboard.writeText(cookie);
+                alert('✅ Cookie已复制到剪贴板');
+            } catch (error) {
+                // 降级方案
+                input.select();
+                document.execCommand('copy');
+                alert('✅ Cookie已复制到剪贴板');
+            }
+        }
+        
+        // 显示二维码登录弹窗
+        function showQRCodeLogin() {
+            const modal = document.getElementById('qrcodeLoginModal');
+            if (!modal) {
+                // 创建二维码登录弹窗
+                const modalHtml = `
+                    <div id="qrcodeLoginModal" style="display: flex; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000; justify-content: center; align-items: center;">
+                        <div style="background: white; padding: 30px; border-radius: 12px; min-width: 400px; max-width: 500px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                                <h3 style="margin: 0; color: #333;">📱 115网盘扫码登录</h3>
+                                <button onclick="closeQRCodeLogin()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #999;">×</button>
+                            </div>
+                            
+                            <div style="margin-bottom: 20px;">
+                                <p style="color: #666; margin-bottom: 15px;">请选择扫码方式：</p>
+                                <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px;">
+                                    <button onclick="selectQRType('wechatmini')" class="qr-type-btn" data-type="wechatmini" style="flex: 1; min-width: 100px; padding: 10px; border: 2px solid #07c160; border-radius: 8px; background: #f0f9ff; cursor: pointer; transition: all 0.2s; font-weight: 600; color: #07c160;">微信小程序 ⭐</button>
+                                    <button onclick="selectQRType('alipaymini')" class="qr-type-btn" data-type="alipaymini" style="flex: 1; min-width: 80px; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; background: white; cursor: pointer; transition: all 0.2s;">支付宝</button>
+                                    <button onclick="selectQRType('android')" class="qr-type-btn" data-type="android" style="flex: 1; min-width: 80px; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; background: white; cursor: pointer; transition: all 0.2s;">安卓APP</button>
+                                    <button onclick="selectQRType('ios')" class="qr-type-btn" data-type="ios" style="flex: 1; min-width: 80px; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; background: white; cursor: pointer; transition: all 0.2s;">iOS APP</button>
+                                    <button onclick="selectQRType('tv')" class="qr-type-btn" data-type="tv" style="flex: 1; min-width: 80px; padding: 10px; border: 2px solid #e0e0e0; border-radius: 8px; background: white; cursor: pointer; transition: all 0.2s;">PAD端</button>
+                                </div>
+                            </div>
+                            
+                            <div id="qrcodeContainer" style="text-align: center; padding: 20px; background: #f8f9fa; border-radius: 8px; min-height: 300px; display: flex; flex-direction: column; justify-content: center; align-items: center;">
+                                <p style="color: #999;">👆 请先选择扫码方式</p>
+                                <small style="color: #999; margin-top: 10px;">推荐使用微信小程序，Cookie有效期更长</small>
+                            </div>
+                            
+                            <div style="margin-top: 20px; padding: 15px; background: #e7f3ff; border-radius: 8px; border-left: 4px solid #2196f3;">
+                                <small style="color: #1976d2; line-height: 1.6;">
+                                    <strong>💡 使用提示：</strong><br>
+                                    • 推荐使用微信小程序或支付宝小程序扫码<br>
+                                    • 小程序Cookie有效期更长，不易过期<br>
+                                    • 使用115手机客户端扫码后点击确认<br>
+                                    • Cookie会自动保存并验证
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                document.body.insertAdjacentHTML('beforeend', modalHtml);
+            } else {
+                modal.style.display = 'flex';
+            }
+        }
+        
+        // 关闭二维码登录弹窗
+        function closeQRCodeLogin() {
+            const modal = document.getElementById('qrcodeLoginModal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        }
+        
+        // 选择二维码类型
+        async function selectQRType(type) {
+            // 更新按钮样式
+            document.querySelectorAll('.qr-type-btn').forEach(btn => {
+                if (btn.dataset.type === type) {
+                    btn.style.borderColor = '#667eea';
+                    btn.style.background = '#f0f4ff';
+                    btn.style.color = '#667eea';
+                    btn.style.fontWeight = '600';
+                } else {
+                    btn.style.borderColor = '#e0e0e0';
+                    btn.style.background = 'white';
+                    btn.style.color = '#333';
+                    btn.style.fontWeight = 'normal';
+                }
+            });
+            
+            const container = document.getElementById('qrcodeContainer');
+            container.innerHTML = '<p style="color: #667eea;">🔄 正在生成二维码...</p>';
+            
+            try {
+                // 调用后端API生成二维码
+                const response = await fetch('/api/cloud/generate-qrcode', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ type })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // 显示二维码
+                    container.innerHTML = `
+                        <img src="${data.qrcode}" style="width: 250px; height: 250px; border: 2px solid #e0e0e0; border-radius: 8px;">
+                        <p style="color: #667eea; margin-top: 15px; font-weight: 500;">请使用115手机客户端扫码</p>
+                        <p style="color: #999; font-size: 12px;">等待扫码...</p>
+                    `;
+                    
+                    // 开始轮询检查登录状态
+                    checkQRCodeStatus(data.session_id);
+                } else {
+                    container.innerHTML = `<p style="color: #dc3545;">❌ ${data.error || '生成二维码失败'}</p>`;
+                }
+            } catch (error) {
+                container.innerHTML = `
+                    <p style="color: #dc3545;">❌ 功能开发中</p>
+                    <small style="color: #999; margin-top: 10px; display: block;">此功能需要后端支持，敬请期待</small>
+                `;
+            }
+        }
+        
+        // 检查二维码扫码状态
+        let qrcodeCheckTimer = null;
+        async function checkQRCodeStatus(sessionId) {
+            // 清除之前的定时器
+            if (qrcodeCheckTimer) {
+                clearInterval(qrcodeCheckTimer);
+            }
+            
+            // 每2秒检查一次
+            qrcodeCheckTimer = setInterval(async () => {
+                try {
+                    const response = await fetch('/api/cloud/check-qrcode', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ session_id: sessionId })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success && data.cookie) {
+                        // 扫码成功，获取到Cookie
+                        clearInterval(qrcodeCheckTimer);
+                        
+                        // 填充Cookie并验证
+                        document.getElementById('cloud115CookieInline').value = data.cookie;
+                        autoVerifyCloud115Cookie();
+                        
+                        // 关闭弹窗
+                        closeQRCodeLogin();
+                        alert('✅ 扫码登录成功！Cookie已自动填充并验证');
+                    } else if (data.expired) {
+                        // 二维码过期
+                        clearInterval(qrcodeCheckTimer);
+                        document.getElementById('qrcodeContainer').innerHTML = `
+                            <p style="color: #dc3545;">⏰ 二维码已过期</p>
+                            <button onclick="selectQRType('${data.type}')" style="margin-top: 15px; padding: 10px 20px; background: #667eea; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                                🔄 刷新二维码
+                            </button>
+                        `;
+                    }
+                } catch (error) {
+                    console.error('检查二维码状态失败:', error);
+                }
+            }, 2000);
+        }
+        
+        // 加载115网盘Cookie状态（页面加载时调用）
+        async function loadCloud115Status() {
+            try {
+                const response = await fetch('/api/get-settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
+                });
+                
+                const data = await response.json();
+                if (data.success && data.settings && data.settings.cloud_115_cookie) {
+                    // 显示已配置状态
+                    const indicator = document.getElementById('cloud115StatusIndicator');
+                    const statusText = document.getElementById('cloud115StatusText');
+                    
+                    if (indicator && statusText) {
+                        indicator.style.background = '#28a745';
+                        statusText.textContent = '已配置（可重新输入更新）';
+                        statusText.style.color = '#155724';
+                    }
+                }
+            } catch (error) {
+                console.error('加载115网盘状态失败:', error);
+            }
+        }
+        
+        async function saveSettings() {
+            const settings = {
+                tmdb_api_key: document.getElementById('tmdbApiKey').value.trim(),
+                tmdb_proxy: document.getElementById('tmdbProxy').value.trim(),
+                tmdb_proxy_type: document.getElementById('tmdbProxyType').value,
+                douban_cookie: document.getElementById('doubanCookie').value.trim(),
+                update_proxy: document.getElementById('updateProxy').value.trim(),
+                update_proxy_enabled: document.getElementById('updateProxyEnabled').checked,
+                auto_restart_after_update: document.getElementById('autoRestartAfterUpdate').checked
+            };
+            
+            // 如果输入了115网盘Cookie，先验证再保存
+            const cloud115Cookie = document.getElementById('cloud115Cookie').value.trim();
+            if (cloud115Cookie) {
+                try {
+                    const verifyResponse = await fetch('/api/cloud/verify-cookie', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ cookie: cloud115Cookie })
+                    });
+                    
+                    const verifyData = await verifyResponse.json();
+                    if (!verifyData.success) {
+                        alert('❌ 115网盘Cookie验证失败\n\n' + (verifyData.error || 'Cookie无效或已过期') + '\n\n请先验证Cookie后再保存设置。');
+                        return;
+                    }
+                    
+                    // Cookie已在验证时保存，这里不需要再次保存
+                    alert('✅ 115网盘Cookie已验证并保存！');
+                } catch (error) {
+                    alert('❌ 115网盘Cookie验证失败\n\n' + error.message);
+                    return;
+                }
+            }
+            
+            try {
+                const response = await fetch('/api/save-settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ settings })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    alert('✅ 设置已保存！\n\n提示：某些设置可能需要重启服务才能生效。');
+                    closeSettingsModal();
+                } else {
+                    alert('❌ 保存失败: ' + (data.error || '未知错误'));
+                }
+            } catch (error) {
+                alert('❌ 保存失败: ' + error.message);
+            }
+        }
+        
+        function resetProgressDisplay() {
+            // 重置整体进度
+            document.getElementById('overallProgress').style.width = '0%';
+            document.getElementById('overallStatus').textContent = '准备开始...';
+            
+            // 重置当前步骤
+            const currentStep = document.getElementById('currentStep');
+            currentStep.innerHTML = `
+                <div class="step-icon">📂</div>
+                <div class="step-info">
+                    <div class="step-title">等待开始</div>
+                    <div class="step-detail">点击"一键整理入库"开始处理</div>
+                </div>
+            `;
+            
+            // 重置详细进度
+            const progressItems = document.querySelectorAll('.progress-item');
+            progressItems.forEach((item, index) => {
+                item.className = 'progress-item';
+                const status = item.querySelector('.progress-status');
+                status.className = 'progress-status waiting';
+                status.textContent = '等待中';
+            });
+            
+            // 重置日志
+            document.getElementById('realtimeLog').innerHTML = '<div class="log-message">等待开始处理...</div>';
+        }
+        
+        function updateProgressDisplay() {
+            // 更新整体进度
+            const progress = Math.round((currentStepIndex / steps.length) * 100);
+            document.getElementById('overallProgress').style.width = progress + '%';
+            document.getElementById('overallStatus').textContent = `正在处理... ${progress}%`;
+            
+            // 更新当前步骤
+            if (currentStepIndex < steps.length) {
+                const step = steps[currentStepIndex];
+                const currentStep = document.getElementById('currentStep');
+                currentStep.innerHTML = `
+                    <div class="step-icon">${step.icon}</div>
+                    <div class="step-info">
+                        <div class="step-title">${step.title}</div>
+                        <div class="step-detail">${step.detail}</div>
+                    </div>
+                `;
+            }
+            
+            // 更新详细进度
+            const progressItems = document.querySelectorAll('.progress-item');
+            progressItems.forEach((item, index) => {
+                const status = item.querySelector('.progress-status');
+                if (index < currentStepIndex) {
+                    item.className = 'progress-item completed';
+                    status.className = 'progress-status completed';
+                    status.textContent = '已完成';
+                } else if (index === currentStepIndex) {
+                    item.className = 'progress-item active';
+                    status.className = 'progress-status active';
+                    status.textContent = '进行中';
+                } else {
+                    item.className = 'progress-item';
+                    status.className = 'progress-status waiting';
+                    status.textContent = '等待中';
+                }
+            });
+        }
+        
+        function addLogMessage(message) {
+            const logContainer = document.getElementById('realtimeLog');
+            const timestamp = new Date().toLocaleTimeString();
+            const logMessage = document.createElement('div');
+            logMessage.className = 'log-message';
+            logMessage.textContent = `[${timestamp}] ${message}`;
+            
+            logContainer.appendChild(logMessage);
+            logContainer.scrollTop = logContainer.scrollHeight;
+            
+            // 限制日志条数
+            const messages = logContainer.querySelectorAll('.log-message');
+            if (messages.length > 50) {
+                messages[0].remove();
+            }
+        }
+        
+        function nextStep(stepName) {
+            if (stepName) {
+                addLogMessage(`✓ ${stepName} 完成`);
+            }
+            currentStepIndex++;
+            updateProgressDisplay();
+        }
+        
+        function completeProcessing() {
+            isProcessing = false;
+            currentStepIndex = steps.length;
+            
+            // 更新为完成状态
+            document.getElementById('overallProgress').style.width = '100%';
+            document.getElementById('overallStatus').textContent = '处理完成！';
+            
+            const currentStep = document.getElementById('currentStep');
+            currentStep.innerHTML = `
+                <div class="step-icon">✅</div>
+                <div class="step-info">
+                    <div class="step-title">处理完成</div>
+                    <div class="step-detail">所有文件已成功整理入库</div>
+                </div>
+            `;
+            
+            // 所有步骤标记为完成
+            const progressItems = document.querySelectorAll('.progress-item');
+            progressItems.forEach(item => {
+                item.className = 'progress-item completed';
+                const status = item.querySelector('.progress-status');
+                status.className = 'progress-status completed';
+                status.textContent = '已完成';
+            });
+            
+            addLogMessage('🎉 整理完成！所有文件已成功入库');
+            
+            // 显示完成通知
+            if (!progressModal || progressModal.style.display === 'none') {
+                showCompletionNotification();
+            }
+        }
+        
+        function showCompletionNotification() {
+            // 创建完成通知
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+                color: white;
+                padding: 20px;
+                border-radius: 12px;
+                box-shadow: 0 10px 30px rgba(40, 167, 69, 0.3);
+                z-index: 1001;
+                animation: slideInRight 0.5s ease-out;
+                cursor: pointer;
+                max-width: 300px;
+            `;
+            
+            notification.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+                    <span style="font-size: 24px;">🎉</span>
+                    <strong>整理完成！</strong>
+                </div>
+                <div style="font-size: 14px; opacity: 0.9;">所有文件已成功整理入库</div>
+                <div style="font-size: 12px; opacity: 0.7; margin-top: 8px;">点击查看详情</div>
+            `;
+            
+            // 添加样式
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes slideInRight {
+                    from {
+                        opacity: 0;
+                        transform: translateX(100%);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: translateX(0);
+                    }
+                }
+            `;
+            document.head.appendChild(style);
+            
+            notification.onclick = () => {
+                showProgressModal();
+                document.body.removeChild(notification);
+            };
+            
+            document.body.appendChild(notification);
+            
+            // 5秒后自动消失
+            setTimeout(() => {
+                if (document.body.contains(notification)) {
+                    notification.style.animation = 'slideInRight 0.5s ease-out reverse';
+                    setTimeout(() => {
+                        if (document.body.contains(notification)) {
+                            document.body.removeChild(notification);
+                        }
+                    }, 500);
+                }
+            }, 5000);
+        }
+        
+        // 点击弹窗外部关闭
+        document.addEventListener('click', function(e) {
+            if (e.target.id === 'progressModal') {
+                closeProgressModal();
+            }
+        });
+        
+        // ESC键关闭弹窗
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && progressModal && progressModal.style.display === 'flex') {
+                closeProgressModal();
+            }
+        });
+
+        async function startAutoRename() {
+            // 开始处理
+            isProcessing = true;
+            currentStepIndex = 0;
+            
+            // 如果弹窗已打开，更新显示
+            if (progressModal && progressModal.style.display === 'flex') {
+                updateProgressDisplay();
+            }
+            
+            addLogMessage('🚀 开始整理入库流程');
+            
+            // 获取并保存路径
+            const folderPath = document.getElementById('folderPath').value.trim();
+            
+            if (!folderPath) {
+                addLogMessage('❌ 错误：未输入扫描路径');
+                showStatus('请输入扫描路径', 'error');
+                isProcessing = false;
+                return;
+            }
+            
+            // 保存路径到localStorage
+            localStorage.setItem('scanPath', folderPath);
+            currentFolder = folderPath;
+            
+            // 步骤1: 智能扫描
+            addLogMessage('📂 开始扫描待整理目录...');
+            showStatus('正在扫描网盘文件（可能需要较长时间）...', 'info');
+            const autoDelete = true;  // 固定开启
+            const recursive = true;   // 固定开启
+
+            try {
+                const response = await fetch('/api/scan-all', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        folderPath,
+                        autoDelete,
+                        recursive
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error);
+                }
+
+                currentFiles = data.supported;
+                currentFolder = data.folderPath;
+                
+                const supportedCount = data.supported.length;
+                const deletedCount = data.deleted.length;
+                
+                if (supportedCount === 0) {
+                    addLogMessage('⚠️ 没有找到支持的媒体或字幕文件');
+                    showStatus('没有找到支持的媒体或字幕文件', 'error');
+                    isProcessing = false;
+                    return;
+                }
+                
+                let statusMsg = `扫描完成：找到 ${supportedCount} 个文件`;
+                if (deletedCount > 0) {
+                    statusMsg += `，已删除 ${deletedCount} 个不支持的文件`;
+                    addLogMessage(`🗑️ 删除了 ${deletedCount} 个不支持的文件`);
+                }
+                addLogMessage(`✓ 扫描完成，找到 ${supportedCount} 个媒体文件`);
+                showStatus(statusMsg, 'success');
+                
+                nextStep('智能扫描');
+                
+                // 延迟1秒后自动开始智能重命名
+                await delay(1000);
+                smartRename();
+                
+            } catch (error) {
+                addLogMessage(`❌ 扫描出错: ${error.message}`);
+                showStatus('错误: ' + error.message, 'error');
+                isProcessing = false;
+            }
+        }
+
+        async function smartRename() {
+            // 步骤2: 中文标题识别 (在API内部完成)
+            addLogMessage('🌐 开始中文标题识别...');
+            nextStep('中文标题识别');
+            
+            const filtered = currentFiles;
+
+            if (filtered.length === 0) {
+                addLogMessage('⚠️ 没有文件可以重命名');
+                showStatus('没有文件可以重命名', 'error');
+                isProcessing = false;
+                return;
+            }
+
+            const autoDedupe = true;  // 固定开启
+
+            addLogMessage('🎯 开始智能去重...');
+            showStatus('正在分析文件名并检测重复版本...', 'info');
+
+            try {
+                // 获取输出路径
+                const movieOutputPath = document.getElementById('movieOutputPath').value.trim();
+                const tvOutputPath = document.getElementById('tvOutputPath').value.trim();
+                
+                // 调用智能重命名API
+                const response = await fetch('/api/smart-rename', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        files: filtered,
+                        basePath: currentFolder,
+                        movieOutputPath: movieOutputPath,
+                        tvOutputPath: tvOutputPath,
+                        autoDedupe
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error);
+                }
+
+                addLogMessage(`✓ 去重完成，将删除 ${data.toDelete.length} 个低质量文件`);
+                addLogMessage(`✓ 将处理 ${data.results.length} 个文件`);
+                
+                // 步骤3: 智能去重完成
+                nextStep('智能去重');
+                
+                // 步骤4: 标准化重命名 (在API内部完成)
+                nextStep('标准化重命名');
+                
+                // 步骤5: 智能分类 (在API内部完成)
+                nextStep('智能分类');
+                
+                // 显示预览
+                showRenamePreview(data.results, data.toDelete);
+            } catch (error) {
+                addLogMessage(`❌ 处理出错: ${error.message}`);
+                showStatus('错误: ' + error.message, 'error');
+                isProcessing = false;
+            }
+        }
+
+        function showRenamePreview(results, toDelete = []) {
+            let message = '';
+            
+            if (toDelete.length > 0) {
+                message += `【将删除 ${toDelete.length} 个低清晰度版本】\n`;
+                toDelete.forEach(d => {
+                    message += `❌ ${d.name}\n   原因: ${d.reason}\n`;
+                });
+                message += '\n';
+            }
+            
+            message += `【将重命名并分类 ${results.length} 个文件】\n`;
+            const preview = results.map(r => {
+                let line = `✓ ${r.oldName}\n  → ${r.newName}`;
+                if (r.category) {
+                    line += `\n  📁 分类: ${r.category}`;
+                }
+                return line;
+            }).join('\n');
+            
+            message += preview.substring(0, 1000);
+            if (preview.length > 1000) {
+                message += '\n...';
+            }
+            
+            message += '\n\n确定继续？';
+
+            const confirmed = confirm(message);
+
+            if (!confirmed) return;
+
+            executeSmartRename(results, toDelete);
+        }
+
+        // 延迟函数，用于网盘操作间隔
+        function delay(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        async function executeSmartRename(results, toDelete = []) {
+            // 步骤6: 自动移动
+            addLogMessage('🚚 开始自动移动文件...');
+            nextStep('自动移动');
+            
+            let totalTasks = results.length + toDelete.length;
+            showStatus(`正在处理 ${totalTasks} 个文件（网盘操作较慢，请耐心等待）...`, 'info');
+
+            let renameSuccess = 0;
+            let renameFailed = 0;
+            let deleteSuccess = 0;
+            let deleteFailed = 0;
+            let skippedFiles = [];  // 记录跳过的文件路径
+            renameLog = [];
+
+            // 先删除低清晰度版本（逐个处理，避免网盘压力）
+            for (let i = 0; i < toDelete.length; i++) {
+                const item = toDelete[i];
+                showStatus(`正在删除 (${i + 1}/${toDelete.length}): ${item.name}`, 'info');
+                
+                try {
+                    const response = await fetch('/api/delete', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ filePath: item.path })
+                    });
+
+                    if (response.ok) {
+                        deleteSuccess++;
+                        renameLog.push({
+                            type: 'delete',
+                            name: item.name,
+                            reason: item.reason
+                        });
+                    } else {
+                        deleteFailed++;
+                        renameLog.push({
+                            type: 'error',
+                            name: item.name,
+                            reason: '删除失败'
+                        });
+                    }
+                } catch (error) {
+                    deleteFailed++;
+                    renameLog.push({
+                        type: 'error',
+                        name: item.name,
+                        reason: '删除失败: ' + error.message
+                    });
+                }
+                
+                // 网盘操作间隔，避免过快操作
+                if (i < toDelete.length - 1) {
+                    await delay(300);
+                }
+            }
+
+            // 再重命名保留的文件（逐个处理）
+            for (let i = 0; i < results.length; i++) {
+                const result = results[i];
+                const statusMsg = result.category ? 
+                    `正在处理 (${i + 1}/${results.length}): ${result.oldName} → ${result.category}` :
+                    `正在重命名 (${i + 1}/${results.length}): ${result.oldName}`;
+                showStatus(statusMsg, 'info');
+                
+                try {
+                    // 获取冲突处理策略
+                    const conflictStrategy = document.getElementById('conflictStrategy').value;
+                    
+                    const response = await fetch('/api/rename', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                            oldPath: result.oldPath, 
+                            newPath: result.newPath,  // 使用完整路径（支持移动+重命名）
+                            conflictStrategy: conflictStrategy  // 传递冲突策略
+                        })
+                    });
+
+                    const responseData = await response.json();
+
+                    if (response.ok) {
+                        if (responseData.skipped) {
+                            // 文件被跳过，记录路径用于后续清理
+                            skippedFiles.push(result.oldPath);
+                            renameLog.push({
+                                type: 'skip',
+                                oldName: result.oldName,
+                                newName: result.newName,
+                                reason: responseData.reason,
+                                category: result.category
+                            });
+                        } else {
+                            // 成功处理
+                            renameSuccess++;
+                            renameLog.push({
+                                type: 'rename',
+                                oldName: result.oldName,
+                                newName: result.newName,
+                                category: result.category
+                            });
+                        }
+                    } else {
+                        renameFailed++;
+                        renameLog.push({
+                            type: 'error',
+                            name: result.oldName,
+                            reason: responseData.error || '处理失败'
+                        });
+                    }
+                } catch (error) {
+                    renameFailed++;
+                    renameLog.push({
+                        type: 'error',
+                        name: result.oldName,
+                        reason: '重命名失败: ' + error.message
+                    });
+                }
+                
+                // 网盘操作间隔
+                if (i < results.length - 1) {
+                    await delay(300);
+                }
+            }
+
+            // 清理跳过的文件和空文件夹
+            let cleanupSuccess = 0;
+            let cleanupFolders = 0;
+            
+            if (skippedFiles.length > 0) {
+                showStatus(`正在清理 ${skippedFiles.length} 个跳过的文件...`, 'info');
+                
+                try {
+                    const cleanupResponse = await fetch('/api/cleanup', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            skippedFiles: skippedFiles,
+                            basePath: currentFolder
+                        })
+                    });
+                    
+                    if (cleanupResponse.ok) {
+                        const cleanupData = await cleanupResponse.json();
+                        cleanupSuccess = cleanupData.deletedFiles.length;
+                        cleanupFolders = cleanupData.deletedFolders.length;
+                        
+                        // 添加清理日志
+                        cleanupData.deletedFiles.forEach(file => {
+                            renameLog.push({
+                                type: 'cleanup',
+                                name: file,
+                                reason: '质量相同或较差，已清理'
+                            });
+                        });
+                        
+                        cleanupData.deletedFolders.forEach(folder => {
+                            renameLog.push({
+                                type: 'cleanup_folder',
+                                name: folder,
+                                reason: '空文件夹，已清理'
+                            });
+                        });
+                    }
+                } catch (error) {
+                    console.error('清理失败:', error);
+                }
+            }
+
+            // 步骤7: 冲突处理 (在移动过程中完成)
+            nextStep('冲突处理');
+            
+            // 步骤8: 自动清理
+            addLogMessage('🧹 开始自动清理...');
+            nextStep('自动清理');
+            
+            let statusMsg = `处理完成：`;
+            if (deleteSuccess > 0) {
+                statusMsg += `删除 ${deleteSuccess} 个低清晰度版本，`;
+                addLogMessage(`✓ 删除了 ${deleteSuccess} 个低清晰度版本`);
+            }
+            statusMsg += `重命名 ${renameSuccess} 个文件`;
+            addLogMessage(`✓ 成功处理 ${renameSuccess} 个文件`);
+            
+            if (cleanupSuccess > 0) {
+                statusMsg += `，清理 ${cleanupSuccess} 个跳过的文件`;
+                addLogMessage(`✓ 清理了 ${cleanupSuccess} 个跳过的文件`);
+            }
+            if (cleanupFolders > 0) {
+                statusMsg += `，清理 ${cleanupFolders} 个空文件夹`;
+                addLogMessage(`✓ 清理了 ${cleanupFolders} 个空文件夹`);
+            }
+            
+            if (deleteFailed > 0 || renameFailed > 0) {
+                statusMsg += `（${deleteFailed + renameFailed} 个失败）`;
+                addLogMessage(`⚠️ ${deleteFailed + renameFailed} 个文件处理失败`);
+            }
+
+            showStatus(statusMsg, (renameSuccess > 0 || deleteSuccess > 0 || cleanupSuccess > 0) ? 'success' : 'error');
+            
+            // 完成处理
+            completeProcessing();
+            
+            scanFolder();
+        }
+
+
+        // 文件夹浏览器
+        let currentBrowsePath = '/';
+        let currentBrowserType = 'scan'; // 'scan', 'movie', 'tv'
+
+        async function openFolderBrowser(type = 'scan') {
+            currentBrowserType = type;
+            const overlay = document.getElementById('folderBrowserOverlay');
+            overlay.classList.add('show');
+            
+            // 根据类型从对应的输入框获取当前路径作为起始路径
+            let inputId = 'folderPath';
+            if (type === 'movie') {
+                inputId = 'movieOutputPath';
+            } else if (type === 'tv') {
+                inputId = 'tvOutputPath';
+            }
+            
+            const currentPath = document.getElementById(inputId).value.trim();
+            if (currentPath && currentPath !== '') {
+                currentBrowsePath = currentPath;
+            } else {
+                currentBrowsePath = '/';
+            }
+            
+            await loadFolders(currentBrowsePath);
+        }
+
+        function closeFolderBrowser(event) {
+            if (event && event.target !== event.currentTarget) return;
+            const overlay = document.getElementById('folderBrowserOverlay');
+            overlay.classList.remove('show');
+        }
+
+        async function loadFolders(path) {
+            const folderList = document.getElementById('folderList');
+            const pathDisplay = document.getElementById('currentBrowserPath');
+            
+            folderList.innerHTML = '<div style="text-align: center; padding: 40px; color: #999;">加载中...</div>';
+            pathDisplay.textContent = path;
+            currentBrowsePath = path;
+            
+            try {
+                const response = await fetch('/api/browse-folders', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ folderPath: path })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error);
+                }
+
+                let html = '';
+                
+                // 添加返回上级目录
+                if (data.parentPath) {
+                    html += `
+                        <div class="folder-item" onclick="loadFolders('${data.parentPath.replace(/'/g, "\\'")}')">
+                            <span class="folder-item-icon">⬆️</span>
+                            <span class="folder-item-name">..</span>
+                        </div>
+                    `;
+                }
+                
+                // 添加子文件夹
+                if (data.folders.length === 0 && !data.parentPath) {
+                    html = '<div style="text-align: center; padding: 40px; color: #999;">此文件夹为空</div>';
+                } else if (data.folders.length === 0) {
+                    // 有父目录但没有子文件夹
+                } else {
+                    data.folders.forEach(folder => {
+                        const safePath = folder.path.replace(/'/g, "\\'");
+                        html += `
+                            <div class="folder-item" onclick="loadFolders('${safePath}')">
+                                <span class="folder-item-icon">📁</span>
+                                <span class="folder-item-name">${escapeHtml(folder.name)}</span>
+                            </div>
+                        `;
+                    });
+                }
+                
+                folderList.innerHTML = html;
+            } catch (error) {
+                folderList.innerHTML = `
+                    <div style="text-align: center; padding: 40px; color: #f44336;">
+                        ❌ 加载失败<br>
+                        <small>${error.message}</small>
+                    </div>
+                `;
+            }
+        }
+
+        function selectCurrentFolder() {
+            // 根据浏览器类型设置对应的输入框
+            if (currentBrowserType === 'scan') {
+                document.getElementById('folderPath').value = currentBrowsePath;
+                localStorage.setItem('scanPath', currentBrowsePath);
+                currentFolder = currentBrowsePath;
+            } else if (currentBrowserType === 'movie') {
+                document.getElementById('movieOutputPath').value = currentBrowsePath;
+                localStorage.setItem('movieOutputPath', currentBrowsePath);
+            } else if (currentBrowserType === 'tv') {
+                document.getElementById('tvOutputPath').value = currentBrowsePath;
+                localStorage.setItem('tvOutputPath', currentBrowsePath);
+            }
+            closeFolderBrowser();
+        }
+        
+        // 加载当前版本
+        async function loadCurrentVersion() {
+            try {
+                const response = await fetch('/api/get-version', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    const versionEl = document.getElementById('currentVersion');
+                    if (versionEl) {
+                        versionEl.textContent = `${data.current_version} (${data.git_commit})`;
+                    }
+                }
+            } catch (error) {
+                console.error('加载版本失败:', error);
+            }
+        }
+        
+        // 检查更新（在设置中）
+        async function checkForUpdates() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.textContent = '🔍 检查中...';
+            
+            try {
+                const useProxy = document.getElementById('updateProxyEnabled').checked;
+                
+                const response = await fetch('/api/check-update', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ use_proxy: useProxy })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    if (data.has_update) {
+                        const msg = `发现新版本！\n\n当前版本: ${data.current_version}\n落后提交: ${data.commits_behind} 个\n\n是否立即更新？`;
+                        if (confirm(msg)) {
+                            executeUpdate();
+                        }
+                    } else {
+                        alert('✅ 已是最新版本\n\n当前版本: ' + data.current_version);
+                    }
+                } else {
+                    throw new Error(data.error || '检查更新失败');
+                }
+            } catch (error) {
+                alert('❌ 检查更新失败\n\n' + error.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🔍 检查更新';
+            }
+        }
+        
+        // 执行更新
+        async function executeUpdate() {
+            const useProxy = document.getElementById('updateProxyEnabled').checked;
+            const autoRestart = document.getElementById('autoRestartAfterUpdate').checked;
+            
+            // 关闭设置弹窗
+            closeSettingsModal();
+            
+            showStatus('正在更新系统...', 'info');
+            
+            try {
+                const response = await fetch('/api/update', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        use_proxy: useProxy,
+                        auto_restart: autoRestart
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    if (data.updated) {
+                        showStatus('✅ ' + data.message, 'success');
+                        if (autoRestart) {
+                            alert('✅ 更新成功！\n\n' + data.message + '\n\n页面将在5秒后自动刷新...');
+                            setTimeout(() => {
+                                window.location.reload();
+                            }, 5000);
+                        } else {
+                            alert('✅ 更新成功！\n\n' + data.message);
+                        }
+                    } else {
+                        showStatus(data.message, 'info');
+                        alert('ℹ️ ' + data.message);
+                    }
+                } else {
+                    throw new Error(data.error || '更新失败');
+                }
+            } catch (error) {
+                showStatus('更新失败: ' + error.message, 'error');
+                alert('❌ 更新失败\n\n' + error.message + '\n\n请检查网络连接或在设置中配置代理。');
+            }
+        }
+        
+        // 系统更新功能（快捷按钮）
+        async function checkUpdate() {
+            if (!confirm('确定要检查并更新系统吗？\n\n更新过程中服务会短暂中断。')) {
+                return;
+            }
+            
+            showStatus('正在检查更新...', 'info');
+            
+            try {
+                // 先检查更新
+                const checkResponse = await fetch('/api/check-update', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ use_proxy: false })
+                });
+                
+                const checkData = await checkResponse.json();
+                
+                if (checkData.success) {
+                    if (checkData.has_update) {
+                        const msg = `发现新版本！\n\n当前版本: ${checkData.current_version}\n落后提交: ${checkData.commits_behind} 个\n\n正在更新...`;
+                        showStatus(msg, 'info');
+                        
+                        // 执行更新
+                        const updateResponse = await fetch('/api/update', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                use_proxy: false,
+                                auto_restart: true
+                            })
+                        });
+                        
+                        const updateData = await updateResponse.json();
+                        
+                        if (updateResponse.ok && updateData.updated) {
+                            showStatus('✅ ' + updateData.message, 'success');
+                            alert('✅ 更新成功！\n\n' + updateData.message + '\n\n页面将在5秒后自动刷新...');
+                            setTimeout(() => {
+                                window.location.reload();
+                            }, 5000);
+                        } else {
+                            throw new Error(updateData.error || '更新失败');
+                        }
+                    } else {
+                        showStatus('✅ 已是最新版本', 'success');
+                        alert('✅ 已是最新版本\n\n当前版本: ' + checkData.current_version);
+                    }
+                } else {
+                    throw new Error(checkData.error || '检查更新失败');
+                }
+            } catch (error) {
+                showStatus('更新失败: ' + error.message, 'error');
+                alert('❌ 更新失败\n\n' + error.message + '\n\n请在设置中配置代理后重试。');
+            }
         }
     </script>
 </body>
-
 </html>
