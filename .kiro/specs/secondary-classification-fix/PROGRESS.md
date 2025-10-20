@@ -24,146 +24,168 @@
 
 ---
 
-## 🔄 进行中（Task 8 剩余部分）
+## ✅ Task 8 完成！
 
-### 需要实现的 JavaScript 函数
+### 已实现的 JavaScript 函数
 
-#### 1. detectMediaLibraryStructure()
-检测媒体库结构并显示结果
+#### 1. ✅ detectMediaLibraryStructure()
+- 检测媒体库结构并显示结果
+- 调用 `/api/detect-media-library` API
+- 显示电影/电视剧目录和分类信息
 
-```javascript
-async function detectMediaLibraryStructure() {
-    const mediaLibraryPath = document.getElementById('mediaLibraryPath').value.trim();
-    
-    if (!mediaLibraryPath) {
-        alert('请先输入媒体库路径');
-        return;
-    }
-    
-    try {
-        // 调用后端 API 检测结构
-        const response = await fetch('/api/detect-media-library', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ path: mediaLibraryPath })
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            // 显示检测结果
-            const infoDiv = document.getElementById('mediaLibraryInfo');
-            const structureDiv = document.getElementById('detectedStructure');
-            
-            let html = '<strong>✓ 检测成功：</strong><br>';
-            if (data.movie_dir) {
-                html += `📁 电影目录: ${data.movie_dir}<br>`;
-            }
-            if (data.tv_dir) {
-                html += `📁 电视剧目录: ${data.tv_dir}<br>`;
-            }
-            if (data.movie_categories && data.movie_categories.length > 0) {
-                html += `🎬 电影分类: ${data.movie_categories.join(', ')}<br>`;
-            }
-            if (data.tv_categories && data.tv_categories.length > 0) {
-                html += `📺 电视剧分类: ${data.tv_categories.join(', ')}`;
-            }
-            
-            structureDiv.innerHTML = html;
-            infoDiv.style.display = 'block';
-        } else {
-            alert('检测失败: ' + data.error);
-        }
-    } catch (error) {
-        alert('检测失败: ' + error.message);
-    }
-}
-```
+#### 2. ✅ showNewConfig()
+- 显示新配置界面
+- 隐藏旧配置（向后兼容）
 
-#### 2. showNewConfig()
-显示新配置，隐藏旧配置
+#### 3. ✅ 更新 openFolderBrowser()
+- 添加 'media' 类型支持
+- 支持媒体库路径浏览
 
-```javascript
-function showNewConfig() {
-    document.getElementById('legacyConfig').style.display = 'none';
-    document.getElementById('mediaLibraryPath').parentElement.parentElement.style.display = 'block';
-    document.getElementById('preferredLanguage').parentElement.style.display = 'block';
-}
-```
+#### 4. ✅ 更新 selectCurrentFolder()
+- 添加 'media' 类型支持
+- 保存媒体库路径到 localStorage
 
-#### 3. 更新 openFolderBrowser()
-支持 'media' 类型
+#### 5. ✅ 更新 localStorage 保存/加载
+- 页面加载时恢复媒体库路径
+- 页面加载时恢复语言偏好
 
-```javascript
-// 在现有的 openFolderBrowser 函数中添加 'media' 类型支持
-function openFolderBrowser(type) {
-    currentBrowserType = type;
-    let inputId = 'folderPath';
-    if (type === 'movie') {
-        inputId = 'movieOutputPath';
-    } else if (type === 'tv') {
-        inputId = 'tvOutputPath';
-    } else if (type === 'media') {
-        inputId = 'mediaLibraryPath';
-    }
-    // ... 其余代码
-}
-```
+#### 6. ✅ 更新 smartRename()
+- 传递 mediaLibraryPath 参数
+- 传递 language 参数
+- 保持向后兼容（旧配置）
 
-#### 4. 更新 localStorage 保存/加载
-保存和加载媒体库路径配置
-
-```javascript
-// 在页面加载时
-const savedMediaLibraryPath = localStorage.getItem('mediaLibraryPath');
-if (savedMediaLibraryPath) {
-    document.getElementById('mediaLibraryPath').value = savedMediaLibraryPath;
-}
-
-const savedLanguage = localStorage.getItem('preferredLanguage');
-if (savedLanguage) {
-    document.getElementById('preferredLanguage').value = savedLanguage;
-}
-
-// 在保存时
-localStorage.setItem('mediaLibraryPath', mediaLibraryPath);
-localStorage.setItem('preferredLanguage', language);
-```
-
-#### 5. 更新 smartRename()
-传递新的参数
-
-```javascript
-// 在 smartRename 函数中
-const mediaLibraryPath = document.getElementById('mediaLibraryPath').value.trim();
-const language = document.getElementById('preferredLanguage').value;
-
-// 发送请求时
-body: JSON.stringify({
-    files: filtered,
-    basePath: currentFolder,
-    mediaLibraryPath: mediaLibraryPath,
-    language: language,
-    // 旧配置（向后兼容）
-    movieOutputPath: movieOutputPath,
-    tvOutputPath: tvOutputPath,
-    autoDedupe
-})
-```
+#### 7. ✅ 同步到 public/index.html
+- 所有修改已同步到 public/index.html
 
 ---
 
-## 📋 待完成（Tasks 9-14）
+## 🎉 前端功能测试
 
-### Task 9: 更新前端界面 - 整理页面
-- 修改整理页面的路径配置
-- 显示将要使用的目录结构
-- 添加路径预览功能
+现在可以测试以下功能：
 
-### Task 10: 添加配置迁移提示
-- 检测用户是否使用旧配置
-- 显示迁移提示对话框
-- 提供一键迁移功能
+1. **输入媒体库路径** - 在设置页面输入媒体库根路径
+2. **浏览文件夹** - 点击 📁 按钮浏览并选择文件夹
+3. **检测结构** - 点击 🔍 按钮检测媒体库结构
+4. **查看结果** - 查看检测到的电影/电视剧目录和分类
+5. **选择语言** - 选择中文或英文作为目录名称偏好
+6. **预览路径** - 点击 👁️ 预览路径按钮查看配置
+7. **执行整理** - 使用新配置执行文件整理
+
+---
+
+## ✅ Task 9 完成！
+
+### 已实现的功能
+
+#### 1. ✅ 路径预览区域
+- 添加了路径配置预览面板
+- 显示待整理路径、媒体库路径、语言偏好
+- 显示冲突处理策略
+
+#### 2. ✅ 预览路径按钮
+- 添加 👁️ 预览路径按钮
+- 点击后显示完整的路径配置信息
+
+#### 3. ✅ 自动检测媒体库结构
+- 预览时自动调用检测 API
+- 显示检测到的电影/电视剧目录
+- 显示现有的分类目录
+
+#### 4. ✅ 示例路径显示
+- 显示文件将保存到的路径格式
+- 区分电影和电视剧的路径结构
+
+#### 5. ✅ 配置模式提示
+- 自动识别新旧配置模式
+- 提示用户迁移到新配置
+
+#### 6. ✅ 错误提示
+- 未配置路径时显示错误提示
+- 检测失败时显示友好的错误信息
+
+---
+
+## ✅ Task 10 完成！
+
+### 已实现的功能
+
+#### 1. ✅ 配置检测
+- 页面加载时自动检测配置类型
+- 识别旧配置（分离的电影/电视剧路径）
+- 识别新配置（统一的媒体库路径）
+
+#### 2. ✅ 迁移提示对话框
+- 美观的迁移提示界面
+- 显示当前旧配置信息
+- 说明新配置的优势
+- 安全提示（旧配置保留为备份）
+
+#### 3. ✅ 智能路径推断
+- 从旧配置自动推断媒体库根路径
+- 支持从电影和电视剧路径找共同父路径
+- 支持单一路径的父目录推断
+- 推断失败时使用默认路径
+
+#### 4. ✅ 一键迁移功能
+- 点击按钮自动完成配置迁移
+- 保存新的媒体库路径
+- 设置默认语言偏好
+- 保留旧配置作为备份
+
+#### 5. ✅ 用户选择
+- 支持"暂不升级"选项
+- 记住用户选择，不重复提示
+- 迁移后自动检测媒体库结构
+
+---
+
+## ✅ Task 14 完成！
+
+### 已创建/更新的文档
+
+#### 1. ✅ 使用指南更新
+- 添加新配置方式说明
+- 添加媒体库结构说明
+- 添加配置步骤详解
+
+#### 2. ✅ 配置迁移指南（新建）
+- 详细的迁移步骤
+- 自动迁移和手动迁移说明
+- 路径推断规则
+- 迁移后的目录结构示例
+- 常见问题解答
+
+#### 3. ✅ 媒体库结构说明（新建）
+- 完整的目录结构说明
+- 文件命名规则
+- 目录检测机制
+- 最佳实践
+- 特殊情况处理
+- 性能优化建议
+
+#### 4. ✅ API文档（新建）
+- 所有 API 接口说明
+- 新增 `/api/detect-media-library` API
+- 更新 `/api/smart-rename` API
+- 请求/响应示例
+- 错误处理说明
+- 使用示例（JavaScript/Python/cURL）
+
+#### 5. ✅ 常见问题更新
+- 添加新配置相关问题
+- 添加配置迁移问题
+- 添加二级分类问题
+- 添加媒体库检测问题
+
+#### 6. ✅ README更新
+- 更新核心特性说明
+- 添加新配置方式说明
+- 更新命名规则示例
+- 添加新文档链接
+
+---
+
+## 📋 待完成（Tasks 11-13）
 
 ### Task 11: 单元测试
 - 测试所有核心类
@@ -180,71 +202,27 @@ body: JSON.stringify({
 - 优化批量处理
 - 添加性能监控
 
-### Task 14: 文档更新
-- 更新使用指南
-- 添加配置说明
-- 更新 API 文档
-
 ---
 
-## 🚀 后端 API 需要添加
+## ✅ 后端 API 已完成
 
-### /api/detect-media-library
-检测媒体库结构的 API
-
-```python
-def handle_detect_media_library(self, data):
-    """检测媒体库结构"""
-    try:
-        path = data.get('path', '')
-        if not path:
-            self.send_json_response({'error': '路径不能为空'}, 400)
-            return
-        
-        # 使用 MediaLibraryDetector
-        detector = MediaLibraryDetector(path)
-        structure = detector.detect_structure()
-        
-        # 获取分类目录
-        movie_categories = []
-        tv_categories = []
-        
-        if structure['movie_path']:
-            classifier = SecondaryClassificationDetector(structure['movie_path'])
-            movie_categories = list(classifier.existing_categories.keys())
-        
-        if structure['tv_path']:
-            classifier = SecondaryClassificationDetector(structure['tv_path'])
-            tv_categories = list(classifier.existing_categories.keys())
-        
-        self.send_json_response({
-            'success': True,
-            'movie_dir': structure['movie_dir'],
-            'tv_dir': structure['tv_dir'],
-            'movie_path': structure['movie_path'],
-            'tv_path': structure['tv_path'],
-            'movie_categories': movie_categories,
-            'tv_categories': tv_categories
-        })
-    except Exception as e:
-        self.send_json_response({'error': str(e)}, 500)
-```
-
-需要在 `do_POST` 中添加路由：
-```python
-elif self.path == '/api/detect-media-library':
-    self.handle_detect_media_library(data)
-```
+### /api/detect-media-library ✓
+- 已在 app.py 中实现
+- 路由已添加到 do_POST
+- 支持检测媒体库结构
+- 返回电影/电视剧目录和分类信息
 
 ---
 
 ## 📝 下一步操作
 
-1. **添加后端 API** - `/api/detect-media-library`
-2. **实现 JavaScript 函数** - 上述 5 个函数
-3. **同步到 public/index.html** - 复制修改后的文件
-4. **测试功能** - 验证检测和整理功能
-5. **完成剩余任务** - Tasks 9-14
+继续完成剩余任务 Tasks 9-14：
+1. **Task 9** - 更新前端整理页面
+2. **Task 10** - 添加配置迁移提示
+3. **Task 11** - 单元测试
+4. **Task 12** - 集成测试
+5. **Task 13** - 性能优化
+6. **Task 14** - 文档更新
 
 ---
 

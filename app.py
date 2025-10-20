@@ -3740,6 +3740,8 @@ class MediaHandler(SimpleHTTPRequestHandler):
                 self.handle_rollback(data)
             elif self.path == '/api/update-history':
                 self.handle_update_history(data)
+            elif self.path == '/api/detect-media-library':
+                self.handle_detect_media_library(data)
             elif self.path == '/api/cloud/verify-cookie':
                 self.handle_cloud_verify_cookie(data)
             elif self.path == '/api/cloud/list-files':
@@ -5330,6 +5332,46 @@ class MediaHandler(SimpleHTTPRequestHandler):
             self.send_json_response({
                 'success': True,
                 'history': history
+            })
+        except Exception as e:
+            self.send_json_response({'error': str(e)}, 500)
+    
+    def handle_detect_media_library(self, data):
+        """检测媒体库结构"""
+        try:
+            path = data.get('path', '')
+            if not path:
+                self.send_json_response({'error': '路径不能为空'}, 400)
+                return
+            
+            if not os.path.exists(path):
+                self.send_json_response({'error': f'路径不存在: {path}'}, 400)
+                return
+            
+            # 使用 MediaLibraryDetector
+            detector = MediaLibraryDetector(path)
+            structure = detector.detect_structure()
+            
+            # 获取分类目录
+            movie_categories = []
+            tv_categories = []
+            
+            if structure['movie_path']:
+                classifier = SecondaryClassificationDetector(structure['movie_path'])
+                movie_categories = list(set(classifier.existing_categories.values()))
+            
+            if structure['tv_path']:
+                classifier = SecondaryClassificationDetector(structure['tv_path'])
+                tv_categories = list(set(classifier.existing_categories.values()))
+            
+            self.send_json_response({
+                'success': True,
+                'movie_dir': structure['movie_dir'],
+                'tv_dir': structure['tv_dir'],
+                'movie_path': structure['movie_path'],
+                'tv_path': structure['tv_path'],
+                'movie_categories': sorted(movie_categories),
+                'tv_categories': sorted(tv_categories)
             })
         except Exception as e:
             self.send_json_response({'error': str(e)}, 500)

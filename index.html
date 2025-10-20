@@ -754,7 +754,21 @@
             </div>
         </div>
 
+        <!-- 路径预览区域 -->
+        <div id="pathPreviewSection" style="margin-bottom: 20px; padding: 15px; background: linear-gradient(135deg, #e7f3ff 0%, #f0e7ff 100%); border-radius: 8px; border: 2px solid #667eea; display: none;">
+            <div style="display: flex; align-items: center; margin-bottom: 10px;">
+                <span style="font-size: 18px; margin-right: 8px;">📋</span>
+                <strong style="color: #667eea; font-size: 15px;">路径配置预览</strong>
+            </div>
+            <div id="pathPreviewContent" style="font-size: 13px; color: #333; line-height: 1.8;">
+                <!-- 动态内容 -->
+            </div>
+        </div>
+
         <div style="text-align: center; margin-bottom: 20px; display: flex; gap: 15px; justify-content: center; align-items: center;">
+            <button onclick="previewPaths()" style="font-size: 16px; padding: 14px 36px; background: linear-gradient(135deg, #17a2b8 0%, #138496 100%); box-shadow: 0 4px 15px rgba(23, 162, 184, 0.4); border: none; border-radius: 8px; color: white; cursor: pointer; transition: transform 0.2s; font-weight: 500;">
+                👁️ 预览路径
+            </button>
             <button onclick="startAutoRename()" style="font-size: 16px; padding: 14px 36px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4); border: none; border-radius: 8px; color: white; cursor: pointer; transition: transform 0.2s; font-weight: 500;">
                 🚀 一键整理入库
             </button>
@@ -1200,6 +1214,60 @@
         </div>
     </div>
 
+    <!-- 配置迁移提示对话框 -->
+    <div id="configMigrationOverlay" class="modal-overlay" style="display: none;">
+        <div class="modal-content" style="width: 90%; max-width: 600px;">
+            <div class="modal-header">
+                <h2 style="margin: 0; color: white;">🔄 配置升级提示</h2>
+                <button class="close-btn" onclick="closeConfigMigration()">×</button>
+            </div>
+            <div class="modal-body">
+                <div style="padding: 20px;">
+                    <div style="margin-bottom: 20px; padding: 15px; background: linear-gradient(135deg, #fff3cd 0%, #ffe8a1 100%); border-radius: 8px; border-left: 4px solid #ffc107;">
+                        <strong style="color: #856404; font-size: 16px;">📢 检测到旧配置方式</strong><br>
+                        <p style="margin: 10px 0 0 0; color: #856404; line-height: 1.6;">
+                            您当前使用的是分离的电影/电视剧路径配置。新版本支持统一的媒体库路径配置，可以更好地支持二级分类功能。
+                        </p>
+                    </div>
+
+                    <div style="margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+                        <strong style="color: #333;">当前配置：</strong><br>
+                        <div id="oldConfigDisplay" style="margin-top: 10px; font-size: 14px; color: #666;">
+                            <!-- 动态内容 -->
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom: 20px; padding: 15px; background: linear-gradient(135deg, #e7f3ff 0%, #d4edff 100%); border-radius: 8px; border-left: 4px solid #667eea;">
+                        <strong style="color: #667eea;">✨ 新配置的优势：</strong><br>
+                        <ul style="margin: 10px 0 0 20px; color: #333; line-height: 1.8;">
+                            <li>统一管理媒体库路径</li>
+                            <li>自动检测现有目录结构</li>
+                            <li>支持二级分类（动作、喜剧、美剧、日剧等）</li>
+                            <li>支持中英文目录名称</li>
+                            <li>更灵活的路径配置</li>
+                        </ul>
+                    </div>
+
+                    <div style="margin-bottom: 20px; padding: 15px; background: #e8f5e9; border-radius: 8px; border-left: 4px solid #28a745;">
+                        <strong style="color: #28a745;">🔒 安全提示：</strong><br>
+                        <p style="margin: 10px 0 0 0; color: #333; line-height: 1.6;">
+                            迁移后，旧配置将保留为备份。您可以随时切换回旧配置方式。
+                        </p>
+                    </div>
+
+                    <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                        <button onclick="skipMigration()" style="padding: 12px 24px; background: #6c757d; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px;">
+                            暂不升级
+                        </button>
+                        <button onclick="startMigration()" style="padding: 12px 24px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 500;">
+                            一键升级配置
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- 115网盘浏览器弹窗 -->
     <div id="cloud115BrowserOverlay" class="folder-browser-overlay" style="display: none;" onclick="closeCloud115Browser(event)">
         <div class="folder-browser" onclick="event.stopPropagation()">
@@ -1438,6 +1506,23 @@
             } else {
                 tvPathInput.value = '/vol02/1000-1-b23abde7/电视剧';
             }
+
+            // 媒体库路径（新配置）
+            const savedMediaLibraryPath = localStorage.getItem('mediaLibraryPath');
+            const mediaLibraryPathInput = document.getElementById('mediaLibraryPath');
+            if (savedMediaLibraryPath && mediaLibraryPathInput) {
+                mediaLibraryPathInput.value = savedMediaLibraryPath;
+            }
+
+            // 语言偏好
+            const savedLanguage = localStorage.getItem('preferredLanguage');
+            const languageSelect = document.getElementById('preferredLanguage');
+            if (savedLanguage && languageSelect) {
+                languageSelect.value = savedLanguage;
+            }
+
+            // 检测是否需要配置迁移
+            checkConfigMigration();
         });
         
         // 加载并显示标题中的版本号
@@ -3341,9 +3426,12 @@
             showStatus('正在分析文件名并检测重复版本...', 'info');
 
             try {
-                // 获取输出路径
+                // 获取输出路径（支持新旧配置）
+                const mediaLibraryPath = document.getElementById('mediaLibraryPath').value.trim();
                 const movieOutputPath = document.getElementById('movieOutputPath').value.trim();
                 const tvOutputPath = document.getElementById('tvOutputPath').value.trim();
+                const language = document.getElementById('preferredLanguage') ? 
+                    document.getElementById('preferredLanguage').value : 'zh';
                 
                 // 调用智能重命名API
                 const response = await fetch('/api/smart-rename', {
@@ -3352,6 +3440,8 @@
                     body: JSON.stringify({ 
                         files: filtered,
                         basePath: currentFolder,
+                        mediaLibraryPath: mediaLibraryPath,
+                        language: language,
                         movieOutputPath: movieOutputPath,
                         tvOutputPath: tvOutputPath,
                         autoDedupe
@@ -3666,7 +3756,7 @@
 
         // 文件夹浏览器
         let currentBrowsePath = '/';
-        let currentBrowserType = 'scan'; // 'scan', 'movie', 'tv'
+        let currentBrowserType = 'scan'; // 'scan', 'movie', 'tv', 'media'
 
         async function openFolderBrowser(type = 'scan') {
             currentBrowserType = type;
@@ -3679,6 +3769,8 @@
                 inputId = 'movieOutputPath';
             } else if (type === 'tv') {
                 inputId = 'tvOutputPath';
+            } else if (type === 'media') {
+                inputId = 'mediaLibraryPath';
             }
             
             const currentPath = document.getElementById(inputId).value.trim();
@@ -3770,8 +3862,329 @@
             } else if (currentBrowserType === 'tv') {
                 document.getElementById('tvOutputPath').value = currentBrowsePath;
                 localStorage.setItem('tvOutputPath', currentBrowsePath);
+            } else if (currentBrowserType === 'media') {
+                document.getElementById('mediaLibraryPath').value = currentBrowsePath;
+                localStorage.setItem('mediaLibraryPath', currentBrowsePath);
             }
             closeFolderBrowser();
+        }
+
+        // 检测媒体库结构
+        async function detectMediaLibraryStructure() {
+            const mediaLibraryPath = document.getElementById('mediaLibraryPath').value.trim();
+            
+            if (!mediaLibraryPath) {
+                alert('请先输入媒体库路径');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/detect-media-library', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ path: mediaLibraryPath })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    const infoDiv = document.getElementById('mediaLibraryInfo');
+                    const structureDiv = document.getElementById('detectedStructure');
+                    
+                    let html = '<strong>✓ 检测成功：</strong><br>';
+                    if (data.movie_dir) {
+                        html += `📁 电影目录: ${data.movie_dir}<br>`;
+                    }
+                    if (data.tv_dir) {
+                        html += `📁 电视剧目录: ${data.tv_dir}<br>`;
+                    }
+                    if (data.movie_categories && data.movie_categories.length > 0) {
+                        html += `🎬 电影分类: ${data.movie_categories.join(', ')}<br>`;
+                    }
+                    if (data.tv_categories && data.tv_categories.length > 0) {
+                        html += `📺 电视剧分类: ${data.tv_categories.join(', ')}`;
+                    }
+                    
+                    structureDiv.innerHTML = html;
+                    infoDiv.style.display = 'block';
+                } else {
+                    alert('检测失败: ' + data.error);
+                }
+            } catch (error) {
+                alert('检测失败: ' + error.message);
+            }
+        }
+
+        // 显示新配置界面
+        function showNewConfig() {
+            document.getElementById('legacyConfig').style.display = 'none';
+            const mediaLibraryGroup = document.getElementById('mediaLibraryPath').parentElement.parentElement;
+            if (mediaLibraryGroup) {
+                mediaLibraryGroup.style.display = 'block';
+            }
+            const languageGroup = document.getElementById('preferredLanguage').parentElement;
+            if (languageGroup) {
+                languageGroup.style.display = 'block';
+            }
+        }
+
+        // 检测配置迁移
+        function checkConfigMigration() {
+            // 检查是否已经迁移过或用户选择跳过
+            const migrationSkipped = localStorage.getItem('configMigrationSkipped');
+            if (migrationSkipped === 'true') {
+                return;
+            }
+
+            // 检查是否使用旧配置
+            const mediaLibraryPath = localStorage.getItem('mediaLibraryPath');
+            const movieOutputPath = localStorage.getItem('movieOutputPath');
+            const tvOutputPath = localStorage.getItem('tvOutputPath');
+
+            // 如果已有新配置，不提示
+            if (mediaLibraryPath && mediaLibraryPath !== '') {
+                return;
+            }
+
+            // 如果有旧配置，显示迁移提示
+            if ((movieOutputPath && movieOutputPath !== '') || (tvOutputPath && tvOutputPath !== '')) {
+                showConfigMigrationDialog(movieOutputPath, tvOutputPath);
+            }
+        }
+
+        // 显示配置迁移对话框
+        function showConfigMigrationDialog(moviePath, tvPath) {
+            const overlay = document.getElementById('configMigrationOverlay');
+            const oldConfigDisplay = document.getElementById('oldConfigDisplay');
+
+            let html = '';
+            if (moviePath) {
+                html += `🎬 电影路径: ${moviePath}<br>`;
+            }
+            if (tvPath) {
+                html += `📺 电视剧路径: ${tvPath}`;
+            }
+
+            oldConfigDisplay.innerHTML = html;
+            overlay.style.display = 'flex';
+        }
+
+        // 关闭配置迁移对话框
+        function closeConfigMigration() {
+            const overlay = document.getElementById('configMigrationOverlay');
+            overlay.style.display = 'none';
+        }
+
+        // 跳过迁移
+        function skipMigration() {
+            localStorage.setItem('configMigrationSkipped', 'true');
+            closeConfigMigration();
+        }
+
+        // 开始迁移
+        function startMigration() {
+            const movieOutputPath = localStorage.getItem('movieOutputPath');
+            const tvOutputPath = localStorage.getItem('tvOutputPath');
+
+            // 尝试从旧路径推断媒体库根路径
+            let mediaLibraryPath = '';
+
+            if (movieOutputPath && tvOutputPath) {
+                // 尝试找到共同的父路径
+                const movieParts = movieOutputPath.split('/').filter(p => p);
+                const tvParts = tvOutputPath.split('/').filter(p => p);
+
+                // 找到共同的前缀
+                let commonPath = [];
+                for (let i = 0; i < Math.min(movieParts.length - 1, tvParts.length - 1); i++) {
+                    if (movieParts[i] === tvParts[i]) {
+                        commonPath.push(movieParts[i]);
+                    } else {
+                        break;
+                    }
+                }
+
+                if (commonPath.length > 0) {
+                    mediaLibraryPath = '/' + commonPath.join('/');
+                }
+            } else if (movieOutputPath) {
+                // 只有电影路径，取父目录
+                const parts = movieOutputPath.split('/').filter(p => p);
+                if (parts.length > 1) {
+                    mediaLibraryPath = '/' + parts.slice(0, -1).join('/');
+                }
+            } else if (tvOutputPath) {
+                // 只有电视剧路径，取父目录
+                const parts = tvOutputPath.split('/').filter(p => p);
+                if (parts.length > 1) {
+                    mediaLibraryPath = '/' + parts.slice(0, -1).join('/');
+                }
+            }
+
+            // 如果推断失败，使用默认路径
+            if (!mediaLibraryPath) {
+                mediaLibraryPath = '/vol02/1000-1-b23abde7/115';
+            }
+
+            // 保存新配置
+            localStorage.setItem('mediaLibraryPath', mediaLibraryPath);
+            document.getElementById('mediaLibraryPath').value = mediaLibraryPath;
+
+            // 设置默认语言为中文
+            localStorage.setItem('preferredLanguage', 'zh');
+            const languageSelect = document.getElementById('preferredLanguage');
+            if (languageSelect) {
+                languageSelect.value = 'zh';
+            }
+
+            // 备份旧配置（保留在 localStorage 中，但标记为已迁移）
+            localStorage.setItem('configMigrated', 'true');
+            localStorage.setItem('configMigrationSkipped', 'true');
+
+            // 关闭对话框
+            closeConfigMigration();
+
+            // 显示成功消息
+            alert(`✅ 配置升级成功！\n\n新媒体库路径: ${mediaLibraryPath}\n\n旧配置已保留为备份，您可以在需要时切换回旧配置。`);
+
+            // 自动检测媒体库结构
+            detectMediaLibraryStructure();
+        }
+
+        // 预览路径配置
+        async function previewPaths() {
+            const previewSection = document.getElementById('pathPreviewSection');
+            const previewContent = document.getElementById('pathPreviewContent');
+            
+            // 获取配置
+            const scanPath = document.getElementById('folderPath').value.trim();
+            const mediaLibraryPath = document.getElementById('mediaLibraryPath').value.trim();
+            const movieOutputPath = document.getElementById('movieOutputPath').value.trim();
+            const tvOutputPath = document.getElementById('tvOutputPath').value.trim();
+            const language = document.getElementById('preferredLanguage') ? 
+                document.getElementById('preferredLanguage').value : 'zh';
+            const conflictStrategy = document.getElementById('conflictStrategy').value;
+            
+            // 检查配置
+            if (!scanPath) {
+                alert('请先配置待整理路径');
+                return;
+            }
+            
+            let html = '';
+            
+            // 显示待整理路径
+            html += `<div style="margin-bottom: 10px;">`;
+            html += `<strong>📂 待整理路径：</strong><br>`;
+            html += `<span style="margin-left: 20px; color: #666;">${scanPath}</span>`;
+            html += `</div>`;
+            
+            // 判断使用新配置还是旧配置
+            const useNewConfig = mediaLibraryPath && mediaLibraryPath !== '';
+            
+            if (useNewConfig) {
+                // 新配置方式
+                html += `<div style="margin-bottom: 10px;">`;
+                html += `<strong>📚 媒体库路径：</strong><br>`;
+                html += `<span style="margin-left: 20px; color: #666;">${mediaLibraryPath}</span>`;
+                html += `</div>`;
+                
+                html += `<div style="margin-bottom: 10px;">`;
+                html += `<strong>🌐 语言偏好：</strong> ${language === 'zh' ? '中文' : 'English'}`;
+                html += `</div>`;
+                
+                // 尝试检测媒体库结构
+                try {
+                    const response = await fetch('/api/detect-media-library', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ path: mediaLibraryPath })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        html += `<div style="margin-top: 15px; padding: 10px; background: white; border-radius: 6px; border-left: 4px solid #28a745;">`;
+                        html += `<strong style="color: #28a745;">✓ 检测到的目录结构：</strong><br>`;
+                        
+                        if (data.movie_dir) {
+                            html += `<span style="margin-left: 20px;">📁 电影目录: ${data.movie_dir}</span><br>`;
+                            if (data.movie_categories && data.movie_categories.length > 0) {
+                                html += `<span style="margin-left: 40px; font-size: 12px; color: #666;">分类: ${data.movie_categories.join(', ')}</span><br>`;
+                            }
+                        }
+                        
+                        if (data.tv_dir) {
+                            html += `<span style="margin-left: 20px;">📁 电视剧目录: ${data.tv_dir}</span><br>`;
+                            if (data.tv_categories && data.tv_categories.length > 0) {
+                                html += `<span style="margin-left: 40px; font-size: 12px; color: #666;">分类: ${data.tv_categories.join(', ')}</span><br>`;
+                            }
+                        }
+                        
+                        html += `</div>`;
+                        
+                        // 显示示例路径
+                        html += `<div style="margin-top: 15px; padding: 10px; background: white; border-radius: 6px;">`;
+                        html += `<strong>📝 文件将保存到：</strong><br>`;
+                        html += `<span style="margin-left: 20px; font-size: 12px; color: #666;">电影: ${mediaLibraryPath}/${data.movie_dir || (language === 'zh' ? '电影' : 'Movies')}/[分类]/[电影名]/[文件名]</span><br>`;
+                        html += `<span style="margin-left: 20px; font-size: 12px; color: #666;">电视剧: ${mediaLibraryPath}/${data.tv_dir || (language === 'zh' ? '电视剧' : 'TV Shows')}/[分类]/[剧名]/Season X/[文件名]</span>`;
+                        html += `</div>`;
+                    } else {
+                        html += `<div style="margin-top: 15px; padding: 10px; background: #fff3cd; border-radius: 6px; border-left: 4px solid #ffc107;">`;
+                        html += `<strong style="color: #856404;">⚠️ 无法检测媒体库结构</strong><br>`;
+                        html += `<span style="margin-left: 20px; font-size: 12px; color: #856404;">将使用默认目录结构</span>`;
+                        html += `</div>`;
+                    }
+                } catch (error) {
+                    html += `<div style="margin-top: 15px; padding: 10px; background: #fff3cd; border-radius: 6px; border-left: 4px solid #ffc107;">`;
+                    html += `<strong style="color: #856404;">⚠️ 检测失败</strong><br>`;
+                    html += `<span style="margin-left: 20px; font-size: 12px; color: #856404;">${error.message}</span>`;
+                    html += `</div>`;
+                }
+            } else if (movieOutputPath || tvOutputPath) {
+                // 旧配置方式
+                html += `<div style="margin-bottom: 10px; padding: 10px; background: #fff3cd; border-radius: 6px; border-left: 4px solid #ffc107;">`;
+                html += `<strong style="color: #856404;">⚠️ 使用旧配置模式</strong><br>`;
+                html += `<span style="margin-left: 20px; font-size: 12px; color: #856404;">建议迁移到新的媒体库路径配置</span>`;
+                html += `</div>`;
+                
+                if (movieOutputPath) {
+                    html += `<div style="margin-bottom: 10px;">`;
+                    html += `<strong>🎬 电影输出路径：</strong><br>`;
+                    html += `<span style="margin-left: 20px; color: #666;">${movieOutputPath}</span>`;
+                    html += `</div>`;
+                }
+                
+                if (tvOutputPath) {
+                    html += `<div style="margin-bottom: 10px;">`;
+                    html += `<strong>📺 电视剧输出路径：</strong><br>`;
+                    html += `<span style="margin-left: 20px; color: #666;">${tvOutputPath}</span>`;
+                    html += `</div>`;
+                }
+            } else {
+                html += `<div style="padding: 10px; background: #ffebee; border-radius: 6px; border-left: 4px solid #f44336;">`;
+                html += `<strong style="color: #d32f2f;">❌ 未配置输出路径</strong><br>`;
+                html += `<span style="margin-left: 20px; font-size: 12px; color: #d32f2f;">请配置媒体库路径或电影/电视剧输出路径</span>`;
+                html += `</div>`;
+            }
+            
+            // 显示冲突策略
+            html += `<div style="margin-top: 15px; padding: 10px; background: white; border-radius: 6px;">`;
+            html += `<strong>⚙️ 冲突处理策略：</strong> `;
+            const strategyNames = {
+                'auto': '🤖 自动比较',
+                'skip': '⏭️ 跳过',
+                'replace': '🔄 替换',
+                'keep_both': '📦 保留两个'
+            };
+            html += `${strategyNames[conflictStrategy] || conflictStrategy}`;
+            html += `</div>`;
+            
+            previewContent.innerHTML = html;
+            previewSection.style.display = 'block';
+            
+            // 滚动到预览区域
+            previewSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
         
         // 加载当前版本
