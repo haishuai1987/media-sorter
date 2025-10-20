@@ -3487,7 +3487,8 @@ class PathGenerator:
             tuple: (完整路径, 相对路径)
         """
         is_tv = metadata.get('type') == 'tv'
-        category = metadata.get('category', '未分类' if is_tv else '外语电影')
+        # 修复：当category为None时使用默认值
+        category = metadata.get('category') or ('未分类' if is_tv else '外语电影')
         
         # 1. 选择基础路径
         if is_tv:
@@ -4863,7 +4864,8 @@ class MediaHandler(SimpleHTTPRequestHandler):
         
         # 旧配置方式：保持向后兼容
         is_tv = metadata['type'] == 'tv'
-        category = metadata.get('category')
+        # 修复：当category为None时使用默认值
+        category = metadata.get('category') or ('未分类' if is_tv else '外语电影')
         
         # 选择基础输出路径
         output_base = tv_output_path if is_tv else movie_output_path
