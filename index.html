@@ -638,29 +638,76 @@
             </div>
         </div>
 
+        <!-- 新配置方式：媒体库路径 -->
         <div style="margin-bottom: 20px;">
             <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #333;">
-                🎬 电影输出路径：
+                📚 媒体库路径：
             </label>
             <div style="display: flex; gap: 10px;">
-                <input type="text" id="movieOutputPath" placeholder="输入电影输出路径，例如：/vol02/1000-1-b23abde7/电影" 
+                <input type="text" id="mediaLibraryPath" placeholder="输入媒体库根路径，例如：/vol02/1000-1-b23abde7/115" 
                        style="flex: 1; padding: 12px 16px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px;">
-                <button onclick="openFolderBrowser('movie')" style="padding: 12px 20px; background: #667eea;">
+                <button onclick="openFolderBrowser('media')" style="padding: 12px 20px; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;">
                     📁 浏览
                 </button>
+                <button onclick="detectMediaLibraryStructure()" style="padding: 12px 20px; background: #28a745; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;">
+                    🔍 检测
+                </button>
+            </div>
+            <div id="mediaLibraryInfo" style="margin-top: 10px; padding: 10px; background: #e7f3ff; border-radius: 6px; display: none;">
+                <div style="font-size: 13px; color: #0066cc;">
+                    <div id="detectedStructure"></div>
+                </div>
             </div>
         </div>
 
+        <!-- 语言偏好 -->
         <div style="margin-bottom: 20px;">
             <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #333;">
-                📺 电视剧输出路径：
+                🌐 目录命名语言：
             </label>
-            <div style="display: flex; gap: 10px;">
-                <input type="text" id="tvOutputPath" placeholder="输入电视剧输出路径，例如：/vol02/1000-1-b23abde7/电视剧" 
-                       style="flex: 1; padding: 12px 16px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px;">
-                <button onclick="openFolderBrowser('tv')" style="padding: 12px 20px; background: #667eea;">
-                    📁 浏览
+            <select id="preferredLanguage" style="width: 100%; padding: 12px 16px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px;">
+                <option value="zh">中文（电影、电视剧）</option>
+                <option value="en">English (Movies, TV Shows)</option>
+            </select>
+            <div style="margin-top: 8px; font-size: 12px; color: #666;">
+                💡 提示：如果媒体库中已有目录，系统会自动使用现有目录名称
+            </div>
+        </div>
+
+        <!-- 旧配置方式（向后兼容，默认隐藏） -->
+        <div id="legacyConfig" style="display: none;">
+            <div style="margin-bottom: 15px; padding: 12px; background: #fff3cd; border-radius: 8px; border: 1px solid #ffc107;">
+                <strong style="color: #856404;">⚠️ 旧配置模式</strong><br>
+                <span style="font-size: 13px; color: #856404;">建议迁移到新的媒体库路径配置方式</span>
+                <button onclick="showNewConfig()" style="margin-left: 10px; padding: 6px 12px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                    迁移到新配置
                 </button>
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #333;">
+                    🎬 电影输出路径：
+                </label>
+                <div style="display: flex; gap: 10px;">
+                    <input type="text" id="movieOutputPath" placeholder="输入电影输出路径，例如：/vol02/1000-1-b23abde7/电影" 
+                           style="flex: 1; padding: 12px 16px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px;">
+                    <button onclick="openFolderBrowser('movie')" style="padding: 12px 20px; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;">
+                        📁 浏览
+                    </button>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; margin-bottom: 8px; font-weight: 500; color: #333;">
+                    📺 电视剧输出路径：
+                </label>
+                <div style="display: flex; gap: 10px;">
+                    <input type="text" id="tvOutputPath" placeholder="输入电视剧输出路径，例如：/vol02/1000-1-b23abde7/电视剧" 
+                           style="flex: 1; padding: 12px 16px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px;">
+                    <button onclick="openFolderBrowser('tv')" style="padding: 12px 20px; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;">
+                        📁 浏览
+                    </button>
+                </div>
             </div>
         </div>
 
