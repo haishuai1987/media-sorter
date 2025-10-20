@@ -3109,6 +3109,371 @@ def check_path_permissions(path):
     
     return True
 
+
+# ============================================
+# 媒体库管理模块
+# ============================================
+
+class MediaLibraryDetector:
+    """媒体库目录结构检测器
+    
+    自动检测媒体库中的电影和电视剧目录，支持中英文命名
+    """
+    
+    # 支持的目录名称映射（优先级从高到低）
+    MOVIE_DIR_NAMES = ['电影', 'Movies', 'Movie', '电影库']
+    TV_DIR_NAMES = ['电视剧', 'TV Shows', 'TV', 'Series', '剧集', '电视剧库']
+    
+    def __init__(self, media_library_path):
+        """
+        Args:
+            media_library_path: 用户选择的媒体库根路径（可以是任意名称的目录）
+                               例如: /vol02/1000-1-b23abde7/115
+                                    /mnt/storage/media
+                                    /home/user/videos
+        """
+        self.media_library_path = media_library_path
+        self.movie_dir = None
+        self.tv_dir = None
+    
+    def detect_structure(self):
+        """检测媒体库目录结构
+        
+        Returns:
+            dict: {
+                'movie_dir': '电影' or 'Movies' or None,
+                'tv_dir': '电视剧' or 'TV Shows' or None,
+                'movie_path': '/path/to/电影',
+                'tv_path': '/path/to/电视剧'
+            }
+        """
+        result = {
+            'movie_dir': None,
+            'tv_dir': None,
+            'movie_path': None,
+            'tv_path': None
+        }
+        
+        if not os.path.exists(self.media_library_path):
+            print(f"⚠️  媒体库路径不存在: {self.media_library_path}")
+            return result
+        
+        try:
+            # 列出所有子目录
+            subdirs = [d for d in os.listdir(self.media_library_path) 
+                       if os.path.isdir(os.path.join(self.media_library_path, d))]
+            
+            print(f"📁 扫描媒体库: {self.media_library_path}")
+            print(f"   发现子目录: {subdirs}")
+            
+            # 检测电影目录（优先中文）
+            for name in self.MOVIE_DIR_NAMES:
+                if name in subdirs:
+                    result['movie_dir'] = name
+                    result['movie_path'] = os.path.join(self.media_library_path, name)
+                    print(f"✓ 检测到电影目录: {name}")
+                    break
+            
+            # 检测电视剧目录（优先中文）
+            for name in self.TV_DIR_NAMES:
+                if name in subdirs:
+                    result['tv_dir'] = name
+                    result['tv_path'] = os.path.join(self.media_library_path, name)
+                    print(f"✓ 检测到电视剧目录: {name}")
+                    break
+            
+            if not result['movie_dir']:
+                print(f"⚠️  未检测到电影目录")
+            if not result['tv_dir']:
+                print(f"⚠️  未检测到电视剧目录")
+                
+        except PermissionError:
+            print(f"❌ 没有权限访问媒体库目录: {self.media_library_path}")
+        except Exception as e:
+            print(f"❌ 检测媒体库结构失败: {str(e)}")
+        
+        return result
+    
+    def create_default_structure(self, language='zh'):
+        """创建默认目录结构
+        
+        Args:
+            language: 'zh' for Chinese, 'en' for English
+            
+        Returns:
+            dict: 创建的目录结构信息
+        """
+        if language == 'zh':
+            movie_dir = '电影'
+            tv_dir = '电视剧'
+        else:
+            movie_dir = 'Movies'
+            tv_dir = 'TV Shows'
+        
+        movie_path = os.path.join(self.media_library_path, movie_dir)
+        tv_path = os.path.join(self.media_library_path, tv_dir)
+        
+        try:
+            os.makedirs(movie_path, exist_ok=True)
+            os.makedirs(tv_path, exist_ok=True)
+            
+            print(f"✓ 创建电影目录: {movie_path}")
+            print(f"✓ 创建电视剧目录: {tv_path}")
+            
+            return {
+                'movie_dir': movie_dir,
+                'tv_dir': tv_dir,
+                'movie_path': movie_path,
+                'tv_path': tv_path
+            }
+        except PermissionError:
+            raise Exception(f"没有权限创建目录: {self.media_library_path}")
+        except OSError as e:
+            if e.errno == 28:  # No space left on device
+                raise Exception(f"磁盘空间不足: {self.media_library_path}")
+            raise Exception(f"创建目录失败: {str(e)}")
+
+
+class SecondaryClassificationDetector:
+    """二级分类目录检测器
+    
+    检测已存在的二级分类目录（如国产剧、欧美剧等），支持精确和模糊匹配
+    """
+    
+    def __init__(self, base_path):
+        """
+        Args:
+            base_path: 电影或电视剧的基础路径
+        """
+        self.base_path = base_path
+        self.existing_categories = self._scan_existing_categories()
+    
+    def _scan_existing_categories(self):
+        """扫描已存在的分类目录
+        
+        Returns:
+            dict: {
+                '国产剧': '国产剧',  # 配置名 -> 实际目录名
+                '欧美剧': '欧美剧',
+                ...
+            }
+        """
+        if not os.path.exists(self.base_path):
+            print(f"⚠️  基础路径不存在: {self.base_path}")
+            return {}
+        
+        existing = {}
+        
+        try:
+            subdirs = [d for d in os.listdir(self.base_path) 
+                       if os.path.isdir(os.path.join(self.base_path, d))]
+            
+            print(f"📂 扫描分类目录: {self.base_path}")
+            print(f"   发现分类: {subdirs}")
+            
+            # 建立映射关系
+            for subdir in subdirs:
+                # 精确匹配
+                existing[subdir] = subdir
+                
+                # 模糊匹配（去除常见后缀）
+                normalized = subdir.replace('电视剧', '').replace('电影', '').strip()
+                if normalized and normalized != subdir:
+                    existing[normalized] = subdir
+            
+            print(f"✓ 建立分类映射: {len(existing)} 个")
+            
+        except PermissionError:
+            print(f"❌ 没有权限访问目录: {self.base_path}")
+        except Exception as e:
+            print(f"❌ 扫描分类目录失败: {str(e)}")
+        
+        return existing
+    
+    def get_category_dir(self, category_name):
+        """获取分类目录名称
+        
+        Args:
+            category_name: 配置中的分类名称（如 '国产剧'）
+        
+        Returns:
+            str: 实际的目录名称，如果不存在则返回配置名称
+        """
+        # 精确匹配
+        if category_name in self.existing_categories:
+            actual_name = self.existing_categories[category_name]
+            print(f"✓ 找到分类目录: {category_name} -> {actual_name}")
+            return actual_name
+        
+        # 模糊匹配
+        for key, value in self.existing_categories.items():
+            if category_name in key or key in category_name:
+                print(f"✓ 模糊匹配分类目录: {category_name} -> {value}")
+                return value
+        
+        # 不存在，返回配置名称
+        print(f"⚠️  分类目录不存在，将创建: {category_name}")
+        return category_name
+    
+    def ensure_category_dir(self, category_name):
+        """确保分类目录存在
+        
+        Args:
+            category_name: 分类名称
+        
+        Returns:
+            str: 分类目录的完整路径
+        """
+        dir_name = self.get_category_dir(category_name)
+        dir_path = os.path.join(self.base_path, dir_name)
+        
+        if not os.path.exists(dir_path):
+            try:
+                os.makedirs(dir_path, exist_ok=True)
+                print(f"✓ 创建分类目录: {dir_path}")
+                # 更新缓存
+                self.existing_categories[category_name] = dir_name
+            except PermissionError:
+                raise Exception(f"没有权限创建目录: {dir_path}")
+            except OSError as e:
+                if e.errno == 28:  # No space left on device
+                    raise Exception(f"磁盘空间不足")
+                raise Exception(f"创建目录失败: {str(e)}")
+        
+        return dir_path
+    
+    def refresh_cache(self):
+        """刷新分类目录缓存"""
+        self.existing_categories = self._scan_existing_categories()
+
+
+class PathGenerator:
+    """路径生成器
+    
+    生成正确的媒体文件路径，包含二级分类目录结构
+    """
+    
+    def __init__(self, media_library_path, language='zh'):
+        """
+        Args:
+            media_library_path: 媒体库根路径
+            language: 语言偏好 ('zh' 或 'en')
+        """
+        self.media_library_path = media_library_path
+        self.language = language
+        self.detector = MediaLibraryDetector(media_library_path)
+        self.structure = self.detector.detect_structure()
+        
+        # 如果没有检测到，创建默认结构
+        if not self.structure['movie_path'] or not self.structure['tv_path']:
+            print(f"⚠️  媒体库结构不完整，创建默认结构")
+            self.structure = self.detector.create_default_structure(language)
+        
+        # 初始化分类检测器
+        self.movie_classifier = SecondaryClassificationDetector(
+            self.structure['movie_path']
+        )
+        self.tv_classifier = SecondaryClassificationDetector(
+            self.structure['tv_path']
+        )
+    
+    def generate_path(self, metadata):
+        """生成完整的文件路径
+        
+        Args:
+            metadata: 文件元数据，包含:
+                - type: 'movie' or 'tv'
+                - title: 标题
+                - year: 年份
+                - season: 季数 (仅电视剧)
+                - season_no_zero: 季数（无前导零）
+                - episode: 集数 (仅电视剧)
+                - season_episode: 季集编号 (如 S01E08)
+                - category: 二级分类
+                - fileExt: 文件扩展名
+        
+        Returns:
+            tuple: (完整路径, 相对路径)
+        """
+        is_tv = metadata.get('type') == 'tv'
+        category = metadata.get('category', '未分类' if is_tv else '外语电影')
+        
+        # 1. 选择基础路径
+        if is_tv:
+            base_path = self.structure['tv_path']
+            classifier = self.tv_classifier
+            base_dir_name = self.structure['tv_dir']
+        else:
+            base_path = self.structure['movie_path']
+            classifier = self.movie_classifier
+            base_dir_name = self.structure['movie_dir']
+        
+        # 2. 确定二级分类目录
+        category_path = classifier.ensure_category_dir(category)
+        category_dir_name = classifier.get_category_dir(category)
+        
+        # 3. 生成剧名/电影名目录
+        title = metadata.get('title', 'Unknown')
+        year = metadata.get('year', '')
+        if year:
+            title_dir = f"{title} ({year})"
+        else:
+            title_dir = title
+        
+        # 4. 构建路径
+        if is_tv:
+            # 电视剧: 分类/剧名/Season X/文件名
+            season = metadata.get('season_no_zero', metadata.get('season', '1'))
+            season_dir = f"Season {season}"
+            
+            # 生成文件名: 剧名 - S01E08 - 第 08 集.mkv
+            episode = metadata.get('episode', '')
+            season_episode = metadata.get('season_episode', f"S{int(season):02d}E01")
+            
+            filename = f"{title} - {season_episode}"
+            if episode:
+                filename += f" - 第 {episode} 集"
+            filename += metadata.get('fileExt', '.mkv')
+            
+            # 完整路径
+            full_path = os.path.join(
+                category_path,
+                title_dir,
+                season_dir,
+                filename
+            )
+            
+            # 相对路径（相对于媒体库）
+            relative_path = os.path.join(
+                base_dir_name,
+                category_dir_name,
+                title_dir,
+                season_dir,
+                filename
+            )
+        else:
+            # 电影: 分类/电影名/文件名
+            # 文件名: 电影名 (年份).mkv
+            filename = title_dir + metadata.get('fileExt', '.mkv')
+            
+            full_path = os.path.join(
+                category_path,
+                title_dir,
+                filename
+            )
+            
+            relative_path = os.path.join(
+                base_dir_name,
+                category_dir_name,
+                title_dir,
+                filename
+            )
+        
+        print(f"✓ 生成路径: {relative_path}")
+        
+        return full_path, relative_path
+
+
 def retry_on_error(max_retries=NETWORK_RETRY_COUNT, delay=NETWORK_RETRY_DELAY):
     """
     网络/文件系统操作重试装饰器

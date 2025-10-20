@@ -1,6 +1,8 @@
 # Implementation Plan
 
-- [ ] 1. 实现 MediaLibraryDetector 类
+- [x] 1. 实现 MediaLibraryDetector 类
+
+
   - 创建 `MediaLibraryDetector` 类，支持检测电影和电视剧目录
   - 实现 `detect_structure()` 方法，检测现有目录结构
   - 支持多种目录名称：`电影`/`Movies`/`Movie`、`电视剧`/`TV Shows`/`TV`/`Series`
@@ -9,11 +11,15 @@
   - 支持语言偏好设置（中文/英文）
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5_
 
+
+
 - [ ] 2. 实现 SecondaryClassificationDetector 类
   - 创建 `SecondaryClassificationDetector` 类，检测二级分类目录
   - 实现 `_scan_existing_categories()` 方法，扫描已存在的分类目录
   - 实现 `get_category_dir()` 方法，获取分类目录名称（支持精确和模糊匹配）
   - 实现 `ensure_category_dir()` 方法，确保分类目录存在
+
+
   - 添加目录名称缓存机制，避免重复扫描
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5_
 
