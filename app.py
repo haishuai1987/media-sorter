@@ -4009,40 +4009,90 @@ class MediaHandler(SimpleHTTPRequestHandler):
             self.send_json_response({'error': str(e)}, 500)
     
     def handle_browse_folders(self, data):
-        """浏览文件夹"""
+        """浏览文件夹（增强版：支持符号链接和挂载点）"""
         folder_path = data.get('folderPath', '/')
         
         try:
-            if not os.path.exists(folder_path):
-                self.send_json_response({'error': '路径不存在'}, 400)
+            # 规范化路径
+            folder_path = os.path.abspath(folder_path)
+            
+            # 检查路径是否存在（支持符号链接）
+            if not os.path.exists(folder_path) and not os.path.islink(folder_path):
+                self.send_json_response({'error': f'路径不存在: {folder_path}'}, 400)
                 return
             
+            # 检查是否为目录（支持符号链接指向的目录）
             if not os.path.isdir(folder_path):
                 self.send_json_response({'error': '不是有效的文件夹'}, 400)
                 return
             
             folders = []
+            errors = []
+            
             try:
                 items = os.listdir(folder_path)
+                print(f"[浏览文件夹] {folder_path} 包含 {len(items)} 个项目")
+                
                 for item in sorted(items):
+                    # 跳过隐藏文件（以.开头），但保留重要的挂载点
+                    if item.startswith('.') and not item.startswith('.vol'):
+                        continue
+                    
                     item_path = os.path.join(folder_path, item)
-                    if os.path.isdir(item_path):
-                        folders.append({
-                            'name': item,
-                            'path': item_path
-                        })
-            except PermissionError:
-                pass  # 跳过没有权限的文件夹
+                    
+                    try:
+                        # 检查是否为目录（包括符号链接指向的目录）
+                        is_dir = os.path.isdir(item_path)
+                        is_link = os.path.islink(item_path)
+                        
+                        if is_dir:
+                            # 尝试访问目录以确认权限
+                            try:
+                                os.listdir(item_path)
+                                accessible = True
+                            except PermissionError:
+                                accessible = False
+                            
+                            folders.append({
+                                'name': item,
+                                'path': item_path,
+                                'isLink': is_link,
+                                'accessible': accessible
+                            })
+                            print(f"  ✓ 添加文件夹: {item} (链接:{is_link}, 可访问:{accessible})")
+                    except (OSError, PermissionError) as e:
+                        # 记录错误但继续处理其他项目
+                        error_msg = f"无法访问 {item}: {str(e)}"
+                        errors.append(error_msg)
+                        print(f"  ✗ {error_msg}")
+                        continue
+                        
+            except PermissionError as e:
+                self.send_json_response({'error': f'没有权限访问此目录: {str(e)}'}, 403)
+                return
+            except Exception as e:
+                self.send_json_response({'error': f'读取目录失败: {str(e)}'}, 500)
+                return
             
             # 获取父目录
             parent_path = os.path.dirname(folder_path) if folder_path != '/' else None
             
-            self.send_json_response({
+            response = {
                 'currentPath': folder_path,
                 'parentPath': parent_path,
-                'folders': folders
-            })
+                'folders': folders,
+                'totalFolders': len(folders)
+            }
+            
+            # 如果有错误，也返回给前端（用于调试）
+            if errors and DEBUG:
+                response['errors'] = errors
+            
+            print(f"[浏览文件夹] 返回 {len(folders)} 个文件夹")
+            self.send_json_response(response)
+            
         except Exception as e:
+            print(f"[浏览文件夹] 错误: {str(e)}")
             self.send_json_response({'error': str(e)}, 500)
     
     def handle_delete(self, data):

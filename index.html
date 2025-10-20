@@ -3830,9 +3830,15 @@
                 } else {
                     data.folders.forEach(folder => {
                         const safePath = folder.path.replace(/'/g, "\\'");
+                        const accessible = folder.accessible !== false; // 默认为可访问
+                        const icon = accessible ? '📁' : '🔒';
+                        const style = accessible ? '' : 'opacity: 0.5; cursor: not-allowed;';
+                        const title = accessible ? '' : 'title="无权限访问"';
+                        const onclick = accessible ? `onclick="loadFolders('${safePath}')"` : '';
+                        
                         html += `
-                            <div class="folder-item" onclick="loadFolders('${safePath}')">
-                                <span class="folder-item-icon">📁</span>
+                            <div class="folder-item" ${onclick} style="${style}" ${title}>
+                                <span class="folder-item-icon">${icon}</span>
                                 <span class="folder-item-name">${escapeHtml(folder.name)}</span>
                             </div>
                         `;
