@@ -4862,12 +4862,12 @@ class MediaHandler(SimpleHTTPRequestHandler):
         base_path = data.get('basePath', '')
         
         # 新配置方式：媒体库路径
-        media_library_path = data.get('mediaLibraryPath', '')
+        media_library_path = data.get('mediaLibraryPath', '').strip()
         language = data.get('language', 'zh')
         
         # 旧配置方式：分离的电影和电视剧路径（向后兼容）
-        movie_output_path = data.get('movieOutputPath', '')
-        tv_output_path = data.get('tvOutputPath', '')
+        movie_output_path = data.get('movieOutputPath', '').strip()
+        tv_output_path = data.get('tvOutputPath', '').strip()
         
         auto_dedupe = data.get('autoDedupe', True)  # 默认开启去重
         
@@ -4877,6 +4877,13 @@ class MediaHandler(SimpleHTTPRequestHandler):
         
         # 配置验证和兼容性处理
         use_new_config = bool(media_library_path)
+        
+        # 打印接收到的配置（调试用）
+        print(f"[DEBUG] 接收到的配置:")
+        print(f"  mediaLibraryPath: '{media_library_path}' (长度: {len(media_library_path)})")
+        print(f"  movieOutputPath: '{movie_output_path}'")
+        print(f"  tvOutputPath: '{tv_output_path}'")
+        print(f"  use_new_config: {use_new_config}")
         
         if not use_new_config:
             # 旧配置方式：如果没有指定输出路径，使用扫描路径
