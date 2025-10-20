@@ -45,8 +45,11 @@
 
 
 
+
   - 移除文件名中的父目录信息
   - _Requirements: 2.1, 2.2, 2.3, 2.4_
+
+
 
 - [ ] 5. 重构 generate_output_path() 方法
   - 使用新的 `PathGenerator` 类替代现有逻辑

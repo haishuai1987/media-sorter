@@ -3474,6 +3474,99 @@ class PathGenerator:
         return full_path, relative_path
 
 
+class ConfigManager:
+    """配置管理器
+    
+    管理新旧配置的兼容性，支持配置迁移
+    """
+    
+    def __init__(self, config):
+        """
+        Args:
+            config: 配置字典
+        """
+        self.config = config
+    
+    def get_media_library_path(self):
+        """获取媒体库路径
+        
+        Returns:
+            str: 媒体库路径，如果没有配置则返回 None
+        """
+        # 新配置方式
+        if 'media_library_path' in self.config:
+            return self.config['media_library_path']
+        
+        # 旧配置方式（兼容）
+        movie_path = self.config.get('movie_output_path', '')
+        tv_path = self.config.get('tv_output_path', '')
+        
+        if movie_path and tv_path:
+            # 尝试找到共同的父目录
+            movie_parent = os.path.dirname(movie_path)
+            tv_parent = os.path.dirname(tv_path)
+            
+            if movie_parent == tv_parent:
+                print(f"✓ 从旧配置推断媒体库路径: {movie_parent}")
+                return movie_parent
+        
+        return None
+    
+    def has_new_config(self):
+        """检查是否使用新配置方式
+        
+        Returns:
+            bool: True 如果使用新配置
+        """
+        return 'media_library_path' in self.config
+    
+    def has_old_config(self):
+        """检查是否使用旧配置方式
+        
+        Returns:
+            bool: True 如果使用旧配置
+        """
+        return ('movie_output_path' in self.config and 
+                'tv_output_path' in self.config)
+    
+    def migrate_to_new_config(self):
+        """迁移旧配置到新配置
+        
+        Returns:
+            dict: 新配置
+        """
+        new_config = self.config.copy()
+        
+        media_library_path = self.get_media_library_path()
+        if media_library_path and not self.has_new_config():
+            new_config['media_library_path'] = media_library_path
+            print(f"✓ 配置已迁移到新格式")
+            print(f"   媒体库路径: {media_library_path}")
+            
+            # 可选：保留旧配置作为备份
+            # new_config['_backup_movie_output_path'] = self.config.get('movie_output_path')
+            # new_config['_backup_tv_output_path'] = self.config.get('tv_output_path')
+        
+        return new_config
+    
+    def get_language_preference(self):
+        """获取语言偏好
+        
+        Returns:
+            str: 'zh' 或 'en'
+        """
+        return self.config.get('preferred_language', 'zh')
+    
+    def should_migrate(self):
+        """检查是否应该提示用户迁移配置
+        
+        Returns:
+            bool: True 如果应该迁移
+        """
+        # 如果有旧配置但没有新配置，建议迁移
+        return self.has_old_config() and not self.has_new_config()
+
+
 def retry_on_error(max_retries=NETWORK_RETRY_COUNT, delay=NETWORK_RETRY_DELAY):
     """
     网络/文件系统操作重试装饰器
