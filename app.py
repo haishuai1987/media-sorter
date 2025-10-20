@@ -124,9 +124,9 @@ CATEGORY_CONFIG = {
     }
 }
 
-# 重命名模板
-MOVIE_TEMPLATE = "{{title}}{% if year %} ({{year}}){% endif %}/{{title}}{% if year %} ({{year}}){% endif %}{% if part %}-{{part}}{% endif %}{% if videoFormat %} - {{videoFormat}}{% endif %}{{language}}{{fileExt}}"
-TV_TEMPLATE = "{{title}}{% if year %} ({{year}}){% endif %}/Season {{season_no_zero}}/{{title}} - {{season_episode}}{% if part %}-{{part}}{% endif %}{% if episode %} - 第 {{episode}} 集{% endif %}{{language}}{{fileExt}}"
+# 重命名模板（旧配置方式使用，新配置使用 PathGenerator）
+MOVIE_TEMPLATE = "{{title}}{% if year %} ({{year}}){% endif %}/{{title}}{% if year %} ({{year}}){% endif %}{% if part %}-{{part}}{% endif %}{% if videoFormat %} - {{videoFormat}}{% endif %}{{fileExt}}"
+TV_TEMPLATE = "{{title}}{% if year %} ({{year}}){% endif %}/Season {{season}}/{{title}} - {{season_episode}}{% if part %}-{{part}}{% endif %}{% if episode %} - 第 {{episode}} 集{% endif %}{{fileExt}}"
 
 # ============ 版本管理 ============
 
@@ -4603,13 +4603,37 @@ class MediaHandler(SimpleHTTPRequestHandler):
         
         return groups
     
-    def generate_output_path(self, metadata, movie_output_path, tv_output_path):
-        """根据元数据生成输出路径（包含分类）"""
+    def generate_output_path(self, metadata, movie_output_path=None, tv_output_path=None, media_library_path=None, language='zh'):
+        """根据元数据生成输出路径（包含分类）
+        
+        Args:
+            metadata: 文件元数据
+            movie_output_path: 电影输出路径（旧配置方式，向后兼容）
+            tv_output_path: 电视剧输出路径（旧配置方式，向后兼容）
+            media_library_path: 媒体库路径（新配置方式，推荐）
+            language: 语言偏好 ('zh' 或 'en')
+        
+        Returns:
+            tuple: (完整路径, 相对路径)
+        """
+        # 新配置方式：使用 PathGenerator
+        if media_library_path:
+            try:
+                generator = PathGenerator(media_library_path, language)
+                return generator.generate_path(metadata)
+            except Exception as e:
+                print(f"❌ PathGenerator 失败，回退到旧方法: {str(e)}")
+                # 如果失败，回退到旧方法
+        
+        # 旧配置方式：保持向后兼容
         is_tv = metadata['type'] == 'tv'
         category = metadata.get('category')
         
         # 选择基础输出路径
         output_base = tv_output_path if is_tv else movie_output_path
+        
+        if not output_base:
+            raise Exception("必须提供 media_library_path 或 movie_output_path/tv_output_path")
         
         # 应用模板生成文件名
         template = TV_TEMPLATE if is_tv else MOVIE_TEMPLATE
@@ -4628,19 +4652,41 @@ class MediaHandler(SimpleHTTPRequestHandler):
         """智能重命名，自动去重保留最高清晰度版本，自动分类移动"""
         files = data.get('files', [])
         base_path = data.get('basePath', '')
+        
+        # 新配置方式：媒体库路径
+        media_library_path = data.get('mediaLibraryPath', '')
+        language = data.get('language', 'zh')
+        
+        # 旧配置方式：分离的电影和电视剧路径（向后兼容）
         movie_output_path = data.get('movieOutputPath', '')
         tv_output_path = data.get('tvOutputPath', '')
+        
         auto_dedupe = data.get('autoDedupe', True)  # 默认开启去重
         
         if not files:
             self.send_json_response({'error': '没有选择文件'}, 400)
             return
         
-        # 如果没有指定输出路径，使用扫描路径
-        if not movie_output_path:
-            movie_output_path = base_path
-        if not tv_output_path:
-            tv_output_path = base_path
+        # 配置验证和兼容性处理
+        use_new_config = bool(media_library_path)
+        
+        if not use_new_config:
+            # 旧配置方式：如果没有指定输出路径，使用扫描路径
+            if not movie_output_path:
+                movie_output_path = base_path
+            if not tv_output_path:
+                tv_output_path = base_path
+            
+            if not movie_output_path or not tv_output_path:
+                self.send_json_response({'error': '请配置媒体库路径或电影/电视剧输出路径'}, 400)
+                return
+        
+        print(f"📁 配置模式: {'新配置（媒体库路径）' if use_new_config else '旧配置（分离路径）'}")
+        if use_new_config:
+            print(f"   媒体库路径: {media_library_path}")
+        else:
+            print(f"   电影路径: {movie_output_path}")
+            print(f"   电视剧路径: {tv_output_path}")
         
         results = []
         to_delete = []
@@ -4700,7 +4746,11 @@ class MediaHandler(SimpleHTTPRequestHandler):
                         
                         metadata = self.parse_media_filename(filename, parent_folder)
                         new_full_path, new_relative_path = self.generate_output_path(
-                            metadata, movie_output_path, tv_output_path
+                            metadata, 
+                            movie_output_path=movie_output_path if not use_new_config else None,
+                            tv_output_path=tv_output_path if not use_new_config else None,
+                            media_library_path=media_library_path if use_new_config else None,
+                            language=language
                         )
                         
                         results.append({
@@ -4722,7 +4772,11 @@ class MediaHandler(SimpleHTTPRequestHandler):
                     
                     metadata = self.parse_media_filename(filename, parent_folder)
                     new_full_path, new_relative_path = self.generate_output_path(
-                        metadata, movie_output_path, tv_output_path
+                        metadata,
+                        movie_output_path=movie_output_path if not use_new_config else None,
+                        tv_output_path=tv_output_path if not use_new_config else None,
+                        media_library_path=media_library_path if use_new_config else None,
+                        language=language
                     )
                     
                     results.append({
@@ -4744,7 +4798,11 @@ class MediaHandler(SimpleHTTPRequestHandler):
                 
                 metadata = self.parse_media_filename(filename, parent_folder)
                 new_full_path, new_relative_path = self.generate_output_path(
-                    metadata, movie_output_path, tv_output_path
+                    metadata,
+                    movie_output_path=movie_output_path if not use_new_config else None,
+                    tv_output_path=tv_output_path if not use_new_config else None,
+                    media_library_path=media_library_path if use_new_config else None,
+                    language=language
                 )
                 
                 results.append({

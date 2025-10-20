@@ -20,23 +20,31 @@
   - 实现 `ensure_category_dir()` 方法，确保分类目录存在
 
 
+
   - 添加目录名称缓存机制，避免重复扫描
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5_
 
 - [ ] 3. 实现 PathGenerator 类
   - 创建 `PathGenerator` 类，生成正确的文件路径
   - 集成 `MediaLibraryDetector` 和 `SecondaryClassificationDetector`
+
+
   - 实现 `generate_path()` 方法，生成完整路径
   - 正确处理电视剧路径：`分类/剧名/Season X/文件名`
   - 正确处理电影路径：`分类/电影名/文件名`
   - 生成正确的文件名格式（移除多余信息）
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 2.1, 2.2, 2.3, 2.4, 2.5_
 
+
+
 - [ ] 4. 修复文件名生成逻辑
   - 修改电视剧文件名模板，移除 Season 信息
   - 格式：`剧名 - S01E01 - 第 01 集.ext`
   - 修改电影文件名模板，确保格式正确
   - 格式：`电影名 (年份).ext`
+
+
+
   - 移除文件名中的父目录信息
   - _Requirements: 2.1, 2.2, 2.3, 2.4_
 
