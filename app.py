@@ -2880,17 +2880,29 @@ class TMDBHelper:
             return title
         
         # 1. 移除 Release Group（常见的制作组）
-        release_groups = [
-            'CHDWEB', 'CHDWEBII', 'CHDWEBIII', 'ADWeb', 'HHWEB', 'DBTV', 
-            'NGB', 'FRDS', 'mUHD', 'AilMWeb', 'UBWEB', 'CHDTV', 'HDCTV'
-        ]
+        # v1.2.12 增强：使用 TitleParser 的完整列表（100+）
+        release_groups = TitleParser.RELEASE_GROUPS
+        
+        # 使用正则表达式匹配所有制作组（优化后的算法）
         for group in release_groups:
-            # 移除末尾的 -GROUP
-            title = re.sub(rf'-{group}$', '', title, flags=re.IGNORECASE)
-            # 移除中间的 .GROUP.
-            title = re.sub(rf'\.{group}\.', '.', title, flags=re.IGNORECASE)
-            # 移除末尾的 .GROUP
-            title = re.sub(rf'\.{group}$', '', title, flags=re.IGNORECASE)
+            # 转义特殊字符
+            escaped_group = re.escape(group)
+            # 匹配多种格式（优先处理括号格式）
+            patterns = [
+                rf'\[{escaped_group}\]',  # [GROUP] - 优先处理括号
+                rf'\({escaped_group}\)',  # (GROUP)
+                rf'【{escaped_group}】',  # 【GROUP】
+                rf'[-.]?{escaped_group}(?=[@.\s\[\]】&]|$)',  # -GROUP, .GROUP
+            ]
+            for pattern in patterns:
+                title = re.sub(pattern, '', title, flags=re.IGNORECASE)
+        
+        # 清理多余的空括号和分隔符
+        title = re.sub(r'\[\s*\]', '', title)  # 移除空方括号
+        title = re.sub(r'【\s*】', '', title)  # 移除空中文括号
+        title = re.sub(r'\(\s*\)', '', title)  # 移除空圆括号
+        title = re.sub(r'[-.\s]+$', '', title)  # 移除末尾的分隔符
+        title = re.sub(r'^[-.\s]+', '', title)  # 移除开头的分隔符
         
         # 2. 移除技术参数
         tech_params = [
@@ -4011,13 +4023,87 @@ def get_filesystem_type(path):
 class TitleParser:
     """标题解析器 - 从复杂文件名中提取影视作品标题"""
     
-    # 常见Release Group标识
+    # 常见Release Group标识（v1.2.12 增强：从 24 个扩展到 100+）
+    # 借鉴 NASTool 和 MoviePilot 的完整列表
     RELEASE_GROUPS = [
-        'ADWeb', 'CHDWEB', 'HDSWEB', 'NTb', 'FLUX', 'TEPES', 'SMURF',
-        'CMRG', 'TOMMY', 'HONE', 'WELP', 'AMRAP', 'PANAM', 'MIXED',
+        # CHD 系列
+        'CHD', 'CHDBits', 'CHDPAD', 'CHDTV', 'CHDHKTV', 'CHDWEB', 'CHDWEBII', 'CHDWEBIII',
+        'StBOX', 'OneHD', 'Lee', 'xiaopie',
+        # HDChina 系列
+        'HDC', 'HDChina', 'HDCTV', 'k9611', 'tudou', 'iHD',
+        # HHanClub
+        'HHWEB',
+        # KeepFrds
+        'FRDS', 'Yumi', 'cXcY',
+        # LemonHD
+        'LeagueCD', 'LeagueHD', 'LeagueMV', 'LeagueTV', 'LeagueNF', 'LeagueWEB', 
+        'LHD', 'i18n', 'CiNT',
+        # MTeam
+        'MTeam', 'MTeamTV', 'MPAD', 'MWeb',
+        # OurBits
+        'OurBits', 'OurTV', 'FLTTH', 'Ao', 'PbK', 'MGs', 'iLoveHD', 'iLoveTV',
+        # PTerClub
+        'PTer', 'PTerDIY', 'PTerGame', 'PTerMV', 'PTerTV', 'PTerWEB',
+        # PTHome
+        'PTH', 'PTHAudio', 'PTHeBook', 'PTHmusic', 'PTHome', 'PTHtv', 'PTHWEB',
+        # PTsbao
+        'PTsbao', 'OPS', 'FFans', 'FFansAIeNcE', 'FFansBD', 'FFansDVD', 'FFansDIY', 
+        'FFansTV', 'FFansWEB', 'FHDMv', 'SGXT',
+        # ToTheGlory
+        'TTG', 'WiKi', 'NGB', 'DoA', 'ARiN', 'ExREN',
+        # HDArea
+        'HDA', 'HDApad', 'HDArea', 'HDATV', 'EPiC',
+        # HDSky
+        'HDS', 'HDSky', 'HDSTV', 'HDSPad', 'HDSWEB', 'AQLJ',
+        # HDHome
+        'HDH', 'HDHome', 'HDHPad', 'HDHTV', 'HDHWEB',
+        # Hares
+        'Hares', 'HaresTV', 'HaresMV', 'HaresWeb',
+        # CMCT
+        'CMCT', 'CMCTV',
+        # DreamTV
+        'Dream', 'DBTV', 'HDo', 'QHstudIo',
+        # beAst
+        'beAst', 'beAstTV',
+        # Audies
+        'Audies', 'ADAudio', 'ADE', 'ADEbook', 'ADMusic', 'ADWeb',
+        # TLF
+        'TLF', 'iNTTLF', 'HALFCTLF', 'MiniSDTLF', 'MiniHDTLF', 'MiniFHDTLF',
+        # FRDS 相关
+        'DGB', 'GBWEB',
+        # PuTao
+        'PuTao',
+        # BeiTai
+        'BeiTai',
+        # TJUPT
+        'TJUPT',
+        # PiGo
+        'PiGo', 'PiGoNF', 'PiGoHB', 'PiGoWEB',
+        # Btschool
+        'Bts', 'BtsCHOOL', 'BtsHD', 'BtsPAD', 'BtsTV', 'Zone',
+        # CarPT
+        'CarPT',
+        # Shark
+        'Shark', 'SharkWEB', 'SharkDIY', 'SharkTV', 'SharkMV',
+        # FROG
+        'FROG', 'FROGE', 'FROGWeb',
+        # UBits
+        'UB', 'UBits', 'UBWEB', 'UBTV',
+        # 国际组
+        'BMDru', 'BeyondHD', 'BTN', 'Cfandora', 'Ctrlhd', 'CMRG', 'DON', 'EVO', 'FLUX',
+        'HONE', 'HoneyG', 'NoGroup', 'NTb', 'NTG', 'PandaMoon', 'SMURF', 
+        'TEPES', 'Taengoo', 'TrollHD',
+        # 其他常见组
         'GNOME', 'ETHEL', 'GLHF', 'APEX', 'MZABI', 'NPMS', 'NOGRP',
         'RARBG', 'YTS', 'YIFY', 'ETRG', 'PSA', 'FGT', 'SPARKS',
-        'ROVERS', 'DEFLATE', 'CMRG', 'TOMMY', 'HONE', 'WELP'
+        'ROVERS', 'DEFLATE', 'TOMMY', 'WELP', 'AMRAP', 'PANAM', 'MIXED',
+        # 动漫组
+        'ANi', 'HYSUB', 'KTXP', 'LoliHouse', 'MCE', 'Nekomoe kissaten', 'SweetSub', 'MingY',
+        'Lilith-Raws', 'NC-Raws', '织梦字幕组', '枫叶字幕组', '猎户手抄部', '喵萌奶茶屋',
+        '漫猫字幕社', '霜庭云花Sub', '北宇治字幕组', '氢气烤肉架', '云歌字幕组',
+        '萌樱字幕组', '极影字幕社', '悠哈璃羽字幕社', '沸羊羊字幕组', '桜都字幕组', '樱都字幕组',
+        # 旧列表（保持兼容）
+        'mUHD', 'AilMWeb', 'HDSWEB'
     ]
     
     # 技术参数关键词
