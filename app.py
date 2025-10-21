@@ -88,6 +88,7 @@ NETWORK_OP_DELAY = 1.0   # 网络文件系统操作延迟（秒）
 
 # 配置文件路径
 CONFIG_FILE = os.path.expanduser('~/.media-renamer/config.json')
+CUSTOM_WORDS_FILE = os.path.expanduser('~/.media-renamer/custom_words.json')
 
 # 默认配置（用户需要在Web界面的"设置"中配置自己的API密钥）
 DEFAULT_CONFIG = {
@@ -132,6 +133,70 @@ def save_config(config):
 
 # 全局配置
 USER_CONFIG = load_config()
+
+# ============ 识别词系统 (v1.3.0) ============
+
+class CustomWords:
+    """自定义识别词管理器"""
+    
+    def __init__(self):
+        self.words = self.load_words()
+    
+    def load_words(self):
+        """加载识别词配置"""
+        try:
+            if os.path.exists(CUSTOM_WORDS_FILE):
+                with open(CUSTOM_WORDS_FILE, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    return data.get('custom_words', [])
+        except Exception as e:
+            print(f"加载识别词失败: {e}")
+        return []
+    
+    def save_words(self, words):
+        """保存识别词配置"""
+        try:
+            config_dir = os.path.dirname(CUSTOM_WORDS_FILE)
+            if not os.path.exists(config_dir):
+                os.makedirs(config_dir, exist_ok=True)
+            
+            with open(CUSTOM_WORDS_FILE, 'w', encoding='utf-8') as f:
+                json.dump({'custom_words': words}, f, ensure_ascii=False, indent=2)
+            return True
+        except Exception as e:
+            print(f"保存识别词失败: {e}")
+            return False
+    
+    def apply(self, title):
+        """应用识别词到标题"""
+        if not title or not self.words:
+            return title
+        
+        for word in self.words:
+            if not word.get('enabled', True):
+                continue
+            
+            word_type = word.get('type', '')
+            
+            if word_type == 'block':
+                # 屏蔽词：移除内容
+                pattern = word.get('pattern', '')
+                if pattern:
+                    title = title.replace(pattern, '')
+            
+            elif word_type == 'replace':
+                # 替换词：修正标题
+                old = word.get('old', '')
+                new = word.get('new', '')
+                if old:
+                    title = title.replace(old, new)
+        
+        return title.strip()
+
+# 全局识别词管理器
+CUSTOM_WORDS_MANAGER = CustomWords()
+
+# ============================================
 
 # TMDB配置
 TMDB_API_KEY = USER_CONFIG.get('tmdb_api_key', DEFAULT_CONFIG['tmdb_api_key'])
@@ -2878,6 +2943,9 @@ class TMDBHelper:
         if not has_chinese:
             # 没有中文，返回原标题
             return title
+        
+        # 0. 应用自定义识别词 (v1.3.0)
+        title = CUSTOM_WORDS_MANAGER.apply(title)
         
         # 1. 移除 Release Group（常见的制作组）
         # v1.2.12 增强：使用 TitleParser 的完整列表（100+）
