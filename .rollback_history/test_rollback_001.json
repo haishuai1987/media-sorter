@@ -1,0 +1,19 @@
+{
+  "operation_id": "test_rollback_001",
+  "timestamp": "2025-10-22T00:32:04.873050",
+  "operation": {
+    "type": "file_move",
+    "files": [
+      {
+        "from": "/path/a.txt",
+        "to": "/path/b.txt"
+      },
+      {
+        "from": "/path/c.txt",
+        "to": "/path/d.txt"
+      }
+    ]
+  },
+  "rollback_available": false,
+  "rollback_timestamp": "2025-10-22T00:32:04.873050"
+}
