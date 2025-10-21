@@ -4152,6 +4152,9 @@ def get_filesystem_type(path):
 class TitleParser:
     """标题解析器 - 从复杂文件名中提取影视作品标题"""
     
+    # v1.4.1: 正则表达式缓存（性能优化）
+    _regex_cache = {}
+    
     # 常见Release Group标识（v1.2.12 增强：从 24 个扩展到 100+）
     # 借鉴 NASTool 和 MoviePilot 的完整列表
     RELEASE_GROUPS = [
