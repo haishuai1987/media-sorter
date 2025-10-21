@@ -2855,11 +2855,12 @@ class TMDBHelper:
     
     @staticmethod
     def extract_chinese_title(title):
-        """从混合标题中提取纯中文标题
+        """从混合标题中提取纯中文标题（借鉴 MoviePilot 实现）
         
         例如：
         - "密室大逃脱 Great Escape" → "密室大逃脱"
         - "密室大逃脱大神版 Great Escape Super" → "密室大逃脱大神版"
+        - "密室大逃脱.S07.1080p.WEB-DL.H265.AAC-CHDWEB" → "密室大逃脱"
         - "Great Escape" → "Great Escape" (保持不变)
         
         Args:
@@ -2878,20 +2879,48 @@ class TMDBHelper:
             # 没有中文，返回原标题
             return title
         
-        # 先替换点号为空格，方便处理
+        # 1. 移除 Release Group（常见的制作组）
+        release_groups = [
+            'CHDWEB', 'CHDWEBII', 'CHDWEBIII', 'ADWeb', 'HHWEB', 'DBTV', 
+            'NGB', 'FRDS', 'mUHD', 'AilMWeb', 'UBWEB', 'CHDTV', 'HDCTV'
+        ]
+        for group in release_groups:
+            # 移除末尾的 -GROUP
+            title = re.sub(rf'-{group}$', '', title, flags=re.IGNORECASE)
+            # 移除中间的 .GROUP.
+            title = re.sub(rf'\.{group}\.', '.', title, flags=re.IGNORECASE)
+            # 移除末尾的 .GROUP
+            title = re.sub(rf'\.{group}$', '', title, flags=re.IGNORECASE)
+        
+        # 2. 移除技术参数
+        tech_params = [
+            '2160p', '1080p', '720p', '480p', '4K', '8K',
+            'H.264', 'H.265', 'H264', 'H265', 'x264', 'x265', 'HEVC', 'AVC',
+            'WEB-DL', 'WEBRip', 'BluRay', 'BDRip', 'HDRip', 'DVDRip',
+            'DDP', 'DD', 'AAC', 'AC3', 'DTS', 'Atmos', 'TrueHD',
+            'DDP5.1', 'DDP2.0', 'AAC2.0', 'AAC5.1',
+            'HDR', 'SDR', 'Dolby', 'Vision', 'HDR10', 'HDR10+',
+            'AMZN', 'NF', 'DSNP', 'HMAX', 'ATVP', 'PCOK', 'PMTP'
+        ]
+        for param in tech_params:
+            # 移除 .PARAM.
+            title = re.sub(rf'\.{param}\.', '.', title, flags=re.IGNORECASE)
+            # 移除 .PARAM
+            title = re.sub(rf'\.{param}$', '', title, flags=re.IGNORECASE)
+            # 移除 PARAM.
+            title = re.sub(rf'^{param}\.', '', title, flags=re.IGNORECASE)
+        
+        # 3. 替换点号为空格，方便处理
         cleaned = title.replace('.', ' ')
         
-        # 分割成词
+        # 4. 分割成词
         parts = cleaned.split()
         
-        # 提取中文部分和中文词组
+        # 5. 提取中文部分（只保留包含中文的词）
         chinese_parts = []
         for part in parts:
-            # 如果这个词包含中文字符，保留
+            # 只保留包含中文字符的词
             if any('\u4e00' <= c <= '\u9fff' for c in part):
-                chinese_parts.append(part)
-            # 如果是纯数字，也保留（可能是年份等）
-            elif part.isdigit():
                 chinese_parts.append(part)
         
         if chinese_parts:
