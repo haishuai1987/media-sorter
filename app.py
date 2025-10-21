@@ -2867,7 +2867,7 @@ class TMDBHelper:
             req = urllib.request.Request(url)
             req.add_header('User-Agent', 'Mozilla/5.0')
             
-            with urllib.request.urlopen(req, timeout=10) as response:
+            with urllib.request.urlopen(req, timeout=5) as response:
                 return json.loads(response.read().decode('utf-8'))
         except Exception as e:
             print(f"  TMDB请求失败: {e}")
@@ -4486,8 +4486,16 @@ class QueryStrategy:
             self._log(f"  标题太短，跳过")
             return None
         
+        # 限制最大尝试次数，防止卡死
+        max_attempts = 3
+        attempt_count = 0
+        
         # 尝试不同长度的关键词
         for word_count in [5, 4, 3]:
+            if attempt_count >= max_attempts:
+                self._log(f"  已达到最大尝试次数({max_attempts})，停止查询")
+                break
+            attempt_count += 1
             if len(words) >= word_count:
                 keyword = ' '.join(words[:word_count])
                 self._log(f"  尝试关键词({word_count}词): {keyword}")
