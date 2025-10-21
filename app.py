@@ -12,6 +12,10 @@ import cgi
 import time
 from functools import wraps
 import socket
+from queue import Queue, Empty
+from threading import Lock
+import uuid
+from datetime import datetime
 
 # 自动检测部署环境
 def detect_environment():
@@ -3202,6 +3206,160 @@ def check_path_permissions(path):
 
 
 # ============================================
+# 实时日志推送模块
+# ============================================
+
+class LogStream:
+    """实时日志流管理器
+    
+    使用Queue实现线程安全的日志推送，支持SSE
+    """
+    
+    def __init__(self, stream_id: str):
+        self.stream_id = stream_id
+        self.queue = Queue(maxsize=1000)  # 限制队列大小
+        self.active = True
+        self.created_at = datetime.now()
+        
+    def push(self, level: str, message: str, progress: int = None, total: int = None):
+        """推送日志事件
+        
+        Args:
+            level: 日志级别 (DEBUG, INFO, WARNING, ERROR)
+            message: 日志消息
+            progress: 当前进度（可选）
+            total: 总数（可选）
+        """
+        if not self.active:
+            return
+            
+        event = {
+            'timestamp': datetime.now().isoformat(),
+            'level': level,
+            'message': message
+        }
+        
+        if progress is not None:
+            event['progress'] = progress
+        if total is not None:
+            event['total'] = total
+            
+        try:
+            self.queue.put_nowait(event)
+        except:
+            # 队列满了，丢弃最旧的消息
+            try:
+                self.queue.get_nowait()
+                self.queue.put_nowait(event)
+            except:
+                pass
+    
+    def get_events(self, timeout=30):
+        """生成SSE事件流
+        
+        Args:
+            timeout: 超时时间（秒）
+        
+        Yields:
+            dict: 日志事件
+        """
+        last_event_time = time.time()
+        
+        while self.active:
+            try:
+                # 使用短超时，以便能及时检测连接状态
+                event = self.queue.get(timeout=1)
+                last_event_time = time.time()
+                yield event
+            except Empty:
+                # 检查是否超时
+                if time.time() - last_event_time > timeout:
+                    break
+                # 发送心跳保持连接
+                yield {'type': 'heartbeat'}
+    
+    def close(self):
+        """关闭日志流"""
+        self.active = False
+        # 发送关闭事件
+        try:
+            self.queue.put_nowait({
+                'type': 'close',
+                'message': '日志流已关闭'
+            })
+        except:
+            pass
+
+
+class LogStreamManager:
+    """日志流管理器
+    
+    管理所有活动的日志流
+    """
+    
+    def __init__(self):
+        self.streams = {}
+        self.lock = Lock()
+        
+    def create_stream(self) -> str:
+        """创建新的日志流
+        
+        Returns:
+            str: 流ID
+        """
+        stream_id = str(uuid.uuid4())
+        with self.lock:
+            self.streams[stream_id] = LogStream(stream_id)
+        return stream_id
+    
+    def get_stream(self, stream_id: str) -> LogStream:
+        """获取日志流
+        
+        Args:
+            stream_id: 流ID
+            
+        Returns:
+            LogStream: 日志流对象，如果不存在返回None
+        """
+        with self.lock:
+            return self.streams.get(stream_id)
+    
+    def close_stream(self, stream_id: str):
+        """关闭并删除日志流
+        
+        Args:
+            stream_id: 流ID
+        """
+        with self.lock:
+            stream = self.streams.get(stream_id)
+            if stream:
+                stream.close()
+                del self.streams[stream_id]
+    
+    def cleanup_old_streams(self, max_age_seconds=3600):
+        """清理超时的日志流
+        
+        Args:
+            max_age_seconds: 最大存活时间（秒）
+        """
+        now = datetime.now()
+        with self.lock:
+            to_remove = []
+            for stream_id, stream in self.streams.items():
+                age = (now - stream.created_at).total_seconds()
+                if age > max_age_seconds:
+                    stream.close()
+                    to_remove.append(stream_id)
+            
+            for stream_id in to_remove:
+                del self.streams[stream_id]
+
+
+# 全局日志流管理器
+log_stream_manager = LogStreamManager()
+
+
+# ============================================
 # 媒体库管理模块
 # ============================================
 
@@ -3761,7 +3919,11 @@ def get_filesystem_type(path):
 
 class MediaHandler(SimpleHTTPRequestHandler):
     def do_GET(self):
-        if self.path == '/' or self.path == '/index.html':
+        # SSE日志流端点
+        if self.path.startswith('/api/logs/stream/'):
+            stream_id = self.path.split('/')[-1]
+            self.handle_log_stream(stream_id)
+        elif self.path == '/' or self.path == '/index.html':
             self.send_response(200)
             self.send_header('Content-type', 'text/html; charset=utf-8')
             self.end_headers()
@@ -3796,6 +3958,45 @@ class MediaHandler(SimpleHTTPRequestHandler):
                 self.send_error(404)
         else:
             super().do_GET()
+    
+    def handle_log_stream(self, stream_id):
+        """处理SSE日志流请求"""
+        stream = log_stream_manager.get_stream(stream_id)
+        if not stream:
+            self.send_error(404, 'Log stream not found')
+            return
+        
+        # 发送SSE响应头
+        self.send_response(200)
+        self.send_header('Content-Type', 'text/event-stream')
+        self.send_header('Cache-Control', 'no-cache')
+        self.send_header('Connection', 'keep-alive')
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.end_headers()
+        
+        try:
+            # 发送日志事件
+            for event in stream.get_events():
+                if event.get('type') == 'heartbeat':
+                    # 发送心跳
+                    self.wfile.write(b': heartbeat\n\n')
+                elif event.get('type') == 'close':
+                    # 发送关闭事件
+                    data = json.dumps(event)
+                    self.wfile.write(f'data: {data}\n\n'.encode('utf-8'))
+                    break
+                else:
+                    # 发送日志事件
+                    data = json.dumps(event, ensure_ascii=False)
+                    self.wfile.write(f'data: {data}\n\n'.encode('utf-8'))
+                
+                self.wfile.flush()
+        except (BrokenPipeError, ConnectionResetError):
+            # 客户端断开连接
+            pass
+        finally:
+            # 清理流
+            log_stream_manager.close_stream(stream_id)
     
     def do_POST(self):
         content_length = int(self.headers['Content-Length'])
