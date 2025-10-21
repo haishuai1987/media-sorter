@@ -17,6 +17,14 @@ from threading import Lock
 import uuid
 from datetime import datetime
 
+# v1.4.0: 中文数字转换
+try:
+    import cn2an
+    CN2AN_AVAILABLE = True
+except ImportError:
+    CN2AN_AVAILABLE = False
+    print("警告: cn2an 未安装，副标题解析功能将受限")
+
 # 自动检测部署环境
 def detect_environment():
     """检测部署环境：local（本地）、cloud（云服务器）、docker（容器）"""
@@ -195,6 +203,59 @@ class CustomWords:
 
 # 全局识别词管理器
 CUSTOM_WORDS_MANAGER = CustomWords()
+
+# ============================================
+
+# ============ 副标题解析 (v1.4.0) ============
+
+class SubtitleParser:
+    """副标题解析器"""
+    
+    # 正则表达式
+    SEASON_RE = re.compile(r'第\s*([0-9一二三四五六七八九十]+)\s*季', re.IGNORECASE)
+    EPISODE_ALL_RE = re.compile(r'全\s*([0-9一二三四五六七八九十百零]+)\s*集', re.IGNORECASE)
+    
+    @staticmethod
+    def parse(subtitle):
+        """解析副标题
+        
+        Args:
+            subtitle: 副标题字符串
+            
+        Returns:
+            dict: {'season': int, 'total_episodes': int}
+        """
+        result = {}
+        
+        if not subtitle or not CN2AN_AVAILABLE:
+            return result
+        
+        try:
+            # 解析"第X季"
+            season_match = SubtitleParser.SEASON_RE.search(subtitle)
+            if season_match:
+                season_str = season_match.group(1)
+                try:
+                    result['season'] = cn2an.cn2an(season_str, mode='smart')
+                except:
+                    pass
+            
+            # 解析"全X集"
+            episode_match = SubtitleParser.EPISODE_ALL_RE.search(subtitle)
+            if episode_match:
+                episode_str = episode_match.group(1)
+                try:
+                    result['total_episodes'] = cn2an.cn2an(episode_str, mode='smart')
+                except:
+                    pass
+        
+        except Exception as e:
+            print(f"副标题解析失败: {e}")
+        
+        return result
+
+# 全局副标题解析器
+SUBTITLE_PARSER = SubtitleParser()
 
 # ============================================
 
