@@ -5606,31 +5606,45 @@ class MediaHandler(SimpleHTTPRequestHandler):
         search_title = final_title
         search_year = metadata['year']
         
+        # 先移除标题中已有的续集标记（避免重复）
+        sequel_patterns = [
+            (r'\s*I{2,5}$', ''),  # 移除末尾的 II, III, IV, V (中文)
+            (r'\s+I{2,5}$', ''),  # 移除末尾的 II, III, IV, V (英文，带空格)
+            (r'\s*第[二三四五]季$', ''),  # 移除"第X季"
+            (r'\s*[Ss]eason\s*[2-9]$', ''),  # 移除"Season 2"等
+            (r'\s*[2-9]$', '')  # 移除末尾的数字（如"快乐的大人2"）
+        ]
+        
+        base_title = final_title
+        for pattern, replacement in sequel_patterns:
+            base_title = re.sub(pattern, replacement, base_title).strip()
+        
         if is_tv and season_from_folder and season_from_folder > 1:
             # 尝试添加续集标记查询
             print(f"检测到Season {season_from_folder}文件夹，尝试查询续集...")
+            print(f"基础标题: {base_title}")
             
             # 对于中文标题，尝试添加续集标记
-            if any('\u4e00' <= c <= '\u9fff' for c in final_title):
-                # 中文续集标记
+            if any('\u4e00' <= c <= '\u9fff' for c in base_title):
+                # 中文续集标记（无空格）
                 if season_from_folder == 2:
-                    search_title = f"{final_title}II"  # 如：我和僵尸有个约会II
+                    search_title = f"{base_title}II"
                 elif season_from_folder == 3:
-                    search_title = f"{final_title}III"
+                    search_title = f"{base_title}III"
                 elif season_from_folder == 4:
-                    search_title = f"{final_title}IV"
+                    search_title = f"{base_title}IV"
                 elif season_from_folder == 5:
-                    search_title = f"{final_title}V"
+                    search_title = f"{base_title}V"
             else:
-                # 英文续集标记
+                # 英文续集标记（带空格）
                 if season_from_folder == 2:
-                    search_title = f"{final_title} II"
+                    search_title = f"{base_title} II"
                 elif season_from_folder == 3:
-                    search_title = f"{final_title} III"
+                    search_title = f"{base_title} III"
                 elif season_from_folder == 4:
-                    search_title = f"{final_title} IV"
+                    search_title = f"{base_title} IV"
                 elif season_from_folder == 5:
-                    search_title = f"{final_title} V"
+                    search_title = f"{base_title} V"
             
             print(f"续集查询标题: {search_title}")
         
