@@ -5204,6 +5204,10 @@ class MediaHandler(SimpleHTTPRequestHandler):
                 self.handle_qrcode_check(data)
             elif self.path == '/api/qrcode/finish':
                 self.handle_qrcode_finish(data)
+            elif self.path == '/api/error-stats':
+                self.handle_error_stats(data)
+            elif self.path == '/api/operation-history':
+                self.handle_operation_history(data)
             else:
                 self.send_error(404)
         except Exception as e:
@@ -7587,6 +7591,43 @@ class MediaHandler(SimpleHTTPRequestHandler):
             traceback.print_exc()
             self.send_json_response({'success': False, 'error': str(e)}, 500)
     
+    def handle_error_stats(self, data):
+        """获取错误统计信息 (v1.8.0)"""
+        try:
+            # 从全局统计中获取数据
+            stats = {
+                'success_count': getattr(self.server, 'success_count', 0),
+                'error_count': getattr(self.server, 'error_count', 0),
+                'request_count': getattr(self.server, 'request_count', 0),
+                'last_error': getattr(self.server, 'last_error', None),
+            }
+            
+            # 计算错误率
+            if stats['request_count'] > 0:
+                stats['error_rate'] = stats['error_count'] / stats['request_count']
+            else:
+                stats['error_rate'] = 0.0
+            
+            self.send_json_response(stats)
+        except Exception as e:
+            self.send_json_response({'error': str(e)}, 500)
+    
+    def handle_operation_history(self, data):
+        """获取操作历史 (v1.8.0)"""
+        try:
+            # 从全局历史中获取数据
+            history = getattr(self.server, 'operation_history', [])
+            
+            # 只返回最近20条
+            recent_history = history[-20:] if len(history) > 20 else history
+            
+            self.send_json_response({
+                'operations': recent_history,
+                'total': len(history)
+            })
+        except Exception as e:
+            self.send_json_response({'error': str(e)}, 500)
+    
     def send_json_response(self, data, status=200):
         self.send_response(status)
         self.send_header('Content-type', 'application/json; charset=utf-8')
@@ -7638,6 +7679,14 @@ if __name__ == '__main__':
     
     try:
         server = HTTPServer((HOST, PORT), MediaHandler)
+        
+        # 初始化统计变量 (v1.8.0)
+        server.success_count = 0
+        server.error_count = 0
+        server.request_count = 0
+        server.last_error = None
+        server.operation_history = []
+        
         server.serve_forever()
     except KeyboardInterrupt:
         print('\n服务器已停止')

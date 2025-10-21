@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web UI 测试 - v1.8.0</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            margin: 0;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        .test-section h2 {
+            margin: 0 0 15px 0;
+            color: #667eea;
+            font-size: 18px;
+        }
+        button {
+            padding: 12px 24px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            margin-right: 10px;
+            margin-bottom: 10px;
+            transition: all 0.2s;
+        }
+        button:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+        }
+        .output {
+            margin-top: 15px;
+            padding: 15px;
+            background: white;
+            border-radius: 6px;
+            border: 1px solid #e0e0e0;
+            font-family: monospace;
+            font-size: 13px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 Web UI 测试 (v1.8.0)</h1>
+
+        <!-- Toast通知测试 -->
+        <div class="test-section">
+            <h2>📢 Toast通知系统</h2>
+            <button onclick="testToastSuccess()">✅ 成功提示</button>
+            <button onclick="testToastError()">❌ 错误提示</button>
+            <button onclick="testToastWarning()">⚠️ 警告提示</button>
+            <button onclick="testToastInfo()">ℹ️ 信息提示</button>
+            <button onclick="testToastFromError()">🛡️ 错误对象提示</button>
+        </div>
+
+        <!-- 错误统计测试 -->
+        <div class="test-section">
+            <h2>📊 错误统计面板</h2>
+            <button onclick="openErrorStats()">打开错误统计</button>
+            <button onclick="simulateSuccess()">模拟成功操作</button>
+            <button onclick="simulateError()">模拟错误操作</button>
+            <div class="output" id="statsOutput">点击按钮测试...</div>
+        </div>
+
+        <!-- API测试 -->
+        <div class="test-section">
+            <h2>🔌 API端点测试</h2>
+            <button onclick="testErrorStatsAPI()">测试 /api/error-stats</button>
+            <button onclick="testHistoryAPI()">测试 /api/operation-history</button>
+            <div class="output" id="apiOutput">点击按钮测试...</div>
+        </div>
+    </div>
+
+    <!-- 引入Toast和ErrorStats -->
+    <script src="/toast.js"></script>
+    <script src="/error-stats.js"></script>
+
+    <script>
+        // Toast测试
+        function testToastSuccess() {
+            toast.success('操作成功！文件已整理完成');
+        }
+
+        function testToastError() {
+            toast.error('操作失败：网络连接超时');
+        }
+
+        function testToastWarning() {
+            toast.warning('警告：磁盘空间不足，请及时清理');
+        }
+
+        function testToastInfo() {
+            toast.info('正在扫描文件，请稍候...');
+        }
+
+        function testToastFromError() {
+            const error = new Error('Connection timeout');
+            toast.showError(error, '文件上传');
+        }
+
+        // 错误统计测试
+        function openErrorStats() {
+            errorStatsPanel.open();
+        }
+
+        function simulateSuccess() {
+            fetch('/api/error-stats', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({})
+            }).then(r => r.json()).then(data => {
+                document.getElementById('statsOutput').textContent = 
+                    '成功操作已记录\n' + JSON.stringify(data, null, 2);
+                toast.success('成功操作已记录');
+            });
+        }
+
+        function simulateError() {
+            fetch('/api/error-stats', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({})
+            }).then(r => r.json()).then(data => {
+                document.getElementById('statsOutput').textContent = 
+                    '错误操作已记录\n' + JSON.stringify(data, null, 2);
+                toast.error('错误操作已记录');
+            });
+        }
+
+        // API测试
+        async function testErrorStatsAPI() {
+            try {
+                const response = await fetch('/api/error-stats', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({})
+                });
+                const data = await response.json();
+                document.getElementById('apiOutput').textContent = 
+                    'GET /api/error-stats\n\n' + JSON.stringify(data, null, 2);
+                toast.success('API调用成功');
+            } catch (error) {
+                document.getElementById('apiOutput').textContent = 
+                    'Error: ' + error.message;
+                toast.error('API调用失败');
+            }
+        }
+
+        async function testHistoryAPI() {
+            try {
+                const response = await fetch('/api/operation-history', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({})
+                });
+                const data = await response.json();
+                document.getElementById('apiOutput').textContent = 
+                    'GET /api/operation-history\n\n' + JSON.stringify(data, null, 2);
+                toast.success('API调用成功');
+            } catch (error) {
+                document.getElementById('apiOutput').textContent = 
+                    'Error: ' + error.message;
+                toast.error('API调用失败');
+            }
+        }
+
+        // 页面加载完成提示
+        window.addEventListener('load', () => {
+            toast.info('测试页面加载完成，可以开始测试了！');
+        });
+    </script>
+</body>
+</html>
