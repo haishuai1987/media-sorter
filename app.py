@@ -2854,6 +2854,58 @@ class TMDBHelper:
     _cache = {}
     
     @staticmethod
+    def extract_chinese_title(title):
+        """从混合标题中提取纯中文标题
+        
+        例如：
+        - "密室大逃脱 Great Escape" → "密室大逃脱"
+        - "密室大逃脱大神版 Great Escape Super" → "密室大逃脱大神版"
+        - "Great Escape" → "Great Escape" (保持不变)
+        
+        Args:
+            title: 原始标题
+            
+        Returns:
+            清理后的标题
+        """
+        if not title:
+            return title
+        
+        # 检查是否包含中文
+        has_chinese = any('\u4e00' <= c <= '\u9fff' for c in title)
+        
+        if not has_chinese:
+            # 没有中文，返回原标题
+            return title
+        
+        # 先替换点号为空格，方便处理
+        cleaned = title.replace('.', ' ')
+        
+        # 分割成词
+        parts = cleaned.split()
+        
+        # 提取中文部分和中文词组
+        chinese_parts = []
+        for part in parts:
+            # 如果这个词包含中文字符，保留
+            if any('\u4e00' <= c <= '\u9fff' for c in part):
+                chinese_parts.append(part)
+            # 如果是纯数字，也保留（可能是年份等）
+            elif part.isdigit():
+                chinese_parts.append(part)
+        
+        if chinese_parts:
+            result = ' '.join(chinese_parts)
+            # 移除多余空格
+            result = ' '.join(result.split())
+            # 只移除末尾的"第X季"等冗余信息（保留"大神版"等版本标识）
+            result = re.sub(r'\s*第[一二三四五六七八九十\d]+季$', '', result)
+            return result.strip()
+        
+        # 如果提取失败，返回原标题
+        return title
+    
+    @staticmethod
     def make_request(url):
         """通过代理发送TMDB请求"""
         try:
@@ -2885,8 +2937,13 @@ class TMDBHelper:
         data = TMDBHelper.make_request(url)
         if data and data.get('results') and len(data['results']) > 0:
             result = data['results'][0]
+            tmdb_title = result.get('name', title)
+            
+            # 清理标题：如果包含中文，只保留中文部分
+            cleaned_title = TMDBHelper.extract_chinese_title(tmdb_title)
+            
             return {
-                'title': result.get('name', title),
+                'title': cleaned_title,
                 'original_title': result.get('original_name', ''),
                 'original_language': result.get('original_language', ''),
                 'year': result.get('first_air_date', '')[:4] if result.get('first_air_date') else '',
@@ -2914,8 +2971,13 @@ class TMDBHelper:
         data = TMDBHelper.make_request(url)
         if data and data.get('results') and len(data['results']) > 0:
             result = data['results'][0]
+            tmdb_title = result.get('title', title)
+            
+            # 清理标题：如果包含中文，只保留中文部分
+            cleaned_title = TMDBHelper.extract_chinese_title(tmdb_title)
+            
             return {
-                'title': result.get('title', title),
+                'title': cleaned_title,
                 'original_title': result.get('original_title', ''),
                 'original_language': result.get('original_language', ''),
                 'year': result.get('release_date', '')[:4] if result.get('release_date') else '',
