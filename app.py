@@ -3964,8 +3964,7 @@ class TitleParser:
                 name = name.replace(pattern, '')
         
         # 移除通用格式：-XXX, [XXX] 在文件名末尾
-        name = re.sub(r'[-\[\(][A-Z0-9]+[\]\)]
-</content>
+        name = re.sub(r'[-\[\(][A-Z0-9]+[\]\)]$', '', name)</content>
 </file>, '', name)
         
         return name.strip()
