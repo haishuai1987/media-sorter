@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import os
 import json
@@ -3964,8 +3964,7 @@ class TitleParser:
                 name = name.replace(pattern, '')
         
         # 移除通用格式：-XXX, [XXX] 在文件名末尾
-        name = re.sub(r'[-\[\(][A-Z0-9]+[\]\)]$', '', name)</content>
-</file>, '', name)
+        name = re.sub(r'[-\[\(][A-Z0-9]+[\]\)]$', '', name)
         
         return name.strip()
     
