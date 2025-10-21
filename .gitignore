@@ -68,3 +68,16 @@ package-lock.json
 # 用户数据
 *.db
 *.sqlite
+
+# 临时调试脚本
+test-*.ps1
+fix-*.sh
+fix-*.ps1
+diagnose-*.py
+diagnose-*.sh
+check-*.ps1
+restart-*.ps1
+force-*-restart.ps1
+
+# 项目清理脚本（保留在仓库中，但标记为临时）
+# cleanup-temp-files.ps1 不忽略，因为其他人可能需要
