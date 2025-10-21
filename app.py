@@ -3931,12 +3931,23 @@ class TitleParser:
     
     # 技术参数关键词
     TECHNICAL_PARAMS = [
+        # 分辨率
         '4K', '2160p', '1080p', '720p', '480p', '360p',
-        'BluRay', 'BDRip', 'BRRip', 'WEB-DL', 'WEBRip', 'HDRip', 'DVDRip',
-        'x264', 'x265', 'H264', 'H265', 'HEVC', 'AVC',
-        'AAC', 'AC3', 'DTS', 'DD5.1', 'DD+', 'Atmos',
+        # 来源
+        'BluRay', 'BDRip', 'BRRip', 'WEB-DL', 'WEBRip', 'HDRip', 'DVDRip', 'HDTV',
+        # 视频编码
+        'x264', 'x265', 'H264', 'H265', 'H.264', 'H.265', 'HEVC', 'AVC',
+        # 音频编码
+        'AAC', 'AAC2.0', 'AC3', 'DTS', 'DD5.1', 'DD+', 'DDP', 'DDP5.1', 'DDP2.0', 'Atmos',
+        # HDR相关
         '10bit', '8bit', 'HDR', 'SDR', 'DV', 'DoVi',
-        'REMUX', 'PROPER', 'REPACK', 'INTERNAL'
+        # 其他
+        'REMUX', 'PROPER', 'REPACK', 'INTERNAL', 'Complete', 'COMPLETE',
+        # 流媒体平台
+        'Netflix', 'AMZN', 'Amazon', 'Disney+', 'HBO', 'Hulu', 'AppleTV',
+        'NF', 'DSNP', 'HMAX', 'ATVP', 'PCOK', 'PMTP', 'Stan', 'iT', 'iTunes',
+        # 季数标记（会被误识别为标题的一部分）
+        'S01', 'S02', 'S03', 'S04', 'S05', 'S06', 'S07', 'S08', 'S09', 'S10'
     ]
     
     @staticmethod
