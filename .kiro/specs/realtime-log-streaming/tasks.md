@@ -11,12 +11,18 @@
 
 
 
+
+
 - [ ] 2. 创建SSE API端点
   - 创建/api/logs/stream/<stream_id>端点
+
+
   - 实现SSE响应生成
   - 添加连接超时和清理逻辑
   - 添加错误处理
   - _Requirements: 1.1, 1.3, 1.4_
+
+
 
 - [ ] 3. 修改处理逻辑集成日志推送
   - 修改handle_smart_rename方法，创建日志流
@@ -24,6 +30,7 @@
   - 推送进度更新事件
   - 处理完成后关闭日志流
   - _Requirements: 1.2, 3.1, 3.2, 3.3_
+
 
 - [ ] 4. 实现前端LogViewer组件
   - 创建LogViewer React/Vue组件

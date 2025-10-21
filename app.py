@@ -3917,6 +3917,801 @@ def get_filesystem_type(path):
 
 # ============================================
 
+class TitleParser:
+    """标题解析器 - 从复杂文件名中提取影视作品标题"""
+    
+    # 常见Release Group标识
+    RELEASE_GROUPS = [
+        'ADWeb', 'CHDWEB', 'HDSWEB', 'NTb', 'FLUX', 'TEPES', 'SMURF',
+        'CMRG', 'TOMMY', 'HONE', 'WELP', 'AMRAP', 'PANAM', 'MIXED',
+        'GNOME', 'ETHEL', 'GLHF', 'APEX', 'MZABI', 'NPMS', 'NOGRP',
+        'RARBG', 'YTS', 'YIFY', 'ETRG', 'PSA', 'FGT', 'SPARKS',
+        'ROVERS', 'DEFLATE', 'CMRG', 'TOMMY', 'HONE', 'WELP'
+    ]
+    
+    # 技术参数关键词
+    TECHNICAL_PARAMS = [
+        '4K', '2160p', '1080p', '720p', '480p', '360p',
+        'BluRay', 'BDRip', 'BRRip', 'WEB-DL', 'WEBRip', 'HDRip', 'DVDRip',
+        'x264', 'x265', 'H264', 'H265', 'HEVC', 'AVC',
+        'AAC', 'AC3', 'DTS', 'DD5.1', 'DD+', 'Atmos',
+        '10bit', '8bit', 'HDR', 'SDR', 'DV', 'DoVi',
+        'REMUX', 'PROPER', 'REPACK', 'INTERNAL'
+    ]
+    
+    @staticmethod
+    def remove_release_group(filename):
+        """移除Release Group标识
+        
+        Args:
+            filename: 原始文件名
+            
+        Returns:
+            移除Release Group后的文件名
+        """
+        name = filename
+        
+        # 移除常见的Release Group格式：-GROUP, [GROUP], (GROUP)
+        for group in TitleParser.RELEASE_GROUPS:
+            patterns = [
+                f'-{group}',
+                f'[{group}]',
+                f'({group})',
+                f'.{group}.',
+                f' {group} '
+            ]
+            for pattern in patterns:
+                name = name.replace(pattern, '')
+        
+        # 移除通用格式：-XXX, [XXX] 在文件名末尾
+        name = re.sub(r'[-\[\(][A-Z0-9]+[\]\)]
+</content>
+</file>, '', name)
+        
+        return name.strip()
+    
+    @staticmethod
+    def remove_technical_params(filename):
+        """移除技术参数
+        
+        Args:
+            filename: 原始文件名
+            
+        Returns:
+            移除技术参数后的文件名
+        """
+        name = filename
+        
+        # 移除所有技术参数
+        for param in TitleParser.TECHNICAL_PARAMS:
+            name = re.sub(re.escape(param), '', name, flags=re.IGNORECASE)
+        
+        # 移除常见的技术参数模式
+        patterns = [
+            r'\d{3,4}p',  # 分辨率
+            r'[Hh]\.?26[45]',  # 编码
+            r'[Xx]26[45]',  # 编码
+            r'DD[\+\d\.]+',  # 音频
+            r'DTS[-\w]*',  # 音频
+            r'\d+bit',  # 位深
+        ]
+        
+        for pattern in patterns:
+            name = re.sub(pattern, '', name)
+        
+        return name.strip()
+    
+    @staticmethod
+    def extract_year(filename):
+        """提取年份信息
+        
+        Args:
+            filename: 文件名
+            
+        Returns:
+            (year: str, filename_without_year: str)
+        """
+        # 匹配年份：(2023), [2023], .2023.
+        year_match = re.search(r'[\(\[]?(\d{4})[\)\]]?', filename)
+        
+        if year_match:
+            year = year_match.group(1)
+            # 验证年份合理性（1900-2100）
+            if 1900 <= int(year) <= 2100:
+                name_without_year = filename[:year_match.start()] + filename[year_match.end():]
+                return year, name_without_year.strip()
+        
+        return None, filename
+    
+    @staticmethod
+    def extract_season_episode(filename):
+        """提取季集信息
+        
+        Args:
+            filename: 文件名
+            
+        Returns:
+            dict: {'season': str, 'episode': str, 'filename_without_se': str}
+        """
+        result = {
+            'season': None,
+            'episode': None,
+            'filename_without_se': filename
+        }
+        
+        # 季集模式
+        patterns = [
+            r'[Ss](\d{1,2})[Ee](\d{1,2})',  # S01E01
+            r'[Ss]eason[\s\.]?(\d{1,2})[\s\.]?[Ee]pisode[\s\.]?(\d{1,2})',  # Season 1 Episode 1
+            r'(\d{1,2})x(\d{1,2})',  # 1x01
+        ]
+        
+        for pattern in patterns:
+            match = re.search(pattern, filename)
+            if match:
+                result['season'] = match.group(1).zfill(2)
+                result['episode'] = match.group(2).zfill(2)
+                result['filename_without_se'] = filename[:match.start()] + filename[match.end():]
+                break
+        
+        return result
+    
+    @staticmethod
+    def normalize_title(title):
+        """标准化标题格式
+        
+        Args:
+            title: 原始标题
+            
+        Returns:
+            标准化后的标题
+        """
+        # 移除多余的分隔符
+        title = re.sub(r'[\.\-_]+', ' ', title)
+        
+        # 移除多余的空格
+        title = re.sub(r'\s+', ' ', title)
+        
+        # 移除首尾空格
+        title = title.strip()
+        
+        # 移除首尾的特殊字符
+        title = title.strip('.-_[]() ')
+        
+        return title
+    
+    @staticmethod
+    def parse(filename):
+        """解析文件名，提取标题和元数据
+        
+        Args:
+            filename: 原始文件名（不含扩展名）
+            
+        Returns:
+            dict: {
+                'title': str,  # 提取的标题
+                'year': str,  # 年份
+                'season': str,  # 季数
+                'episode': str,  # 集数
+                'original_filename': str  # 原始文件名
+            }
+        """
+        result = {
+            'title': '',
+            'year': None,
+            'season': None,
+            'episode': None,
+            'original_filename': filename
+        }
+        
+        # 步骤1: 移除Release Group
+        name = TitleParser.remove_release_group(filename)
+        
+        # 步骤2: 提取年份
+        year, name = TitleParser.extract_year(name)
+        result['year'] = year
+        
+        # 步骤3: 提取季集信息
+        se_info = TitleParser.extract_season_episode(name)
+        result['season'] = se_info['season']
+        result['episode'] = se_info['episode']
+        name = se_info['filename_without_se']
+        
+        # 步骤4: 移除技术参数
+        name = TitleParser.remove_technical_params(name)
+        
+        # 步骤5: 标准化标题
+        name = TitleParser.normalize_title(name)
+        
+        result['title'] = name
+        
+        return result
+
+
+class TitleMapper:
+    """标题映射器 - 为常见影视作品配置标题映射"""
+    
+    def __init__(self, config_file='title_mapping.json'):
+        """初始化标题映射器
+        
+        Args:
+            config_file: 映射配置文件路径
+        """
+        self.config_file = config_file
+        self.mappings = {}
+        self.load()
+    
+    def load(self):
+        """加载映射配置文件"""
+        try:
+            if os.path.exists(self.config_file):
+                with open(self.config_file, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    self.mappings = data.get('mappings', {})
+                print(f"[TitleMapper] 加载了 {len(self.mappings)} 个标题映射")
+            else:
+                # 创建默认配置文件
+                self._create_default_config()
+        except Exception as e:
+            print(f"[TitleMapper] 加载配置失败: {e}")
+            self.mappings = {}
+    
+    def _create_default_config(self):
+        """创建默认配置文件"""
+        default_mappings = {
+            "mappings": {
+                # 示例映射
+                "Breaking Bad": {
+                    "tmdb_id": 1396,
+                    "chinese_title": "绝命毒师",
+                    "type": "tv"
+                },
+                "Game of Thrones": {
+                    "tmdb_id": 1399,
+                    "chinese_title": "权力的游戏",
+                    "type": "tv"
+                },
+                "The Walking Dead": {
+                    "tmdb_id": 1402,
+                    "chinese_title": "行尸走肉",
+                    "type": "tv"
+                },
+                "Friends": {
+                    "tmdb_id": 1668,
+                    "chinese_title": "老友记",
+                    "type": "tv"
+                },
+                "The Big Bang Theory": {
+                    "tmdb_id": 1418,
+                    "chinese_title": "生活大爆炸",
+                    "type": "tv"
+                }
+            },
+            "description": "标题映射配置文件 - 为常见影视作品配置准确的标题和TMDB ID"
+        }
+        
+        try:
+            with open(self.config_file, 'w', encoding='utf-8') as f:
+                json.dump(default_mappings, f, ensure_ascii=False, indent=2)
+            self.mappings = default_mappings['mappings']
+            print(f"[TitleMapper] 创建默认配置文件: {self.config_file}")
+        except Exception as e:
+            print(f"[TitleMapper] 创建默认配置失败: {e}")
+    
+    def get_mapping(self, title):
+        """查找标题映射
+        
+        Args:
+            title: 原始标题
+            
+        Returns:
+            dict: 映射信息，如果不存在返回None
+            {
+                'tmdb_id': int,
+                'chinese_title': str,
+                'type': 'movie' or 'tv'
+            }
+        """
+        # 精确匹配
+        if title in self.mappings:
+            return self.mappings[title]
+        
+        # 不区分大小写匹配
+        title_lower = title.lower()
+        for key, value in self.mappings.items():
+            if key.lower() == title_lower:
+                return value
+        
+        # 模糊匹配（移除空格和特殊字符）
+        title_normalized = re.sub(r'[^\w\u4e00-\u9fff]', '', title.lower())
+        for key, value in self.mappings.items():
+            key_normalized = re.sub(r'[^\w\u4e00-\u9fff]', '', key.lower())
+            if key_normalized == title_normalized:
+                return value
+        
+        return None
+    
+    def add_mapping(self, title, tmdb_id, chinese_title, media_type='tv'):
+        """添加新映射
+        
+        Args:
+            title: 原始标题（通常是英文）
+            tmdb_id: TMDB ID
+            chinese_title: 中文标题
+            media_type: 'movie' or 'tv'
+        """
+        self.mappings[title] = {
+            'tmdb_id': tmdb_id,
+            'chinese_title': chinese_title,
+            'type': media_type
+        }
+        print(f"[TitleMapper] 添加映射: {title} -> {chinese_title} (TMDB ID: {tmdb_id})")
+    
+    def save(self):
+        """保存映射到文件"""
+        try:
+            data = {
+                'mappings': self.mappings,
+                'description': '标题映射配置文件 - 为常见影视作品配置准确的标题和TMDB ID'
+            }
+            with open(self.config_file, 'w', encoding='utf-8') as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+            print(f"[TitleMapper] 保存了 {len(self.mappings)} 个映射")
+            return True
+        except Exception as e:
+            print(f"[TitleMapper] 保存失败: {e}")
+            return False
+    
+    def reload(self):
+        """重新加载配置文件（支持热重载）"""
+        print("[TitleMapper] 重新加载配置...")
+        self.load()
+
+
+# 全局标题映射器实例
+title_mapper = TitleMapper()
+
+
+class QueryStrategy:
+    """查询策略引擎 - 使用多种策略提高查询成功率"""
+    
+    def __init__(self, title_mapper=None):
+        """初始化查询策略引擎
+        
+        Args:
+            title_mapper: TitleMapper实例
+        """
+        self.title_mapper = title_mapper or title_mapper
+        self.query_log = []
+    
+    def query(self, title, year=None, is_tv=False):
+        """执行多策略查询
+        
+        Args:
+            title: 原始标题
+            year: 年份
+            is_tv: 是否为电视剧
+            
+        Returns:
+            dict: {
+                'title': str,  # 中文标题
+                'year': str,
+                'category': str,
+                'metadata': dict,
+                'strategy': str  # 使用的策略
+            }
+        """
+        self.query_log = []
+        self._log(f"开始查询: {title} ({year or '无年份'})")
+        
+        # 策略0: 检查标题映射表
+        mapping_result = self._try_title_mapping(title)
+        if mapping_result:
+            return mapping_result
+        
+        # 策略1: 完整标题 + 年份
+        if year:
+            result = self._try_full_title_with_year(title, year, is_tv)
+            if result:
+                return result
+        
+        # 策略2: 完整标题（不带年份）
+        result = self._try_full_title(title, is_tv)
+        if result:
+            return result
+        
+        # 策略3: 简化标题（移除副标题）
+        result = self._try_simplified_title(title, year, is_tv)
+        if result:
+            return result
+        
+        # 策略4: 关键词查询（提取主要词汇）
+        result = self._try_keyword_query(title, year, is_tv)
+        if result:
+            return result
+        
+        # 所有策略失败
+        self._log(f"所有策略失败，保留原标题")
+        return {
+            'title': title,
+            'year': year,
+            'category': None,
+            'metadata': {},
+            'strategy': 'fallback'
+        }
+    
+    def _try_title_mapping(self, title):
+        """策略0: 检查标题映射表"""
+        if not self.title_mapper:
+            return None
+        
+        self._log(f"策略0: 检查标题映射表")
+        mapping = self.title_mapper.get_mapping(title)
+        
+        if mapping:
+            self._log(f"  ✓ 找到映射: {mapping['chinese_title']}")
+            return {
+                'title': mapping['chinese_title'],
+                'year': None,
+                'category': None,
+                'metadata': {'tmdb_id': mapping['tmdb_id']},
+                'strategy': 'title_mapping'
+            }
+        
+        self._log(f"  ✗ 未找到映射")
+        return None
+    
+    def _try_full_title_with_year(self, title, year, is_tv):
+        """策略1: 完整标题 + 年份"""
+        self._log(f"策略1: 完整标题 + 年份")
+        
+        try:
+            if is_tv:
+                result = TMDBHelper.search_tv(title, year, try_without_year=False)
+            else:
+                result = TMDBHelper.search_movie(title, year, try_without_year=False)
+            
+            if result and result.get('title'):
+                # 检查是否为中文标题
+                if any('\u4e00' <= c <= '\u9fff' for c in result['title']):
+                    self._log(f"  ✓ TMDB找到: {result['title']}")
+                    category = TMDBHelper.classify_media(result, is_tv)
+                    return {
+                        'title': result['title'],
+                        'year': result.get('year', year),
+                        'category': category,
+                        'metadata': result,
+                        'strategy': 'full_title_with_year'
+                    }
+        except Exception as e:
+            self._log(f"  ✗ 查询失败: {e}")
+        
+        self._log(f"  ✗ 未找到结果")
+        return None
+    
+    def _try_full_title(self, title, is_tv):
+        """策略2: 完整标题（不带年份）"""
+        self._log(f"策略2: 完整标题（不带年份）")
+        
+        try:
+            if is_tv:
+                result = TMDBHelper.search_tv(title, year=None, try_without_year=False)
+            else:
+                result = TMDBHelper.search_movie(title, year=None, try_without_year=False)
+            
+            if result and result.get('title'):
+                if any('\u4e00' <= c <= '\u9fff' for c in result['title']):
+                    self._log(f"  ✓ TMDB找到: {result['title']}")
+                    category = TMDBHelper.classify_media(result, is_tv)
+                    return {
+                        'title': result['title'],
+                        'year': result.get('year'),
+                        'category': category,
+                        'metadata': result,
+                        'strategy': 'full_title'
+                    }
+        except Exception as e:
+            self._log(f"  ✗ 查询失败: {e}")
+        
+        self._log(f"  ✗ 未找到结果")
+        return None
+    
+    def _try_simplified_title(self, title, year, is_tv):
+        """策略3: 简化标题（移除副标题、冒号后内容等）"""
+        self._log(f"策略3: 简化标题")
+        
+        # 移除冒号后的内容
+        simplified_titles = []
+        
+        # 英文冒号
+        if ':' in title:
+            simplified_titles.append(title.split(':')[0].strip())
+        
+        # 中文冒号
+        if '：' in title:
+            simplified_titles.append(title.split('：')[0].strip())
+        
+        # 移除括号内容
+        if '(' in title:
+            simplified_titles.append(re.sub(r'\([^)]*\)', '', title).strip())
+        
+        # 移除方括号内容
+        if '[' in title:
+            simplified_titles.append(re.sub(r'\[[^\]]*\]', '', title).strip())
+        
+        for simplified in simplified_titles:
+            if simplified and simplified != title:
+                self._log(f"  尝试简化标题: {simplified}")
+                
+                try:
+                    if is_tv:
+                        result = TMDBHelper.search_tv(simplified, year, try_without_year=True)
+                    else:
+                        result = TMDBHelper.search_movie(simplified, year, try_without_year=True)
+                    
+                    if result and result.get('title'):
+                        if any('\u4e00' <= c <= '\u9fff' for c in result['title']):
+                            self._log(f"  ✓ TMDB找到: {result['title']}")
+                            category = TMDBHelper.classify_media(result, is_tv)
+                            return {
+                                'title': result['title'],
+                                'year': result.get('year', year),
+                                'category': category,
+                                'metadata': result,
+                                'strategy': 'simplified_title'
+                            }
+                except Exception as e:
+                    self._log(f"  ✗ 查询失败: {e}")
+        
+        self._log(f"  ✗ 未找到结果")
+        return None
+    
+    def _try_keyword_query(self, title, year, is_tv):
+        """策略4: 关键词查询（提取主要词汇）"""
+        self._log(f"策略4: 关键词查询")
+        
+        # 提取关键词（前3-5个单词）
+        words = title.split()
+        
+        if len(words) <= 3:
+            self._log(f"  标题太短，跳过")
+            return None
+        
+        # 尝试不同长度的关键词
+        for word_count in [5, 4, 3]:
+            if len(words) >= word_count:
+                keyword = ' '.join(words[:word_count])
+                self._log(f"  尝试关键词({word_count}词): {keyword}")
+                
+                try:
+                    if is_tv:
+                        result = TMDBHelper.search_tv(keyword, year, try_without_year=True)
+                    else:
+                        result = TMDBHelper.search_movie(keyword, year, try_without_year=True)
+                    
+                    if result and result.get('title'):
+                        if any('\u4e00' <= c <= '\u9fff' for c in result['title']):
+                            self._log(f"  ✓ TMDB找到: {result['title']}")
+                            category = TMDBHelper.classify_media(result, is_tv)
+                            return {
+                                'title': result['title'],
+                                'year': result.get('year', year),
+                                'category': category,
+                                'metadata': result,
+                                'strategy': 'keyword_query'
+                            }
+                except Exception as e:
+                    self._log(f"  ✗ 查询失败: {e}")
+        
+        self._log(f"  ✗ 未找到结果")
+        return None
+    
+    def _log(self, message):
+        """记录查询日志"""
+        self.query_log.append(message)
+        print(f"[QueryStrategy] {message}")
+    
+    def get_query_log(self):
+        """获取查询日志"""
+        return self.query_log
+
+
+# 全局查询策略引擎实例
+query_strategy = QueryStrategy(title_mapper)
+
+
+class QueryLogger:
+    """查询日志记录器 - 详细记录查询过程"""
+    
+    def __init__(self, log_file='query_log.txt', enable_file_log=False):
+        """初始化查询日志记录器
+        
+        Args:
+            log_file: 日志文件路径
+            enable_file_log: 是否启用文件日志
+        """
+        self.log_file = log_file
+        self.enable_file_log = enable_file_log
+        self.current_query = None
+    
+    def log_start(self, filename, parsed_info):
+        """记录查询开始
+        
+        Args:
+            filename: 原始文件名
+            parsed_info: TitleParser解析结果
+        """
+        self.current_query = {
+            'filename': filename,
+            'parsed_info': parsed_info,
+            'timestamp': datetime.now().isoformat(),
+            'attempts': [],
+            'result': None
+        }
+        
+        message = f"\n{'='*80}\n"
+        message += f"[查询开始] {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+        message += f"原始文件名: {filename}\n"
+        message += f"解析结果:\n"
+        message += f"  标题: {parsed_info.get('title')}\n"
+        message += f"  年份: {parsed_info.get('year') or '无'}\n"
+        message += f"  季数: {parsed_info.get('season') or '无'}\n"
+        message += f"  集数: {parsed_info.get('episode') or '无'}\n"
+        message += f"{'='*80}\n"
+        
+        self._write_log(message)
+    
+    def log_parse_result(self, title, year, season, episode):
+        """记录解析结果
+        
+        Args:
+            title: 解析出的标题
+            year: 年份
+            season: 季数
+            episode: 集数
+        """
+        message = f"[解析结果]\n"
+        message += f"  标题: {title}\n"
+        message += f"  年份: {year or '无'}\n"
+        message += f"  季数: {season or '无'}\n"
+        message += f"  集数: {episode or '无'}\n"
+        
+        self._write_log(message)
+    
+    def log_strategy_attempt(self, strategy_name, query_params):
+        """记录策略尝试
+        
+        Args:
+            strategy_name: 策略名称
+            query_params: 查询参数
+        """
+        attempt = {
+            'strategy': strategy_name,
+            'params': query_params,
+            'timestamp': datetime.now().isoformat()
+        }
+        
+        if self.current_query:
+            self.current_query['attempts'].append(attempt)
+        
+        message = f"[策略尝试] {strategy_name}\n"
+        message += f"  查询参数: {query_params}\n"
+        
+        self._write_log(message)
+    
+    def log_api_response(self, api_name, url, response_data):
+        """记录API响应
+        
+        Args:
+            api_name: API名称（TMDB/豆瓣）
+            url: 请求URL
+            response_data: 响应数据
+        """
+        message = f"[API响应] {api_name}\n"
+        message += f"  URL: {url}\n"
+        
+        if response_data:
+            if isinstance(response_data, dict):
+                if 'results' in response_data:
+                    message += f"  结果数: {len(response_data.get('results', []))}\n"
+                    if response_data['results']:
+                        first = response_data['results'][0]
+                        message += f"  第一个结果: {first.get('title') or first.get('name', '无')}\n"
+                else:
+                    message += f"  响应: {str(response_data)[:200]}\n"
+            else:
+                message += f"  响应: {str(response_data)[:200]}\n"
+        else:
+            message += f"  响应: 无结果\n"
+        
+        self._write_log(message)
+    
+    def log_success(self, final_title, year, category, strategy):
+        """记录查询成功
+        
+        Args:
+            final_title: 最终标题
+            year: 年份
+            category: 分类
+            strategy: 成功的策略
+        """
+        if self.current_query:
+            self.current_query['result'] = {
+                'success': True,
+                'title': final_title,
+                'year': year,
+                'category': category,
+                'strategy': strategy
+            }
+        
+        message = f"[查询成功] ✓\n"
+        message += f"  最终标题: {final_title}\n"
+        message += f"  年份: {year or '无'}\n"
+        message += f"  分类: {category or '无'}\n"
+        message += f"  成功策略: {strategy}\n"
+        message += f"{'='*80}\n"
+        
+        self._write_log(message)
+    
+    def log_failure(self, reason):
+        """记录查询失败
+        
+        Args:
+            reason: 失败原因
+        """
+        if self.current_query:
+            self.current_query['result'] = {
+                'success': False,
+                'reason': reason
+            }
+        
+        message = f"[查询失败] ✗\n"
+        message += f"  原因: {reason}\n"
+        message += f"  尝试策略数: {len(self.current_query['attempts']) if self.current_query else 0}\n"
+        message += f"{'='*80}\n"
+        
+        self._write_log(message)
+    
+    def _write_log(self, message):
+        """写入日志
+        
+        Args:
+            message: 日志消息
+        """
+        # 控制台输出
+        print(message)
+        
+        # 文件输出（如果启用）
+        if self.enable_file_log:
+            try:
+                with open(self.log_file, 'a', encoding='utf-8') as f:
+                    f.write(message + '\n')
+            except Exception as e:
+                print(f"[QueryLogger] 写入日志文件失败: {e}")
+    
+    def get_current_query(self):
+        """获取当前查询信息"""
+        return self.current_query
+    
+    def enable_file_logging(self, enable=True):
+        """启用/禁用文件日志
+        
+        Args:
+            enable: 是否启用
+        """
+        self.enable_file_log = enable
+        if enable:
+            print(f"[QueryLogger] 文件日志已启用: {self.log_file}")
+        else:
+            print(f"[QueryLogger] 文件日志已禁用")
+
+
+# 全局查询日志记录器实例
+query_logger = QueryLogger(enable_file_log=False)  # 默认不启用文件日志
+
+
+# ============================================
+
 class MediaHandler(SimpleHTTPRequestHandler):
     def do_GET(self):
         # SSE日志流端点
@@ -4833,17 +5628,39 @@ class MediaHandler(SimpleHTTPRequestHandler):
             
             print(f"续集查询标题: {search_title}")
         
-        # 如果标题是英文，尝试从TMDB获取中文标题和分类
+        # 使用新的查询策略
         if final_title and not any('\u4e00' <= c <= '\u9fff' for c in final_title):
-            result = TMDBHelper.get_metadata_with_category(
-                search_title, 
-                search_year, 
+            # 英文标题，使用TitleParser优化解析
+            parsed = TitleParser.parse(name_without_ext)
+            
+            # 记录查询开始
+            query_logger.log_start(filename, parsed)
+            query_logger.log_parse_result(
+                parsed['title'], 
+                parsed['year'], 
+                parsed['season'], 
+                parsed['episode']
+            )
+            
+            # 使用QueryStrategy进行多策略查询
+            query_result = query_strategy.query(
+                search_title,
+                search_year,
                 is_tv
             )
-            metadata['title'] = result['title']
-            metadata['category'] = result['category']
-            if result['year'] and not metadata['year']:
-                metadata['year'] = result['year']
+            
+            metadata['title'] = query_result['title']
+            metadata['category'] = query_result['category']
+            if query_result['year'] and not metadata['year']:
+                metadata['year'] = query_result['year']
+            
+            # 记录查询成功
+            query_logger.log_success(
+                query_result['title'],
+                query_result['year'],
+                query_result['category'],
+                query_result['strategy']
+            )
         else:
             # 中文标题，如果检测到续集，更新标题
             if search_title != final_title:
@@ -5106,8 +5923,15 @@ class MediaHandler(SimpleHTTPRequestHandler):
         
         auto_dedupe = data.get('autoDedupe', True)  # 默认开启去重
         
+        # 创建日志流
+        stream_id = log_stream_manager.create_stream()
+        stream = log_stream_manager.get_stream(stream_id)
+        
         if not files:
-            self.send_json_response({'error': '没有选择文件'}, 400)
+            if stream:
+                stream.push('ERROR', '没有选择文件')
+                stream.close()
+            self.send_json_response({'error': '没有选择文件', 'streamId': stream_id}, 400)
             return
         
         # 配置验证和兼容性处理
@@ -5120,6 +5944,9 @@ class MediaHandler(SimpleHTTPRequestHandler):
         print(f"  tvOutputPath: '{tv_output_path}'")
         print(f"  use_new_config: {use_new_config}")
         
+        if stream:
+            stream.push('INFO', f"开始智能重命名，共 {len(files)} 个文件", progress=0, total=len(files))
+        
         if not use_new_config:
             # 旧配置方式：如果没有指定输出路径，使用扫描路径
             if not movie_output_path:
@@ -5128,15 +5955,23 @@ class MediaHandler(SimpleHTTPRequestHandler):
                 tv_output_path = base_path
             
             if not movie_output_path or not tv_output_path:
-                self.send_json_response({'error': '请配置媒体库路径或电影/电视剧输出路径'}, 400)
+                if stream:
+                    stream.push('ERROR', '请配置媒体库路径或电影/电视剧输出路径')
+                    stream.close()
+                self.send_json_response({'error': '请配置媒体库路径或电影/电视剧输出路径', 'streamId': stream_id}, 400)
                 return
         
         print(f"📁 配置模式: {'新配置（媒体库路径）' if use_new_config else '旧配置（分离路径）'}")
         if use_new_config:
             print(f"   媒体库路径: {media_library_path}")
+            if stream:
+                stream.push('INFO', f"使用媒体库路径: {media_library_path}")
         else:
             print(f"   电影路径: {movie_output_path}")
             print(f"   电视剧路径: {tv_output_path}")
+            if stream:
+                stream.push('INFO', f"电影路径: {movie_output_path}")
+                stream.push('INFO', f"电视剧路径: {tv_output_path}")
         
         results = []
         to_delete = []
@@ -5146,12 +5981,22 @@ class MediaHandler(SimpleHTTPRequestHandler):
             media_files = [f for f in files if f['type'] == 'media']
             subtitle_files = [f for f in files if f['type'] == 'subtitle']
             
+            if stream:
+                stream.push('INFO', f"媒体文件: {len(media_files)} 个，字幕文件: {len(subtitle_files)} 个")
+            
             # 对媒体文件进行去重处理
             if auto_dedupe and media_files:
+                if stream:
+                    stream.push('INFO', '开始去重分析...')
                 groups = self.group_duplicate_files(media_files, base_path)
                 
+                if stream:
+                    stream.push('INFO', f"发现 {len(groups)} 个文件组")
+                
                 # 处理每个分组
+                processed_groups = 0
                 for key, group in groups.items():
+                    processed_groups += 1
                     if len(group) > 1:
                         # 按清晰度排序（主要），文件大小排序（次要），保留最高的
                         # 评分相同时，文件越大越好
@@ -5160,6 +6005,9 @@ class MediaHandler(SimpleHTTPRequestHandler):
                         # 保留第一个（最高清晰度）
                         best = group[0]
                         media_files_to_process = [best['file']]
+                        
+                        if stream:
+                            stream.push('INFO', f"发现重复: {best['file']['name']} (保留最高清晰度)")
                         
                         # 其他的标记为删除
                         for item in group[1:]:
@@ -5179,6 +6027,9 @@ class MediaHandler(SimpleHTTPRequestHandler):
                             else:
                                 reason = f"低清晰度版本（{item_format}），保留 {best_format}"
                             
+                            if stream:
+                                stream.push('WARNING', f"标记删除: {item['file']['name']} - {reason}")
+                            
                             to_delete.append({
                                 'path': item['file']['path'],
                                 'name': item['file']['name'],
@@ -5194,6 +6045,9 @@ class MediaHandler(SimpleHTTPRequestHandler):
                         # 查找最合适的父文件夹
                         parent_folder = self.find_best_parent_folder(old_path, base_path)
                         
+                        if stream:
+                            stream.push('INFO', f"处理文件: {filename}", progress=processed_groups, total=len(groups))
+                        
                         metadata = self.parse_media_filename(filename, parent_folder)
                         new_full_path, new_relative_path = self.generate_output_path(
                             metadata, 
@@ -5202,6 +6056,9 @@ class MediaHandler(SimpleHTTPRequestHandler):
                             media_library_path=media_library_path if use_new_config else None,
                             language=language
                         )
+                        
+                        if stream:
+                            stream.push('INFO', f"  → {os.path.basename(new_full_path)}")
                         
                         results.append({
                             'oldPath': old_path,
@@ -5214,11 +6071,14 @@ class MediaHandler(SimpleHTTPRequestHandler):
                         })
             else:
                 # 不去重，处理所有媒体文件
-                for file_info in media_files:
+                for idx, file_info in enumerate(media_files, 1):
                     old_path = file_info['path']
                     filename = file_info['name']
                     # 查找最合适的父文件夹
                     parent_folder = self.find_best_parent_folder(old_path, base_path)
+                    
+                    if stream:
+                        stream.push('INFO', f"处理文件: {filename}", progress=idx, total=len(media_files))
                     
                     metadata = self.parse_media_filename(filename, parent_folder)
                     new_full_path, new_relative_path = self.generate_output_path(
@@ -5228,6 +6088,9 @@ class MediaHandler(SimpleHTTPRequestHandler):
                         media_library_path=media_library_path if use_new_config else None,
                         language=language
                     )
+                    
+                    if stream:
+                        stream.push('INFO', f"  → {os.path.basename(new_full_path)}")
                     
                     results.append({
                         'oldPath': old_path,
@@ -5240,11 +6103,17 @@ class MediaHandler(SimpleHTTPRequestHandler):
                     })
             
             # 处理字幕文件（不去重）
-            for file_info in subtitle_files:
+            if subtitle_files and stream:
+                stream.push('INFO', f"处理字幕文件: {len(subtitle_files)} 个")
+            
+            for idx, file_info in enumerate(subtitle_files, 1):
                 old_path = file_info['path']
                 filename = file_info['name']
                 # 查找最合适的父文件夹
                 parent_folder = self.find_best_parent_folder(old_path, base_path)
+                
+                if stream:
+                    stream.push('INFO', f"处理字幕: {filename}", progress=idx, total=len(subtitle_files))
                 
                 metadata = self.parse_media_filename(filename, parent_folder)
                 new_full_path, new_relative_path = self.generate_output_path(
@@ -5264,9 +6133,14 @@ class MediaHandler(SimpleHTTPRequestHandler):
                     'needsFolder': os.path.dirname(new_relative_path) != ''
                 })
             
+            if stream:
+                stream.push('INFO', f"处理完成！共生成 {len(results)} 个重命名方案", progress=len(files), total=len(files))
+                stream.close()
+            
             self.send_json_response({
                 'results': results,
-                'toDelete': to_delete
+                'toDelete': to_delete,
+                'streamId': stream_id
             })
         except Exception as e:
             import traceback
@@ -5275,7 +6149,12 @@ class MediaHandler(SimpleHTTPRequestHandler):
             print(f"[ERROR] smart-rename 处理失败:")
             print(f"  错误: {error_msg}")
             print(f"  堆栈:\n{error_trace}")
-            self.send_json_response({'error': error_msg}, 500)
+            
+            if stream:
+                stream.push('ERROR', f"处理失败: {error_msg}")
+                stream.close()
+            
+            self.send_json_response({'error': error_msg, 'streamId': stream_id}, 500)
     
     def handle_cleanup(self, data):
         """清理跳过的文件和空文件夹"""

@@ -1,11 +1,16 @@
 # 元数据查询优化实施任务
 
-- [ ] 1. 实现TitleParser标题解析器
+- [x] 1. 实现TitleParser标题解析器
+
+
+
   - 创建TitleParser类，实现基础解析功能
   - 实现remove_release_group方法，移除常见Release Group标识
   - 实现remove_technical_params方法，移除技术参数
   - 实现extract_year方法，提取年份信息
   - 实现normalize_title方法，标准化标题格式
+
+
   - _Requirements: 1.1, 1.2, 1.3, 1.4_
 
 - [ ] 2. 实现TitleMapper标题映射器
@@ -13,6 +18,8 @@
   - 实现get_mapping方法，查找标题映射
   - 实现add_mapping方法，添加新映射
   - 实现save方法，保存映射到文件
+
+
   - 实现reload方法，支持热重载配置
   - 创建默认的title_mapping.json配置文件
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5_
@@ -22,6 +29,7 @@
   - 实现_try_full_title_with_year策略
   - 实现_try_full_title策略
   - 实现_try_simplified_title策略
+
   - 实现_try_chinese_title策略
   - 实现_try_english_title策略
   - 实现_try_keyword_query策略
