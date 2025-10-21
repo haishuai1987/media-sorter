@@ -259,6 +259,49 @@ SUBTITLE_PARSER = SubtitleParser()
 
 # ============================================
 
+# ============ 性能优化 (v1.6.0) ============
+
+class ReleaseGroupCleaner:
+    """Release Group 清理器（性能优化版）"""
+    
+    def __init__(self):
+        # 预编译所有正则表达式（性能优化）
+        self.patterns = []
+        for group in TitleParser.RELEASE_GROUPS:
+            escaped = re.escape(group)
+            self.patterns.extend([
+                re.compile(rf'\[{escaped}\]', re.IGNORECASE),
+                re.compile(rf'\({escaped}\)', re.IGNORECASE),
+                re.compile(rf'【{escaped}】', re.IGNORECASE),
+                re.compile(rf'[-.]?{escaped}(?=[@.\s\[\]】&]|$)', re.IGNORECASE),
+            ])
+        
+        # 清理模式（预编译）
+        self.cleanup_patterns = [
+            re.compile(r'\[\s*\]'),
+            re.compile(r'【\s*】'),
+            re.compile(r'\(\s*\)'),
+            re.compile(r'[-.\s]+$'),
+            re.compile(r'^[-.\s]+'),
+        ]
+    
+    def clean(self, title):
+        """清理标题中的 Release Group（优化版）"""
+        # 应用所有预编译的模式
+        for pattern in self.patterns:
+            title = pattern.sub('', title)
+        
+        # 清理空括号和分隔符
+        for pattern in self.cleanup_patterns:
+            title = pattern.sub('', title)
+        
+        return title.strip()
+
+# 全局 Release Group 清理器（预编译，性能优化）
+RELEASE_GROUP_CLEANER = ReleaseGroupCleaner()
+
+# ============================================
+
 # TMDB配置
 TMDB_API_KEY = USER_CONFIG.get('tmdb_api_key', DEFAULT_CONFIG['tmdb_api_key'])
 TMDB_BASE_URL = 'https://api.themoviedb.org/3'
@@ -3009,29 +3052,8 @@ class TMDBHelper:
         title = CUSTOM_WORDS_MANAGER.apply(title)
         
         # 1. 移除 Release Group（常见的制作组）
-        # v1.2.12 增强：使用 TitleParser 的完整列表（100+）
-        release_groups = TitleParser.RELEASE_GROUPS
-        
-        # 使用正则表达式匹配所有制作组（优化后的算法）
-        for group in release_groups:
-            # 转义特殊字符
-            escaped_group = re.escape(group)
-            # 匹配多种格式（优先处理括号格式）
-            patterns = [
-                rf'\[{escaped_group}\]',  # [GROUP] - 优先处理括号
-                rf'\({escaped_group}\)',  # (GROUP)
-                rf'【{escaped_group}】',  # 【GROUP】
-                rf'[-.]?{escaped_group}(?=[@.\s\[\]】&]|$)',  # -GROUP, .GROUP
-            ]
-            for pattern in patterns:
-                title = re.sub(pattern, '', title, flags=re.IGNORECASE)
-        
-        # 清理多余的空括号和分隔符
-        title = re.sub(r'\[\s*\]', '', title)  # 移除空方括号
-        title = re.sub(r'【\s*】', '', title)  # 移除空中文括号
-        title = re.sub(r'\(\s*\)', '', title)  # 移除空圆括号
-        title = re.sub(r'[-.\s]+$', '', title)  # 移除末尾的分隔符
-        title = re.sub(r'^[-.\s]+', '', title)  # 移除开头的分隔符
+        # v1.6.0 性能优化：使用预编译的正则表达式
+        title = RELEASE_GROUP_CLEANER.clean(title)
         
         # 2. 移除技术参数
         tech_params = [
