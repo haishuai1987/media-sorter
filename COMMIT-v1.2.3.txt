@@ -1,0 +1,21 @@
+hotfix: v1.2.3 - 修复文件夹名解析问题
+
+问题：
+- TitleParser结果被folder_title覆盖
+- 文件夹名没有经过TitleParser清理  
+- Release Group和技术参数仍然存在
+
+修复：
+- 在parse_folder_name中添加TitleParser清理
+- 确保文件夹名也会移除Release Group和技术参数
+
+影响：
+- 修复文件重命名中的Release Group问题
+- 修复续集标记重复问题（II II II）
+- 提升标题识别准确性
+
+测试：
+请重新运行整理流程，验证：
+1. Release Group已被移除（-CHDWEB, -ADWeb等）
+2. 技术参数已被移除（1080p, WEB-DL, H.264等）
+3. 续集标记正常（不会出现II II II）

@@ -5348,6 +5348,10 @@ class MediaHandler(SimpleHTTPRequestHandler):
         # 移除末尾的制作组标记 [xxx]
         folder_name = re.sub(r'\s*\[[^\]]+\]\s*$', '', folder_name)
         
+        # 使用TitleParser清理文件夹名（移除Release Group和技术参数）
+        parsed_folder = TitleParser.parse(folder_name)
+        folder_name = parsed_folder['title'] if parsed_folder['title'] else folder_name
+        
         # 格式1：[标题].其他信息.年份（如：[湖南卫视 去"湘"当有味的地方 第三季].HNSTV...2025）
         # 检查方括号内是否包含中文或空格（真正的标题）
         bracket_title_pattern = r'^\[([^\]]+)\]'
