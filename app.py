@@ -5459,6 +5459,9 @@ class MediaHandler(SimpleHTTPRequestHandler):
         name_without_ext = os.path.splitext(filename)[0]
         ext = os.path.splitext(filename)[1]
         
+        # 使用TitleParser进行智能解析
+        parsed_title_info = TitleParser.parse(name_without_ext)
+        
         # 检测字幕语言标识（如 .chs, .eng, .chi, .cht等）
         language_suffix = ''
         language_patterns = [
@@ -5565,22 +5568,12 @@ class MediaHandler(SimpleHTTPRequestHandler):
         if part_match:
             metadata['part'] = part_match.group(1)
         
-        # 提取标题（移除年份、季集、格式等信息）
-        title = name_without_ext
-        # 移除季集信息
-        title = re.sub(r'[Ss]\d{1,2}[Ee]\d{1,2}(?:-[Ee]\d{1,2})?', '', title)
-        title = re.sub(r'[Ss]eason[\s\.]?\d{1,2}[\s\.]?[Ee]pisode[\s\.]?\d{1,2}', '', title)
-        title = re.sub(r'\d{1,2}x\d{1,2}', '', title)
-        # 移除年份
-        title = re.sub(r'\(?\d{4}\)?|\[\d{4}\]', '', title)
-        # 移除格式信息
-        for fmt in formats:
-            title = re.sub(re.escape(fmt), '', title, flags=re.IGNORECASE)
-        # 移除Part信息
-        title = re.sub(r'[Pp]art[\s\.]?\d+', '', title)
-        # 清理特殊字符（但保留冒号等）
-        title = re.sub(r'[\.\-_]+', ' ', title)
-        title = title.strip()
+        # 使用TitleParser解析的标题（已经移除了Release Group和技术参数）
+        title = parsed_title_info['title']
+        
+        # 如果TitleParser提取了年份，使用它
+        if parsed_title_info['year'] and not metadata['year']:
+            metadata['year'] = parsed_title_info['year']
         
         # 如果有文件夹标题，优先使用文件夹标题
         if folder_title:
