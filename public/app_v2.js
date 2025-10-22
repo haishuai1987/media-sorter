@@ -5,6 +5,7 @@ class MediaRenamerApp {
         this.isProcessing = false;
         this.statusInterval = null;
         this.historyOffset = 0;
+        this.editResults = null;
         this.init();
     }
 
@@ -87,6 +88,24 @@ class MediaRenamerApp {
         // 配置管理
         document.getElementById('add-config-btn').addEventListener('click', () => {
             this.addConfig();
+        });
+
+        // 批量编辑
+        document.getElementById('edit-operation').addEventListener('change', (e) => {
+            this.toggleEditFields(e.target.value);
+        });
+
+        document.getElementById('edit-preview-btn').addEventListener('click', () => {
+            this.previewBatchEdit();
+        });
+
+        document.getElementById('edit-apply-btn').addEventListener('click', () => {
+            this.applyBatchEdit();
+        });
+
+        document.getElementById('edit-clear-btn').addEventListener('click', () => {
+            document.getElementById('edit-file-list').value = '';
+            document.getElementById('edit-preview-section').style.display = 'none';
         });
     }
 
@@ -1292,6 +1311,223 @@ class MediaRenamerApp {
         } catch (error) {
             this.showToast('导出失败: ' + error.message, 'error');
         }
+    }
+
+    // 切换编辑字段
+    toggleEditFields(operation) {
+        // 隐藏所有字段
+        document.querySelectorAll('.edit-fields').forEach(field => {
+            field.style.display = 'none';
+        });
+
+        // 显示对应字段
+        const fieldMap = {
+            'replace': 'edit-replace-fields',
+            'regex': 'edit-regex-fields',
+            'prefix': 'edit-prefix-fields',
+            'suffix': 'edit-suffix-fields',
+            'remove': 'edit-remove-fields',
+            'case': 'edit-case-fields'
+        };
+
+        const fieldId = fieldMap[operation];
+        if (fieldId) {
+            document.getElementById(fieldId).style.display = 'block';
+        }
+    }
+
+    // 预览批量编辑
+    previewBatchEdit() {
+        const fileList = document.getElementById('edit-file-list').value.trim();
+        if (!fileList) {
+            this.showToast('请输入文件列表', 'warning');
+            return;
+        }
+
+        const files = fileList.split('\n').filter(f => f.trim());
+        const operation = document.getElementById('edit-operation').value;
+
+        try {
+            const results = files.map(file => {
+                const newName = this.applyEditOperation(file, operation);
+                return {
+                    original: file,
+                    new: newName,
+                    changed: file !== newName
+                };
+            });
+
+            this.renderEditPreview(results);
+            this.editResults = results;
+        } catch (error) {
+            this.showToast('预览失败: ' + error.message, 'error');
+        }
+    }
+
+    // 应用编辑操作
+    applyEditOperation(filename, operation) {
+        switch (operation) {
+            case 'replace':
+                return this.applyReplace(filename);
+            case 'regex':
+                return this.applyRegex(filename);
+            case 'prefix':
+                return this.applyPrefix(filename);
+            case 'suffix':
+                return this.applySuffix(filename);
+            case 'remove':
+                return this.applyRemove(filename);
+            case 'case':
+                return this.applyCase(filename);
+            default:
+                return filename;
+        }
+    }
+
+    // 查找替换
+    applyReplace(filename) {
+        const find = document.getElementById('edit-find').value;
+        const replaceWith = document.getElementById('edit-replace-with').value;
+        const caseSensitive = document.getElementById('edit-case-sensitive').checked;
+
+        if (!find) return filename;
+
+        if (caseSensitive) {
+            return filename.split(find).join(replaceWith);
+        } else {
+            const regex = new RegExp(find.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+            return filename.replace(regex, replaceWith);
+        }
+    }
+
+    // 正则替换
+    applyRegex(filename) {
+        const regex = document.getElementById('edit-regex').value;
+        const replaceWith = document.getElementById('edit-regex-replace').value;
+
+        if (!regex) return filename;
+
+        try {
+            const re = new RegExp(regex, 'g');
+            return filename.replace(re, replaceWith);
+        } catch (error) {
+            throw new Error('正则表达式无效: ' + error.message);
+        }
+    }
+
+    // 添加前缀
+    applyPrefix(filename) {
+        const prefix = document.getElementById('edit-prefix').value;
+        return prefix + filename;
+    }
+
+    // 添加后缀
+    applySuffix(filename) {
+        const suffix = document.getElementById('edit-suffix').value;
+        const lastDot = filename.lastIndexOf('.');
+        
+        if (lastDot > 0) {
+            return filename.substring(0, lastDot) + suffix + filename.substring(lastDot);
+        } else {
+            return filename + suffix;
+        }
+    }
+
+    // 删除内容
+    applyRemove(filename) {
+        const remove = document.getElementById('edit-remove').value;
+        if (!remove) return filename;
+        
+        return filename.split(remove).join('');
+    }
+
+    // 大小写转换
+    applyCase(filename) {
+        const caseType = document.getElementById('edit-case-type').value;
+        
+        switch (caseType) {
+            case 'upper':
+                return filename.toUpperCase();
+            case 'lower':
+                return filename.toLowerCase();
+            case 'title':
+                return filename.split(' ').map(word => 
+                    word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+                ).join(' ');
+            default:
+                return filename;
+        }
+    }
+
+    // 渲染编辑预览
+    renderEditPreview(results) {
+        const previewSection = document.getElementById('edit-preview-section');
+        const previewList = document.getElementById('edit-preview-list');
+        
+        previewSection.style.display = 'block';
+        previewList.innerHTML = '';
+
+        const changedCount = results.filter(r => r.changed).length;
+        
+        if (changedCount === 0) {
+            previewList.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-state-icon">ℹ️</div>
+                    <p>没有文件名发生变化</p>
+                </div>
+            `;
+            return;
+        }
+
+        results.forEach(result => {
+            if (!result.changed) return;
+
+            const item = document.createElement('div');
+            item.className = 'result-item success';
+            
+            item.innerHTML = `
+                <div class="result-original">原始: ${result.original}</div>
+                <div class="result-new">新名: ${result.new}</div>
+            `;
+            
+            previewList.appendChild(item);
+        });
+
+        const summary = document.createElement('div');
+        summary.className = 'result-info';
+        summary.style.textAlign = 'center';
+        summary.style.marginTop = '1rem';
+        summary.innerHTML = `<span>共 ${results.length} 个文件，${changedCount} 个将被修改</span>`;
+        previewList.appendChild(summary);
+    }
+
+    // 应用批量编辑
+    applyBatchEdit() {
+        if (!this.editResults || this.editResults.length === 0) {
+            this.showToast('请先预览结果', 'warning');
+            return;
+        }
+
+        const changedFiles = this.editResults.filter(r => r.changed);
+        
+        if (changedFiles.length === 0) {
+            this.showToast('没有文件名需要修改', 'info');
+            return;
+        }
+
+        if (!confirm(`确定要修改 ${changedFiles.length} 个文件名吗？`)) {
+            return;
+        }
+
+        // 更新文件列表
+        const newList = this.editResults.map(r => r.new).join('\n');
+        document.getElementById('edit-file-list').value = newList;
+
+        this.showToast(`已应用更改，${changedFiles.length} 个文件名已修改`, 'success');
+        
+        // 清空预览
+        document.getElementById('edit-preview-section').style.display = 'none';
+        this.editResults = null;
     }
 
     // 显示 Toast 通知

@@ -17,6 +17,7 @@
             <div class="nav-menu">
                 <a href="#process" class="nav-link active" data-tab="process">批量处理</a>
                 <a href="#recognize" class="nav-link" data-tab="recognize">文件识别</a>
+                <a href="#batch-edit" class="nav-link" data-tab="batch-edit">批量编辑</a>
                 <a href="#history" class="nav-link" data-tab="history">历史记录</a>
                 <a href="#configs" class="nav-link" data-tab="configs">配置管理</a>
                 <a href="#templates" class="nav-link" data-tab="templates">模板管理</a>
@@ -149,6 +150,124 @@ Inception.2010.1080p.BluRay.x264.mkv
                     </button>
 
                     <div id="recognize-result" class="result-box" style="display: none;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 批量编辑标签页 -->
+        <div id="batch-edit-tab" class="tab-content">
+            <div class="card">
+                <div class="card-header">
+                    <h2>✏️ 批量编辑</h2>
+                    <p>高级批量编辑功能</p>
+                </div>
+                <div class="card-body">
+                    <!-- 文件列表 -->
+                    <div class="form-group">
+                        <label>文件列表</label>
+                        <textarea id="edit-file-list" rows="8" placeholder="The.Matrix.1999.1080p.BluRay.x264.mkv
+Inception.2010.1080p.BluRay.x264.mkv"></textarea>
+                    </div>
+
+                    <!-- 编辑操作 -->
+                    <div class="form-section">
+                        <h3>编辑操作</h3>
+                        <div class="form-group">
+                            <label>操作类型</label>
+                            <select id="edit-operation">
+                                <option value="replace">查找替换</option>
+                                <option value="regex">正则替换</option>
+                                <option value="prefix">添加前缀</option>
+                                <option value="suffix">添加后缀</option>
+                                <option value="remove">删除内容</option>
+                                <option value="case">大小写转换</option>
+                            </select>
+                        </div>
+
+                        <!-- 查找替换 -->
+                        <div id="edit-replace-fields" class="edit-fields">
+                            <div class="form-group">
+                                <label>查找内容</label>
+                                <input type="text" id="edit-find" placeholder="例如：BluRay">
+                            </div>
+                            <div class="form-group">
+                                <label>替换为</label>
+                                <input type="text" id="edit-replace-with" placeholder="例如：Blu-ray">
+                            </div>
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="edit-case-sensitive">
+                                    区分大小写
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- 正则替换 -->
+                        <div id="edit-regex-fields" class="edit-fields" style="display: none;">
+                            <div class="form-group">
+                                <label>正则表达式</label>
+                                <input type="text" id="edit-regex" placeholder="例如：\\.mkv$">
+                            </div>
+                            <div class="form-group">
+                                <label>替换为</label>
+                                <input type="text" id="edit-regex-replace" placeholder="例如：.mp4">
+                            </div>
+                        </div>
+
+                        <!-- 添加前缀 -->
+                        <div id="edit-prefix-fields" class="edit-fields" style="display: none;">
+                            <div class="form-group">
+                                <label>前缀内容</label>
+                                <input type="text" id="edit-prefix" placeholder="例如：[1080p] ">
+                            </div>
+                        </div>
+
+                        <!-- 添加后缀 -->
+                        <div id="edit-suffix-fields" class="edit-fields" style="display: none;">
+                            <div class="form-group">
+                                <label>后缀内容（扩展名之前）</label>
+                                <input type="text" id="edit-suffix" placeholder="例如：.Chinese">
+                            </div>
+                        </div>
+
+                        <!-- 删除内容 -->
+                        <div id="edit-remove-fields" class="edit-fields" style="display: none;">
+                            <div class="form-group">
+                                <label>要删除的内容</label>
+                                <input type="text" id="edit-remove" placeholder="例如：RARBG">
+                            </div>
+                        </div>
+
+                        <!-- 大小写转换 -->
+                        <div id="edit-case-fields" class="edit-fields" style="display: none;">
+                            <div class="form-group">
+                                <label>转换类型</label>
+                                <select id="edit-case-type">
+                                    <option value="upper">全部大写</option>
+                                    <option value="lower">全部小写</option>
+                                    <option value="title">首字母大写</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="button-group">
+                            <button id="edit-preview-btn" class="btn btn-primary">
+                                👁️ 预览结果
+                            </button>
+                            <button id="edit-apply-btn" class="btn btn-success">
+                                ✅ 应用更改
+                            </button>
+                            <button id="edit-clear-btn" class="btn btn-secondary">
+                                🗑️ 清空
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 预览结果 -->
+                    <div id="edit-preview-section" class="preview-section" style="display: none;">
+                        <h3>预览结果</h3>
+                        <div id="edit-preview-list"></div>
+                    </div>
                 </div>
             </div>
         </div>
