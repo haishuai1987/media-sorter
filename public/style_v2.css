@@ -390,6 +390,22 @@ body {
     font-size: 0.875rem;
 }
 
+/* 表单分组 */
+.form-section {
+    margin-bottom: 2rem;
+    padding-bottom: 2rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.form-section:last-child {
+    border-bottom: none;
+}
+
+.form-section h3 {
+    margin-bottom: 1rem;
+    color: var(--text-color);
+}
+
 .word-info {
     flex: 1;
 }

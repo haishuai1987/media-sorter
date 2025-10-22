@@ -83,6 +83,11 @@ class MediaRenamerApp {
             this.historyOffset += 20;
             this.loadHistory(true);
         });
+
+        // 配置管理
+        document.getElementById('add-config-btn').addEventListener('click', () => {
+            this.addConfig();
+        });
     }
 
     // 初始化拖拽上传
@@ -175,6 +180,8 @@ class MediaRenamerApp {
             this.loadCustomWords();
         } else if (tabName === 'history') {
             this.loadHistory();
+        } else if (tabName === 'configs') {
+            this.loadConfigs();
         } else if (tabName === 'stats') {
             this.loadStats();
         }
@@ -888,6 +895,218 @@ class MediaRenamerApp {
             }
         } catch (error) {
             this.showToast('清空失败: ' + error.message, 'error');
+        }
+    }
+
+    // 加载配置
+    async loadConfigs() {
+        try {
+            // 加载默认配置
+            const defaultsResponse = await fetch('/api/configs/defaults');
+            const defaultsData = await defaultsResponse.json();
+            if (defaultsData.success) {
+                this.renderDefaultConfigs(defaultsData.data);
+            }
+
+            // 加载用户配置
+            const response = await fetch('/api/configs');
+            const data = await response.json();
+            if (data.success) {
+                this.renderConfigs(data.data);
+            }
+        } catch (error) {
+            console.error('加载配置失败:', error);
+        }
+    }
+
+    // 渲染默认配置
+    renderDefaultConfigs(configs) {
+        const container = document.getElementById('default-configs-list');
+        container.innerHTML = '';
+
+        configs.forEach(config => {
+            const item = document.createElement('div');
+            item.className = 'result-item';
+            item.innerHTML = `
+                <div class="result-original">
+                    <strong>${config.name}</strong>
+                    <span style="color: var(--text-light); margin-left: 1rem;">${config.description}</span>
+                </div>
+                <div class="result-info">
+                    <span>模板: ${config.template}</span>
+                    <span>优先级: ${config.priority}</span>
+                    <span>队列: ${config.use_queue ? '是' : '否'}</span>
+                </div>
+                <div class="word-actions">
+                    <button class="btn btn-primary btn-sm" onclick='app.useConfig(${JSON.stringify(config)})'>
+                        使用
+                    </button>
+                </div>
+            `;
+            container.appendChild(item);
+        });
+    }
+
+    // 渲染用户配置
+    renderConfigs(configs) {
+        const container = document.getElementById('configs-list');
+        container.innerHTML = '';
+
+        if (configs.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-state-icon">⚙️</div>
+                    <p>暂无保存的配置</p>
+                </div>
+            `;
+            return;
+        }
+
+        configs.forEach(config => {
+            const item = document.createElement('div');
+            item.className = 'result-item';
+            const date = new Date(config.created_at).toLocaleString('zh-CN');
+            
+            item.innerHTML = `
+                <div class="result-original">
+                    <strong>${config.name}</strong>
+                    <span style="color: var(--text-light); margin-left: 1rem;">${config.description || ''}</span>
+                    <span style="color: var(--text-light); font-size: 0.875rem; margin-left: 1rem;">${date}</span>
+                </div>
+                <div class="result-info">
+                    <span>模板: ${config.template}</span>
+                    <span>优先级: ${config.priority}</span>
+                    <span>队列: ${config.use_queue ? '是' : '否'}</span>
+                </div>
+                <div class="word-actions">
+                    <button class="btn btn-primary btn-sm" onclick='app.useConfig(${JSON.stringify(config)})'>
+                        使用
+                    </button>
+                    <button class="btn btn-secondary btn-sm" onclick="app.exportConfig('${config.id}')">
+                        导出
+                    </button>
+                    <button class="btn btn-danger btn-sm" onclick="app.deleteConfig('${config.id}')">
+                        删除
+                    </button>
+                </div>
+            `;
+            container.appendChild(item);
+        });
+    }
+
+    // 添加配置
+    async addConfig() {
+        const name = document.getElementById('config-name').value.trim();
+        const description = document.getElementById('config-description').value.trim();
+        const template = document.getElementById('config-template').value;
+        const priority = parseInt(document.getElementById('config-priority').value);
+        const useQueue = document.getElementById('config-use-queue').checked;
+
+        if (!name) {
+            this.showToast('请输入配置名称', 'warning');
+            return;
+        }
+
+        const config = {
+            name,
+            description,
+            template,
+            priority,
+            use_queue: useQueue,
+            settings: {}
+        };
+
+        try {
+            const response = await fetch('/api/configs', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(config)
+            });
+
+            const data = await response.json();
+            
+            if (data.success) {
+                this.showToast('配置保存成功', 'success');
+                this.clearConfigForm();
+                this.loadConfigs();
+            } else {
+                this.showToast(data.error, 'error');
+            }
+        } catch (error) {
+            this.showToast('保存失败: ' + error.message, 'error');
+        }
+    }
+
+    // 清空配置表单
+    clearConfigForm() {
+        document.getElementById('config-name').value = '';
+        document.getElementById('config-description').value = '';
+        document.getElementById('config-template').value = 'movie_default';
+        document.getElementById('config-priority').value = '5';
+        document.getElementById('config-use-queue').checked = true;
+    }
+
+    // 使用配置
+    useConfig(config) {
+        // 切换到批量处理标签页
+        this.switchTab('process');
+
+        // 应用配置
+        document.getElementById('template-select').value = config.template;
+        document.getElementById('priority-select').value = config.priority;
+        document.getElementById('use-queue').checked = config.use_queue;
+
+        this.showToast(`已应用配置: ${config.name}`, 'success');
+    }
+
+    // 导出配置
+    async exportConfig(configId) {
+        try {
+            const response = await fetch(`/api/configs/${configId}/export`);
+            const data = await response.json();
+            
+            if (data.success) {
+                // 创建下载
+                const blob = new Blob([data.data], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `config-${configId}.json`;
+                link.click();
+                URL.revokeObjectURL(url);
+
+                this.showToast('导出成功', 'success');
+            } else {
+                this.showToast(data.error, 'error');
+            }
+        } catch (error) {
+            this.showToast('导出失败: ' + error.message, 'error');
+        }
+    }
+
+    // 删除配置
+    async deleteConfig(configId) {
+        if (!confirm('确定要删除这个配置吗？')) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/configs/${configId}`, {
+                method: 'DELETE'
+            });
+
+            const data = await response.json();
+            
+            if (data.success) {
+                this.showToast('删除成功', 'success');
+                this.loadConfigs();
+            } else {
+                this.showToast(data.error, 'error');
+            }
+        } catch (error) {
+            this.showToast('删除失败: ' + error.message, 'error');
         }
     }
 

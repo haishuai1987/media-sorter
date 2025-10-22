@@ -22,6 +22,7 @@ from core.environment import get_environment
 from core.queue_manager import get_queue_manager, Priority
 from core.events import get_event_bus
 from core.history_manager import get_history_manager
+from core.config_manager import get_config_manager
 
 # 创建 Flask 应用
 app = Flask(__name__)
@@ -437,6 +438,156 @@ def api_history_stats():
             'success': True,
             'data': stats
         })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+
+@app.route('/api/configs')
+def api_configs_list():
+    """获取配置列表"""
+    try:
+        config_manager = get_config_manager()
+        configs = config_manager.get_all_configs()
+        
+        return jsonify({
+            'success': True,
+            'data': configs
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+
+@app.route('/api/configs/defaults')
+def api_configs_defaults():
+    """获取默认配置模板"""
+    try:
+        config_manager = get_config_manager()
+        defaults = config_manager.get_default_configs()
+        
+        return jsonify({
+            'success': True,
+            'data': defaults
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+
+@app.route('/api/configs', methods=['POST'])
+def api_configs_add():
+    """添加配置"""
+    try:
+        config_manager = get_config_manager()
+        data = request.json
+        
+        config_id = config_manager.add_config(data)
+        
+        return jsonify({
+            'success': True,
+            'data': {'id': config_id}
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+
+@app.route('/api/configs/<config_id>')
+def api_configs_get(config_id):
+    """获取配置详情"""
+    try:
+        config_manager = get_config_manager()
+        config = config_manager.get_config(config_id)
+        
+        if config:
+            return jsonify({
+                'success': True,
+                'data': config
+            })
+        else:
+            return jsonify({'success': False, 'error': '配置不存在'})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+
+@app.route('/api/configs/<config_id>', methods=['PUT'])
+def api_configs_update(config_id):
+    """更新配置"""
+    try:
+        config_manager = get_config_manager()
+        data = request.json
+        
+        success = config_manager.update_config(config_id, data)
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'message': '更新成功'
+            })
+        else:
+            return jsonify({'success': False, 'error': '配置不存在'})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+
+@app.route('/api/configs/<config_id>', methods=['DELETE'])
+def api_configs_delete(config_id):
+    """删除配置"""
+    try:
+        config_manager = get_config_manager()
+        success = config_manager.delete_config(config_id)
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'message': '删除成功'
+            })
+        else:
+            return jsonify({'success': False, 'error': '配置不存在'})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+
+@app.route('/api/configs/<config_id>/export')
+def api_configs_export(config_id):
+    """导出配置"""
+    try:
+        config_manager = get_config_manager()
+        config_json = config_manager.export_config(config_id)
+        
+        if config_json:
+            return jsonify({
+                'success': True,
+                'data': config_json
+            })
+        else:
+            return jsonify({'success': False, 'error': '配置不存在'})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+
+@app.route('/api/configs/import', methods=['POST'])
+def api_configs_import():
+    """导入配置"""
+    try:
+        config_manager = get_config_manager()
+        data = request.json
+        config_json = data.get('config_json', '')
+        
+        config_id = config_manager.import_config(config_json)
+        
+        if config_id:
+            return jsonify({
+                'success': True,
+                'data': {'id': config_id}
+            })
+        else:
+            return jsonify({'success': False, 'error': '导入失败'})
         
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})

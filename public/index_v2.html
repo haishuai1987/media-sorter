@@ -18,6 +18,7 @@
                 <a href="#process" class="nav-link active" data-tab="process">批量处理</a>
                 <a href="#recognize" class="nav-link" data-tab="recognize">文件识别</a>
                 <a href="#history" class="nav-link" data-tab="history">历史记录</a>
+                <a href="#configs" class="nav-link" data-tab="configs">配置管理</a>
                 <a href="#templates" class="nav-link" data-tab="templates">模板管理</a>
                 <a href="#words" class="nav-link" data-tab="words">识别词</a>
                 <a href="#stats" class="nav-link" data-tab="stats">统计信息</a>
@@ -187,6 +188,71 @@ Inception.2010.1080p.BluRay.x264.mkv
                     <!-- 加载更多 -->
                     <div style="text-align: center; margin-top: 1rem;">
                         <button id="history-load-more" class="btn btn-secondary">加载更多</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 配置管理标签页 -->
+        <div id="configs-tab" class="tab-content">
+            <div class="card">
+                <div class="card-header">
+                    <h2>⚙️ 配置管理</h2>
+                    <p>保存和管理常用配置</p>
+                </div>
+                <div class="card-body">
+                    <!-- 添加配置 -->
+                    <div class="form-section">
+                        <h3>新建配置</h3>
+                        <div class="form-group">
+                            <label>配置名称</label>
+                            <input type="text" id="config-name" placeholder="例如：电影标准配置">
+                        </div>
+                        <div class="form-group">
+                            <label>描述</label>
+                            <input type="text" id="config-description" placeholder="配置说明">
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>模板</label>
+                                <select id="config-template">
+                                    <option value="movie_default">电影 - 默认</option>
+                                    <option value="movie_simple">电影 - 简单</option>
+                                    <option value="movie_detailed">电影 - 详细</option>
+                                    <option value="tv_default">电视剧 - 默认</option>
+                                    <option value="tv_simple">电视剧 - 简单</option>
+                                    <option value="tv_detailed">电视剧 - 详细</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>优先级</label>
+                                <select id="config-priority">
+                                    <option value="5">普通</option>
+                                    <option value="7">高</option>
+                                    <option value="10">关键</option>
+                                    <option value="3">低</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="config-use-queue" checked>
+                                    使用队列
+                                </label>
+                            </div>
+                        </div>
+                        <button id="add-config-btn" class="btn btn-primary">➕ 保存配置</button>
+                    </div>
+
+                    <!-- 默认配置模板 -->
+                    <div class="form-section">
+                        <h3>默认配置模板</h3>
+                        <div id="default-configs-list"></div>
+                    </div>
+
+                    <!-- 我的配置 -->
+                    <div class="form-section">
+                        <h3>我的配置</h3>
+                        <div id="configs-list"></div>
                     </div>
                 </div>
             </div>
