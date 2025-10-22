@@ -4,6 +4,7 @@ class MediaRenamerApp {
     constructor() {
         this.isProcessing = false;
         this.statusInterval = null;
+        this.historyOffset = 0;
         this.init();
     }
 
@@ -66,6 +67,21 @@ class MediaRenamerApp {
 
         document.getElementById('add-word-btn').addEventListener('click', () => {
             this.addCustomWord();
+        });
+
+        // 历史记录
+        document.getElementById('history-search-btn').addEventListener('click', () => {
+            this.historyOffset = 0;
+            this.loadHistory();
+        });
+
+        document.getElementById('history-clear-btn').addEventListener('click', () => {
+            this.clearHistory();
+        });
+
+        document.getElementById('history-load-more').addEventListener('click', () => {
+            this.historyOffset += 20;
+            this.loadHistory(true);
         });
     }
 
@@ -157,6 +173,8 @@ class MediaRenamerApp {
             this.loadTemplates();
         } else if (tabName === 'words') {
             this.loadCustomWords();
+        } else if (tabName === 'history') {
+            this.loadHistory();
         } else if (tabName === 'stats') {
             this.loadStats();
         }
@@ -686,6 +704,190 @@ class MediaRenamerApp {
             }
         } catch (error) {
             this.showToast('删除失败: ' + error.message, 'error');
+        }
+    }
+
+    // 加载历史记录
+    async loadHistory(append = false) {
+        try {
+            if (!append) {
+                this.historyOffset = 0;
+            }
+
+            const search = document.getElementById('history-search').value.trim();
+            const status = document.getElementById('history-status-filter').value;
+            
+            const params = new URLSearchParams({
+                limit: '20',
+                offset: this.historyOffset.toString()
+            });
+            
+            if (search) params.append('search', search);
+            if (status) params.append('status', status);
+            
+            const response = await fetch(`/api/history?${params}`);
+            const data = await response.json();
+            
+            if (data.success) {
+                this.renderHistory(data.data, append);
+                
+                // 加载统计
+                const statsResponse = await fetch('/api/history/stats');
+                const statsData = await statsResponse.json();
+                if (statsData.success) {
+                    this.renderHistoryStats(statsData.data);
+                }
+            }
+        } catch (error) {
+            console.error('加载历史失败:', error);
+        }
+    }
+
+    // 渲染历史记录
+    renderHistory(records, append = false) {
+        const container = document.getElementById('history-list');
+        
+        if (!append) {
+            container.innerHTML = '';
+        }
+        
+        if (records.length === 0 && !append) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-state-icon">📜</div>
+                    <p>暂无历史记录</p>
+                </div>
+            `;
+            return;
+        }
+        
+        records.forEach(record => {
+            const item = document.createElement('div');
+            item.className = `result-item ${record.status === 'success' ? 'success' : 'error'}`;
+            
+            const date = new Date(record.created_at).toLocaleString('zh-CN');
+            
+            if (record.status === 'success') {
+                item.innerHTML = `
+                    <div class="result-original">
+                        原始: ${record.original_name}
+                        <span style="color: var(--text-light); font-size: 0.875rem; margin-left: 1rem;">${date}</span>
+                    </div>
+                    <div class="result-new">新名: ${record.new_name}</div>
+                    <div class="result-info">
+                        <span>质量分数: ${record.quality_score || 'N/A'}</span>
+                        <span>类型: ${record.file_type === 'tv' ? '电视剧' : '电影'}</span>
+                        ${record.year ? `<span>年份: ${record.year}</span>` : ''}
+                        <span>模板: ${record.template}</span>
+                    </div>
+                    <div class="word-actions">
+                        <button class="btn btn-danger btn-sm" onclick="app.deleteHistoryRecord(${record.id})">
+                            删除
+                        </button>
+                    </div>
+                `;
+            } else {
+                item.innerHTML = `
+                    <div class="result-original">
+                        文件: ${record.original_name}
+                        <span style="color: var(--text-light); font-size: 0.875rem; margin-left: 1rem;">${date}</span>
+                    </div>
+                    <div class="result-new" style="color: var(--danger-color);">
+                        错误: ${record.error_message}
+                    </div>
+                    <div class="word-actions">
+                        <button class="btn btn-danger btn-sm" onclick="app.deleteHistoryRecord(${record.id})">
+                            删除
+                        </button>
+                    </div>
+                `;
+            }
+            
+            container.appendChild(item);
+        });
+    }
+
+    // 渲染历史统计
+    renderHistoryStats(stats) {
+        const container = document.getElementById('history-stats');
+        
+        container.innerHTML = `
+            <div class="stat-card">
+                <div class="stat-value">${stats.total || 0}</div>
+                <div class="stat-label">总记录数</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">${stats.success || 0}</div>
+                <div class="stat-label">成功</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">${stats.failed || 0}</div>
+                <div class="stat-label">失败</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">${((stats.success_rate || 0) * 100).toFixed(1)}%</div>
+                <div class="stat-label">成功率</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">${stats.today || 0}</div>
+                <div class="stat-label">今天</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">${stats.this_week || 0}</div>
+                <div class="stat-label">本周</div>
+            </div>
+        `;
+    }
+
+    // 删除历史记录
+    async deleteHistoryRecord(id) {
+        if (!confirm('确定要删除这条记录吗？')) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/history/${id}`, {
+                method: 'DELETE'
+            });
+
+            const data = await response.json();
+            
+            if (data.success) {
+                this.showToast('删除成功', 'success');
+                this.loadHistory();
+            } else {
+                this.showToast(data.error, 'error');
+            }
+        } catch (error) {
+            this.showToast('删除失败: ' + error.message, 'error');
+        }
+    }
+
+    // 清空历史记录
+    async clearHistory() {
+        if (!confirm('确定要清空所有历史记录吗？此操作不可恢复！')) {
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/history/clear', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({})
+            });
+
+            const data = await response.json();
+            
+            if (data.success) {
+                this.showToast(data.message, 'success');
+                this.loadHistory();
+            } else {
+                this.showToast(data.error, 'error');
+            }
+        } catch (error) {
+            this.showToast('清空失败: ' + error.message, 'error');
         }
     }
 

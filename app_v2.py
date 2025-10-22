@@ -21,6 +21,7 @@ from core.custom_words import get_custom_words
 from core.environment import get_environment
 from core.queue_manager import get_queue_manager, Priority
 from core.events import get_event_bus
+from core.history_manager import get_history_manager
 
 # 创建 Flask 应用
 app = Flask(__name__)
@@ -87,7 +88,15 @@ def on_batch_progress(event):
         
         # 添加结果
         if event.data['result']:
-            processing_status['results'].append(event.data['result'])
+            result = event.data['result']
+            processing_status['results'].append(result)
+            
+            # 保存到历史记录
+            try:
+                history_manager = get_history_manager()
+                history_manager.add_record(result)
+            except Exception as e:
+                print(f"保存历史记录失败: {e}")
 
 
 def on_batch_complete(event):
@@ -322,6 +331,107 @@ def api_stats():
     """获取统计信息"""
     try:
         stats = processor.get_stats()
+        
+        return jsonify({
+            'success': True,
+            'data': stats
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+
+@app.route('/api/history')
+def api_history_list():
+    """获取历史记录列表"""
+    try:
+        history_manager = get_history_manager()
+        
+        # 获取查询参数
+        limit = int(request.args.get('limit', 100))
+        offset = int(request.args.get('offset', 0))
+        status = request.args.get('status')
+        search = request.args.get('search')
+        
+        records = history_manager.get_records(
+            limit=limit,
+            offset=offset,
+            status=status,
+            search=search
+        )
+        
+        return jsonify({
+            'success': True,
+            'data': records
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+
+@app.route('/api/history/<int:record_id>')
+def api_history_detail(record_id):
+    """获取历史记录详情"""
+    try:
+        history_manager = get_history_manager()
+        record = history_manager.get_record(record_id)
+        
+        if record:
+            return jsonify({
+                'success': True,
+                'data': record
+            })
+        else:
+            return jsonify({'success': False, 'error': '记录不存在'})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+
+@app.route('/api/history/<int:record_id>', methods=['DELETE'])
+def api_history_delete(record_id):
+    """删除历史记录"""
+    try:
+        history_manager = get_history_manager()
+        success = history_manager.delete_record(record_id)
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'message': '删除成功'
+            })
+        else:
+            return jsonify({'success': False, 'error': '记录不存在'})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+
+@app.route('/api/history/clear', methods=['POST'])
+def api_history_clear():
+    """清空历史记录"""
+    try:
+        history_manager = get_history_manager()
+        data = request.json or {}
+        before_date = data.get('before_date')
+        
+        count = history_manager.clear_history(before_date)
+        
+        return jsonify({
+            'success': True,
+            'message': f'已删除 {count} 条记录'
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+
+@app.route('/api/history/stats')
+def api_history_stats():
+    """获取历史统计"""
+    try:
+        history_manager = get_history_manager()
+        stats = history_manager.get_stats()
         
         return jsonify({
             'success': True,

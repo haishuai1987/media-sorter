@@ -384,6 +384,12 @@ body {
     opacity: 0.5;
 }
 
+/* 按钮大小 */
+.btn-sm {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.875rem;
+}
+
 .word-info {
     flex: 1;
 }

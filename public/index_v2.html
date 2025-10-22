@@ -17,6 +17,7 @@
             <div class="nav-menu">
                 <a href="#process" class="nav-link active" data-tab="process">批量处理</a>
                 <a href="#recognize" class="nav-link" data-tab="recognize">文件识别</a>
+                <a href="#history" class="nav-link" data-tab="history">历史记录</a>
                 <a href="#templates" class="nav-link" data-tab="templates">模板管理</a>
                 <a href="#words" class="nav-link" data-tab="words">识别词</a>
                 <a href="#stats" class="nav-link" data-tab="stats">统计信息</a>
@@ -147,6 +148,46 @@ Inception.2010.1080p.BluRay.x264.mkv
                     </button>
 
                     <div id="recognize-result" class="result-box" style="display: none;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 历史记录标签页 -->
+        <div id="history-tab" class="tab-content">
+            <div class="card">
+                <div class="card-header">
+                    <h2>📜 历史记录</h2>
+                    <p>查看和管理处理历史</p>
+                </div>
+                <div class="card-body">
+                    <!-- 搜索和过滤 -->
+                    <div class="form-row">
+                        <div class="form-group">
+                            <input type="text" id="history-search" placeholder="搜索文件名...">
+                        </div>
+                        <div class="form-group">
+                            <select id="history-status-filter">
+                                <option value="">全部状态</option>
+                                <option value="success">成功</option>
+                                <option value="failed">失败</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <button id="history-search-btn" class="btn btn-primary">🔍 搜索</button>
+                            <button id="history-clear-btn" class="btn btn-danger">🗑️ 清空历史</button>
+                        </div>
+                    </div>
+
+                    <!-- 历史统计 -->
+                    <div id="history-stats" class="stats-grid" style="margin-bottom: 2rem;"></div>
+
+                    <!-- 历史列表 -->
+                    <div id="history-list"></div>
+
+                    <!-- 加载更多 -->
+                    <div style="text-align: center; margin-top: 1rem;">
+                        <button id="history-load-more" class="btn btn-secondary">加载更多</button>
+                    </div>
                 </div>
             </div>
         </div>
