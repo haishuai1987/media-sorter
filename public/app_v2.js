@@ -10,6 +10,7 @@ class MediaRenamerApp {
     }
 
     init() {
+        this.loadTheme();
         this.bindEvents();
         this.loadSystemInfo();
         this.loadTemplates();
@@ -106,6 +107,11 @@ class MediaRenamerApp {
         document.getElementById('edit-clear-btn').addEventListener('click', () => {
             document.getElementById('edit-file-list').value = '';
             document.getElementById('edit-preview-section').style.display = 'none';
+        });
+
+        // 主题切换
+        document.getElementById('theme-toggle').addEventListener('click', () => {
+            this.toggleTheme();
         });
     }
 
@@ -1528,6 +1534,47 @@ class MediaRenamerApp {
         // 清空预览
         document.getElementById('edit-preview-section').style.display = 'none';
         this.editResults = null;
+    }
+
+    // 加载主题
+    loadTheme() {
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        this.setTheme(savedTheme);
+    }
+
+    // 设置主题
+    setTheme(theme) {
+        document.documentElement.setAttribute('data-theme', theme);
+        localStorage.setItem('theme', theme);
+        
+        // 更新按钮图标
+        const themeToggle = document.getElementById('theme-toggle');
+        const icons = {
+            'light': '🌙',
+            'dark': '☀️',
+            'high-contrast': '🎨'
+        };
+        themeToggle.textContent = icons[theme] || '🌙';
+        
+        this.currentTheme = theme;
+    }
+
+    // 切换主题
+    toggleTheme() {
+        const themes = ['light', 'dark', 'high-contrast'];
+        const currentIndex = themes.indexOf(this.currentTheme || 'light');
+        const nextIndex = (currentIndex + 1) % themes.length;
+        const nextTheme = themes[nextIndex];
+        
+        this.setTheme(nextTheme);
+        
+        const themeNames = {
+            'light': '亮色主题',
+            'dark': '暗色主题',
+            'high-contrast': '高对比度'
+        };
+        
+        this.showToast(`已切换到${themeNames[nextTheme]}`, 'success');
     }
 
     // 显示 Toast 通知
