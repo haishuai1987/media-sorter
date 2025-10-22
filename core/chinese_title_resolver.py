@@ -152,18 +152,30 @@ class IntegratedRecognizer:
         self.advanced_recognizer = get_advanced_recognizer()
         self.title_resolver = ChineseTitleResolver(tmdb_api_key, douban_cookie)
     
-    def recognize_with_chinese_title(self, filename: str) -> Dict[str, Any]:
+    def recognize_with_chinese_title(self, filename: str, convert_chinese_number: bool = True) -> Dict[str, Any]:
         """
-        识别文件并获取中文标题
+        识别文件并获取中文标题（v2.4.0 增强）
         
         Args:
             filename: 文件名
+            convert_chinese_number: 是否转换中文数字（v2.4.0 新增）
             
         Returns:
             识别结果（包含中文标题）
         """
+        # 0. 转换中文数字（v2.4.0 新增）
+        processed_filename = filename
+        if convert_chinese_number:
+            try:
+                from core.chinese_number import convert_chinese_number
+                processed_filename = convert_chinese_number(filename, use_cn2an=True)
+                if processed_filename != filename:
+                    print(f"✓ 中文数字转换: {filename} → {processed_filename}")
+            except Exception as e:
+                print(f"⚠ 中文数字转换失败: {e}")
+        
         # 1. 使用高级识别器提取信息
-        info = self.advanced_recognizer.recognize(filename)
+        info = self.advanced_recognizer.recognize(processed_filename)
         
         # 2. 如果标题不是中文，查询中文标题
         if info['title'] and not self._is_chinese(info['title']):
