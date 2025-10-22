@@ -25,6 +25,10 @@ class MediaRenamerApp {
         });
 
         // 批量处理
+        document.getElementById('preview-btn').addEventListener('click', () => {
+            this.previewProcessing();
+        });
+
         document.getElementById('process-btn').addEventListener('click', () => {
             this.startProcessing();
         });
@@ -33,6 +37,22 @@ class MediaRenamerApp {
             document.getElementById('file-list').value = '';
             this.hideResults();
         });
+
+        // 导入/导出
+        document.getElementById('import-btn').addEventListener('click', () => {
+            document.getElementById('import-input').click();
+        });
+
+        document.getElementById('import-input').addEventListener('change', (e) => {
+            this.importFileList(e.target.files[0]);
+        });
+
+        document.getElementById('export-btn').addEventListener('click', () => {
+            this.exportResults();
+        });
+
+        // 文件拖拽上传
+        this.initDragDrop();
 
         // 文件识别
         document.getElementById('recognize-btn').addEventListener('click', () => {
@@ -47,6 +67,75 @@ class MediaRenamerApp {
         document.getElementById('add-word-btn').addEventListener('click', () => {
             this.addCustomWord();
         });
+    }
+
+    // 初始化拖拽上传
+    initDragDrop() {
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const fileList = document.getElementById('file-list');
+
+        // 点击选择文件
+        dropZone.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        // 文件选择
+        fileInput.addEventListener('change', (e) => {
+            this.handleFiles(e.target.files);
+        });
+
+        // 拖拽进入
+        dropZone.addEventListener('dragenter', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropZone.classList.add('drag-over');
+        });
+
+        // 拖拽悬停
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+        });
+
+        // 拖拽离开
+        dropZone.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropZone.classList.remove('drag-over');
+        });
+
+        // 拖拽放下
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropZone.classList.remove('drag-over');
+            
+            const files = e.dataTransfer.files;
+            this.handleFiles(files);
+        });
+    }
+
+    // 处理文件
+    handleFiles(files) {
+        if (files.length === 0) return;
+
+        const fileList = document.getElementById('file-list');
+        const fileNames = [];
+
+        for (let i = 0; i < files.length; i++) {
+            fileNames.push(files[i].name);
+        }
+
+        // 添加到文本框（追加模式）
+        const currentValue = fileList.value.trim();
+        if (currentValue) {
+            fileList.value = currentValue + '\n' + fileNames.join('\n');
+        } else {
+            fileList.value = fileNames.join('\n');
+        }
+
+        this.showToast(`已添加 ${files.length} 个文件`, 'success');
     }
 
     // 标签页切换
@@ -84,6 +173,109 @@ class MediaRenamerApp {
             }
         } catch (error) {
             console.error('加载系统信息失败:', error);
+        }
+    }
+
+    // 预览处理结果
+    async previewProcessing() {
+        const fileList = document.getElementById('file-list').value.trim();
+        if (!fileList) {
+            this.showToast('请输入文件列表', 'warning');
+            return;
+        }
+
+        const files = fileList.split('\n').filter(f => f.trim());
+        const template = document.getElementById('template-select').value;
+
+        const previewSection = document.getElementById('preview-section');
+        const previewList = document.getElementById('preview-list');
+        
+        previewSection.style.display = 'block';
+        previewList.innerHTML = '<div class="loading-text">正在生成预览...</div>';
+
+        try {
+            // 对每个文件进行识别
+            const previews = [];
+            for (const file of files.slice(0, 10)) { // 最多预览10个
+                try {
+                    const response = await fetch('/api/recognize', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ filename: file })
+                    });
+
+                    const data = await response.json();
+                    if (data.success) {
+                        previews.push({
+                            original: file,
+                            info: data.data,
+                            success: true
+                        });
+                    } else {
+                        previews.push({
+                            original: file,
+                            error: data.error,
+                            success: false
+                        });
+                    }
+                } catch (error) {
+                    previews.push({
+                        original: file,
+                        error: error.message,
+                        success: false
+                    });
+                }
+            }
+
+            // 显示预览
+            previewList.innerHTML = '';
+            previews.forEach(preview => {
+                const item = document.createElement('div');
+                item.className = `result-item ${preview.success ? 'success' : 'error'}`;
+                
+                if (preview.success) {
+                    // 生成新文件名（简化版）
+                    const info = preview.info;
+                    let newName = '';
+                    if (info.is_tv) {
+                        newName = `${info.title} S${String(info.season).padStart(2, '0')}E${String(info.episode).padStart(2, '0')}`;
+                    } else {
+                        newName = `${info.title} (${info.year || 'Unknown'})`;
+                    }
+                    
+                    item.innerHTML = `
+                        <div class="result-original">原始: ${preview.original}</div>
+                        <div class="result-new">预览: ${newName}</div>
+                        <div class="result-info">
+                            <span>类型: ${info.is_tv ? '电视剧' : '电影'}</span>
+                            ${info.year ? `<span>年份: ${info.year}</span>` : ''}
+                        </div>
+                    `;
+                } else {
+                    item.innerHTML = `
+                        <div class="result-original">文件: ${preview.original}</div>
+                        <div class="result-new" style="color: var(--danger-color);">错误: ${preview.error}</div>
+                    `;
+                }
+                
+                previewList.appendChild(item);
+            });
+
+            if (files.length > 10) {
+                const moreInfo = document.createElement('div');
+                moreInfo.className = 'result-info';
+                moreInfo.style.textAlign = 'center';
+                moreInfo.style.marginTop = '1rem';
+                moreInfo.innerHTML = `<span>还有 ${files.length - 10} 个文件未预览</span>`;
+                previewList.appendChild(moreInfo);
+            }
+
+            this.showToast('预览生成完成', 'success');
+        } catch (error) {
+            previewList.innerHTML = `<div class="error-text">预览失败: ${error.message}</div>`;
+            this.showToast('预览失败: ' + error.message, 'error');
         }
     }
 
@@ -210,6 +402,9 @@ class MediaRenamerApp {
     showResults(results) {
         const resultsSection = document.getElementById('results-section');
         const resultsList = document.getElementById('results-list');
+        
+        // 保存结果以便导出
+        this.lastResults = results;
         
         resultsSection.style.display = 'block';
         resultsList.innerHTML = '';
@@ -580,6 +775,102 @@ class MediaRenamerApp {
                 </div>
             ` : ''}
         `;
+    }
+
+    // 导入文件列表
+    async importFileList(file) {
+        if (!file) return;
+
+        try {
+            const text = await file.text();
+            const fileList = document.getElementById('file-list');
+            
+            // 解析文件内容
+            let lines = [];
+            if (file.name.endsWith('.csv')) {
+                // CSV 格式：可能有多列，取第一列
+                lines = text.split('\n').map(line => {
+                    const cols = line.split(',');
+                    return cols[0].trim();
+                }).filter(line => line);
+            } else {
+                // TXT 格式：每行一个文件名
+                lines = text.split('\n').map(line => line.trim()).filter(line => line);
+            }
+
+            // 添加到文本框
+            const currentValue = fileList.value.trim();
+            if (currentValue) {
+                fileList.value = currentValue + '\n' + lines.join('\n');
+            } else {
+                fileList.value = lines.join('\n');
+            }
+
+            this.showToast(`已导入 ${lines.length} 个文件`, 'success');
+        } catch (error) {
+            this.showToast('导入失败: ' + error.message, 'error');
+        }
+    }
+
+    // 导出结果
+    exportResults() {
+        const resultsSection = document.getElementById('results-section');
+        
+        if (resultsSection.style.display === 'none') {
+            this.showToast('没有可导出的结果', 'warning');
+            return;
+        }
+
+        try {
+            // 获取结果数据
+            const results = this.lastResults || [];
+            
+            if (results.length === 0) {
+                this.showToast('没有可导出的结果', 'warning');
+                return;
+            }
+
+            // 生成 CSV 内容
+            const csvLines = ['原文件名,新文件名,状态,质量分数,类型,年份'];
+            
+            results.forEach(result => {
+                if (result.success) {
+                    const line = [
+                        result.original_name || '',
+                        result.new_name || '',
+                        '成功',
+                        result.quality_score || '',
+                        result.info.is_tv ? '电视剧' : '电影',
+                        result.info.year || ''
+                    ].join(',');
+                    csvLines.push(line);
+                } else {
+                    const line = [
+                        result.file_path || '',
+                        '',
+                        '失败',
+                        '',
+                        '',
+                        ''
+                    ].join(',');
+                    csvLines.push(line);
+                }
+            });
+
+            // 创建下载
+            const csvContent = csvLines.join('\n');
+            const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `media-renamer-results-${Date.now()}.csv`;
+            link.click();
+            URL.revokeObjectURL(url);
+
+            this.showToast('导出成功', 'success');
+        } catch (error) {
+            this.showToast('导出失败: ' + error.message, 'error');
+        }
     }
 
     // 显示 Toast 通知

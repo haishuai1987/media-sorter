@@ -244,6 +244,20 @@ body {
     color: var(--text-light);
 }
 
+/* 预览区域 */
+.preview-section {
+    margin-top: 2rem;
+    padding: 1.5rem;
+    background: #fef3c7;
+    border-radius: 0.5rem;
+    border: 1px solid #fbbf24;
+}
+
+.preview-section h3 {
+    margin-bottom: 1rem;
+    color: #92400e;
+}
+
 /* 结果列表 */
 .results-section {
     margin-top: 2rem;
@@ -480,4 +494,48 @@ body {
 .empty-state-icon {
     font-size: 3rem;
     margin-bottom: 1rem;
+}
+
+/* 拖拽区域 */
+.drop-zone {
+    border: 2px dashed var(--border-color);
+    border-radius: 0.5rem;
+    padding: 2rem;
+    text-align: center;
+    background: var(--light-color);
+    cursor: pointer;
+    transition: all 0.3s;
+    margin-bottom: 1rem;
+}
+
+.drop-zone:hover {
+    border-color: var(--primary-color);
+    background: #e0f2fe;
+}
+
+.drop-zone.drag-over {
+    border-color: var(--primary-color);
+    background: #dbeafe;
+    transform: scale(1.02);
+}
+
+.drop-zone-content {
+    pointer-events: none;
+}
+
+.drop-zone-icon {
+    font-size: 3rem;
+    margin-bottom: 0.5rem;
+}
+
+.drop-zone-text {
+    font-size: 1.125rem;
+    font-weight: 500;
+    color: var(--text-color);
+    margin-bottom: 0.25rem;
+}
+
+.drop-zone-hint {
+    font-size: 0.875rem;
+    color: var(--text-light);
 }
