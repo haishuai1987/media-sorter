@@ -1,2 +1,20 @@
-cryptography>=41.0.0
-requests>=2.31.0
+# Media Renamer - Requirements
+# Version: 2.4.0
+
+# Core dependencies
+requests>=2.28.0
+
+# Optional dependencies for enhanced features
+# Uncomment to install
+
+# Chinese number conversion (recommended for Chinese media files)
+# cn2an>=0.5.22
+
+# Web framework (if using web UI)
+# flask>=2.3.0
+# flask-cors>=4.0.0
+
+# Development dependencies (optional)
+# pytest>=7.4.0
+# black>=23.0.0
+# flake8>=6.0.0
