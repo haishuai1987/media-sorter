@@ -3,11 +3,13 @@
 """
 智能批量处理器
 借鉴 media-renamer-2 的设计，但保持简单无依赖
+v2.3.0: 集成队列管理和速率限制
 """
 
 import time
 from typing import List, Dict, Any, Optional, Callable
 from pathlib import Path
+import uuid
 
 
 class ProcessingStats:
@@ -84,9 +86,17 @@ class ProcessingStats:
 
 
 class SmartBatchProcessor:
-    """智能批量处理器"""
+    """智能批量处理器（v2.3.0 增强版）"""
     
-    def __init__(self, tmdb_api_key: str = None, douban_cookie: str = None):
+    def __init__(
+        self,
+        tmdb_api_key: str = None,
+        douban_cookie: str = None,
+        use_queue: bool = False,
+        use_rate_limit: bool = False,
+        max_workers: int = 4,
+        rate_limit: int = 10
+    ):
         from core.chinese_title_resolver import IntegratedRecognizer
         from core.template_engine import get_template_engine
         from core.events import get_event_bus, EventTypes
@@ -95,6 +105,24 @@ class SmartBatchProcessor:
         self.template_engine = get_template_engine()
         self.event_bus = get_event_bus()
         self.stats = ProcessingStats()
+        
+        # v2.3.0: 队列管理和速率限制
+        self.use_queue = use_queue
+        self.use_rate_limit = use_rate_limit
+        self.queue_manager = None
+        self.rate_limiter = None
+        
+        if use_queue:
+            from core.queue_manager import get_queue_manager
+            self.queue_manager = get_queue_manager(max_workers=max_workers)
+        
+        if use_rate_limit:
+            from core.rate_limiter import RateLimiter
+            self.rate_limiter = RateLimiter(
+                algorithm='token_bucket',
+                max_requests=rate_limit,
+                time_window=1.0
+            )
         
         # 默认配置
         self.default_template = {
@@ -233,18 +261,134 @@ class SmartBatchProcessor:
                 'message': f"失败: {e}"
             }
     
+    def process_batch_with_queue(
+        self,
+        file_paths: List[str],
+        progress_callback: Optional[Callable] = None,
+        template_name: str = None,
+        priority: int = 5
+    ) -> Dict[str, Any]:
+        """
+        使用队列管理器批量处理文件（v2.3.0 新增）
+        
+        Args:
+            file_paths: 文件路径列表
+            progress_callback: 进度回调函数
+            template_name: 模板名称
+            priority: 任务优先级（1-10）
+            
+        Returns:
+            处理结果
+        """
+        if not self.use_queue or not self.queue_manager:
+            # 降级到普通批量处理
+            return self.process_batch(file_paths, progress_callback, template_name)
+        
+        # 初始化统计
+        self.stats.start(len(file_paths))
+        
+        # 发布开始事件
+        self.event_bus.emit('batch.process.start', {
+            'total_files': len(file_paths),
+            'use_queue': True
+        })
+        
+        results = []
+        completed_count = 0
+        
+        # 提交所有任务到队列
+        task_ids = []
+        for i, file_path in enumerate(file_paths):
+            task_id = f"process-{uuid.uuid4().hex[:8]}"
+            task_ids.append(task_id)
+            
+            # 应用速率限制
+            if self.use_rate_limit and self.rate_limiter:
+                self.rate_limiter.wait(timeout=30)
+            
+            # 提交任务
+            self.queue_manager.submit(
+                task_id=task_id,
+                data={'file_path': file_path, 'template_name': template_name},
+                callback=lambda data: self._process_single_file(data['file_path'], data['template_name']),
+                priority=priority,
+                timeout=60
+            )
+        
+        # 等待所有任务完成
+        print(f"✓ 已提交 {len(task_ids)} 个任务到队列")
+        
+        while completed_count < len(task_ids):
+            time.sleep(0.5)
+            
+            # 检查任务状态
+            for task_id in task_ids:
+                task = self.queue_manager.get_task(task_id)
+                if task and task.status in [2, 3, 4]:  # COMPLETED, FAILED, TIMEOUT
+                    if task.task_id not in [r.get('task_id') for r in results]:
+                        result = task.result if task.result else {
+                            'file_path': task.data['file_path'],
+                            'success': False,
+                            'error': task.error or 'Unknown error'
+                        }
+                        result['task_id'] = task.task_id
+                        results.append(result)
+                        completed_count += 1
+                        
+                        # 更新统计
+                        self.stats.update(result.get('success', False), result.get('error'))
+                        
+                        # 进度回调
+                        if progress_callback:
+                            progress = completed_count / len(task_ids)
+                            progress_callback(progress, task.data['file_path'], result)
+        
+        # 完成处理
+        self.stats.finish()
+        
+        # 发布完成事件
+        self.event_bus.emit('batch.process.complete', {
+            'results': results,
+            'stats': self.stats.get_summary()
+        })
+        
+        return {
+            'results': results,
+            'stats': self.stats.get_summary()
+        }
+    
     def get_stats(self) -> Dict[str, Any]:
         """获取统计信息"""
-        return self.stats.get_summary()
+        stats = self.stats.get_summary()
+        
+        # 添加队列统计
+        if self.use_queue and self.queue_manager:
+            stats['queue_stats'] = self.queue_manager.get_stats()
+        
+        # 添加速率限制统计
+        if self.use_rate_limit and self.rate_limiter:
+            stats['rate_limit_stats'] = self.rate_limiter.get_stats()
+        
+        return stats
 
 
 # 全局实例
 _smart_batch_processor = None
 
 
-def get_smart_batch_processor(tmdb_api_key: str = None, douban_cookie: str = None) -> SmartBatchProcessor:
+def get_smart_batch_processor(
+    tmdb_api_key: str = None,
+    douban_cookie: str = None,
+    use_queue: bool = False,
+    use_rate_limit: bool = False
+) -> SmartBatchProcessor:
     """获取智能批量处理器实例"""
     global _smart_batch_processor
     if _smart_batch_processor is None:
-        _smart_batch_processor = SmartBatchProcessor(tmdb_api_key, douban_cookie)
+        _smart_batch_processor = SmartBatchProcessor(
+            tmdb_api_key,
+            douban_cookie,
+            use_queue=use_queue,
+            use_rate_limit=use_rate_limit
+        )
     return _smart_batch_processor
