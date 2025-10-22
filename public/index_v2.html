@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Media Renamer v2.5.0 - 智能媒体文件管理器</title>
+    <link rel="stylesheet" href="/static/style_v2.css">
+</head>
+<body>
+    <!-- 顶部导航 -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-brand">
+                <h1>🎬 Media Renamer</h1>
+                <span class="version">v2.5.0</span>
+            </div>
+            <div class="nav-menu">
+                <a href="#process" class="nav-link active" data-tab="process">批量处理</a>
+                <a href="#recognize" class="nav-link" data-tab="recognize">文件识别</a>
+                <a href="#templates" class="nav-link" data-tab="templates">模板管理</a>
+                <a href="#words" class="nav-link" data-tab="words">识别词</a>
+                <a href="#stats" class="nav-link" data-tab="stats">统计信息</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 主内容区 -->
+    <main class="container">
+        <!-- 批量处理标签页 -->
+        <div id="process-tab" class="tab-content active">
+            <div class="card">
+                <div class="card-header">
+                    <h2>📦 批量处理</h2>
+                    <p>智能识别并重命名媒体文件</p>
+                </div>
+                <div class="card-body">
+                    <!-- 文件输入 -->
+                    <div class="form-group">
+                        <label>文件列表（每行一个文件名）</label>
+                        <textarea id="file-list" rows="10" placeholder="The.Matrix.1999.1080p.BluRay.x264.mkv
+Inception.2010.1080p.BluRay.x264.mkv
+权力的游戏.第一季.第一集.1080p.mkv"></textarea>
+                    </div>
+
+                    <!-- 选项 -->
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>模板</label>
+                            <select id="template-select">
+                                <option value="movie_default">电影 - 默认</option>
+                                <option value="movie_simple">电影 - 简单</option>
+                                <option value="movie_detailed">电影 - 详细</option>
+                                <option value="tv_default">电视剧 - 默认</option>
+                                <option value="tv_simple">电视剧 - 简单</option>
+                                <option value="tv_detailed">电视剧 - 详细</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>优先级</label>
+                            <select id="priority-select">
+                                <option value="5">普通</option>
+                                <option value="7">高</option>
+                                <option value="10">关键</option>
+                                <option value="3">低</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="use-queue" checked>
+                                使用队列管理
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- 操作按钮 -->
+                    <div class="button-group">
+                        <button id="process-btn" class="btn btn-primary">
+                            🚀 开始处理
+                        </button>
+                        <button id="clear-btn" class="btn btn-secondary">
+                            🗑️ 清空
+                        </button>
+                    </div>
+
+                    <!-- 进度条 -->
+                    <div id="progress-section" class="progress-section" style="display: none;">
+                        <div class="progress-bar">
+                            <div id="progress-fill" class="progress-fill"></div>
+                        </div>
+                        <div class="progress-text">
+                            <span id="progress-percent">0%</span>
+                            <span id="progress-status">准备中...</span>
+                        </div>
+                    </div>
+
+                    <!-- 结果列表 -->
+                    <div id="results-section" class="results-section" style="display: none;">
+                        <h3>处理结果</h3>
+                        <div id="results-list"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 文件识别标签页 -->
+        <div id="recognize-tab" class="tab-content">
+            <div class="card">
+                <div class="card-header">
+                    <h2>🔍 文件识别</h2>
+                    <p>测试单个文件的识别效果</p>
+                </div>
+                <div class="card-body">
+                    <div class="form-group">
+                        <label>文件名</label>
+                        <input type="text" id="recognize-input" 
+                               placeholder="The.Matrix.1999.1080p.BluRay.x264.mkv">
+                    </div>
+
+                    <button id="recognize-btn" class="btn btn-primary">
+                        🔍 识别
+                    </button>
+
+                    <div id="recognize-result" class="result-box" style="display: none;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 模板管理标签页 -->
+        <div id="templates-tab" class="tab-content">
+            <div class="card">
+                <div class="card-header">
+                    <h2>📝 模板管理</h2>
+                    <p>管理文件命名模板</p>
+                </div>
+                <div class="card-body">
+                    <div id="templates-list"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 识别词标签页 -->
+        <div id="words-tab" class="tab-content">
+            <div class="card">
+                <div class="card-header">
+                    <h2>📚 自定义识别词</h2>
+                    <p>管理屏蔽词和替换词</p>
+                </div>
+                <div class="card-body">
+                    <!-- 添加识别词 -->
+                    <div class="form-section">
+                        <h3>添加识别词</h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>类型</label>
+                                <select id="word-type">
+                                    <option value="block">屏蔽词</option>
+                                    <option value="replace">替换词</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div id="block-fields">
+                            <div class="form-group">
+                                <label>屏蔽内容</label>
+                                <input type="text" id="word-pattern" placeholder="RARBG">
+                            </div>
+                        </div>
+
+                        <div id="replace-fields" style="display: none;">
+                            <div class="form-group">
+                                <label>原文本</label>
+                                <input type="text" id="word-old" placeholder="BluRay">
+                            </div>
+                            <div class="form-group">
+                                <label>新文本</label>
+                                <input type="text" id="word-new" placeholder="Blu-ray">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>描述</label>
+                            <input type="text" id="word-description" placeholder="说明">
+                        </div>
+
+                        <button id="add-word-btn" class="btn btn-primary">
+                            ➕ 添加
+                        </button>
+                    </div>
+
+                    <!-- 识别词列表 -->
+                    <div class="form-section">
+                        <h3>识别词列表</h3>
+                        <div id="words-list"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 统计信息标签页 -->
+        <div id="stats-tab" class="tab-content">
+            <div class="card">
+                <div class="card-header">
+                    <h2>📊 统计信息</h2>
+                    <p>系统运行统计</p>
+                </div>
+                <div class="card-body">
+                    <div id="stats-content"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Toast 通知 -->
+    <div id="toast-container"></div>
+
+    <!-- JavaScript -->
+    <script src="/static/app_v2.js"></script>
+</body>
+</html>
