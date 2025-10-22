@@ -51,10 +51,43 @@ def api_templates():
     })
 
 if __name__ == '__main__':
+    import argparse
+    import os
+    
+    # 解析命令行参数
+    parser = argparse.ArgumentParser(description='Media Renamer Web UI v2.5.0 (简化版)')
+    parser.add_argument('--host', type=str, default='127.0.0.1',
+                        help='监听地址 (默认: 127.0.0.1)')
+    parser.add_argument('--port', type=int, default=None,
+                        help='监听端口 (默认: 5000，可通过环境变量 PORT 设置)')
+    parser.add_argument('--debug', action='store_true',
+                        help='启用调试模式')
+    args = parser.parse_args()
+    
+    # 优先级: 命令行参数 > 环境变量 > 默认值
+    host = args.host
+    port = args.port or int(os.getenv('PORT', 5000))
+    debug_mode = args.debug
+    
     print("\n" + "="*60)
     print("Media Renamer Web UI v2.5.0 (简化版)")
     print("="*60)
-    print("地址: http://127.0.0.1:5000")
+    print(f"监听地址: {host}:{port}")
+    print(f"调试模式: {'开启' if debug_mode else '关闭'}")
+    print("="*60)
+    print(f"\n访问地址: http://{host}:{port}")
+    print("\n提示: 使用 --help 查看更多选项")
     print("="*60 + "\n")
     
-    app.run(host='127.0.0.1', port=5000, debug=False)
+    try:
+        app.run(host=host, port=port, debug=debug_mode)
+    except OSError as e:
+        if 'Address already in use' in str(e):
+            print(f"\n❌ 错误: 端口 {port} 已被占用！")
+            print(f"\n解决方案:")
+            print(f"  1. 使用其他端口: python app_v2_simple.py --port 5001")
+            print(f"  2. 设置环境变量: PORT=5001 python app_v2_simple.py")
+            print(f"  3. 停止占用端口的进程")
+            print()
+        else:
+            raise

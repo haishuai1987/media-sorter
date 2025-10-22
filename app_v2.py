@@ -347,26 +347,62 @@ def internal_error(error):
 # ==================== 启动应用 ====================
 
 if __name__ == '__main__':
+    import argparse
+    import os
+    
+    # 解析命令行参数
+    parser = argparse.ArgumentParser(description='Media Renamer Web UI v2.5.0')
+    parser.add_argument('--host', type=str, default=None,
+                        help='监听地址 (默认: 0.0.0.0)')
+    parser.add_argument('--port', type=int, default=None,
+                        help='监听端口 (默认: 8090，可通过环境变量 PORT 设置)')
+    parser.add_argument('--debug', action='store_true',
+                        help='启用调试模式')
+    args = parser.parse_args()
+    
     # 初始化
     init_app()
     
     # 获取环境配置
     env = get_environment()
     
+    # 优先级: 命令行参数 > 环境变量 > 默认配置
+    host = args.host or os.getenv('HOST') or env.config['host']
+    port = args.port or int(os.getenv('PORT', 0)) or env.config['port']
+    debug_mode = args.debug or os.getenv('FLASK_DEBUG', 'false').lower() == 'true'
+    
     print("\n" + "="*60)
     print("Media Renamer Web UI v2.5.0")
     print("="*60)
     print(f"环境: {env.type}")
-    print(f"地址: http://{env.config['host']}:{env.config['port']}")
+    print(f"监听地址: {host}:{port}")
+    print(f"调试模式: {'开启' if debug_mode else '关闭'}")
+    print("="*60)
+    print(f"\n访问地址:")
+    print(f"  本地: http://127.0.0.1:{port}")
+    print(f"  局域网: http://<你的IP>:{port}")
+    print("\n提示: 使用 --help 查看更多选项")
     print("="*60 + "\n")
     
     # 启动服务
-    import os
-    debug_mode = os.getenv('FLASK_DEBUG', 'false').lower() == 'true'
-    
-    app.run(
-        host=env.config['host'],
-        port=env.config['port'],
-        debug=debug_mode,
-        threaded=True
-    )
+    try:
+        app.run(
+            host=host,
+            port=port,
+            debug=debug_mode,
+            threaded=True
+        )
+    except OSError as e:
+        if 'Address already in use' in str(e):
+            print(f"\n❌ 错误: 端口 {port} 已被占用！")
+            print(f"\n解决方案:")
+            print(f"  1. 使用其他端口: python app_v2.py --port 8091")
+            print(f"  2. 设置环境变量: PORT=8091 python app_v2.py")
+            print(f"  3. 停止占用端口的进程")
+            print(f"\n常见端口建议:")
+            print(f"  - 8090 (默认)")
+            print(f"  - 8091, 8092, 8093 (备选)")
+            print(f"  - 9000, 9001, 9002 (备选)")
+            print()
+        else:
+            raise

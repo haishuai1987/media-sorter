@@ -12,7 +12,11 @@ pip install flask-cors
 
 #### 方式一：简化版（推荐新手）
 ```bash
+# 使用默认端口 5000
 python app_v2_simple.py
+
+# 自定义端口（避免冲突）
+python app_v2_simple.py --port 5001
 ```
 - 访问: http://localhost:5000
 - 特点: 轻量级，快速启动
@@ -20,11 +24,30 @@ python app_v2_simple.py
 
 #### 方式二：完整版（推荐生产）
 ```bash
+# 使用默认端口 8090
 python app_v2.py
+
+# 自定义端口（避免与 NAS 冲突）
+python app_v2.py --port 9000
 ```
 - 访问: http://localhost:8090
 - 特点: 完整功能，集成所有模块
 - 适用: 实际使用
+
+#### 💡 端口配置提示
+如果遇到端口被占用（如 NAS 的 5000/8000 端口），可以：
+```bash
+# 使用命令行参数
+python app_v2.py --port 8091
+
+# 或使用环境变量
+PORT=8091 python app_v2.py
+
+# 查看所有选项
+python app_v2.py --help
+```
+
+详细配置请参考：[端口配置指南](PORT-CONFIG-GUIDE.md)
 
 ### 3. 使用界面
 
@@ -134,13 +157,19 @@ Game of Thrones S01E02.mkv
 错误: Address already in use
 
 解决方案:
-1. 使用不同端口的版本
-   - app_v2_simple.py (端口 5000)
-   - app_v2.py (端口 8090)
+1. 使用自定义端口（推荐）
+   python app_v2.py --port 8091
+   python app_v2_simple.py --port 5001
 
-2. 或者杀掉占用端口的进程
-   Windows: taskkill /F /IM python.exe
-   Linux/Mac: killall python
+2. 使用环境变量
+   PORT=9000 python app_v2.py
+
+3. 或者停止占用端口的进程
+   Windows: netstat -ano | findstr :8090
+            taskkill /PID <进程ID> /F
+   Linux/Mac: lsof -ti:8090 | xargs kill -9
+
+详细说明: 参考 PORT-CONFIG-GUIDE.md
 ```
 
 ### 问题2：模块未找到
