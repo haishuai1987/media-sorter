@@ -26,12 +26,54 @@ class MediaRenamerApp {
 
     init() {
         this.loadTheme();
+        this.loadLanguage();
         this.bindEvents();
         this.bindShortcuts();
         this.loadSystemInfo();
         this.loadTemplates();
         this.loadCustomWords();
         this.loadStats();
+    }
+
+    // 加载语言
+    loadLanguage() {
+        this.updateLanguage();
+    }
+
+    // 更新界面语言
+    updateLanguage() {
+        // 更新所有带 data-i18n 属性的元素
+        document.querySelectorAll('[data-i18n]').forEach(element => {
+            const key = element.getAttribute('data-i18n');
+            element.textContent = i18n.t(key);
+        });
+
+        // 更新所有带 data-i18n-placeholder 属性的元素
+        document.querySelectorAll('[data-i18n-placeholder]').forEach(element => {
+            const key = element.getAttribute('data-i18n-placeholder');
+            element.placeholder = i18n.t(key);
+        });
+
+        // 更新所有带 data-i18n-title 属性的元素
+        document.querySelectorAll('[data-i18n-title]').forEach(element => {
+            const key = element.getAttribute('data-i18n-title');
+            element.title = i18n.t(key);
+        });
+    }
+
+    // 切换语言
+    toggleLanguage() {
+        const languages = ['zh-CN', 'en-US'];
+        const current = i18n.getCurrentLanguage();
+        const currentIndex = languages.indexOf(current);
+        const nextIndex = (currentIndex + 1) % languages.length;
+        const nextLang = languages[nextIndex];
+        
+        i18n.setLanguage(nextLang);
+        this.updateLanguage();
+        
+        const langNames = i18n.getLanguages();
+        this.showToast(`Language: ${langNames[nextLang]}`, 'success');
     }
 
     // 绑定快捷键
@@ -272,6 +314,11 @@ class MediaRenamerApp {
         // 快捷键帮助
         document.getElementById('shortcut-help').addEventListener('click', () => {
             this.showShortcutHelp();
+        });
+
+        // 语言切换
+        document.getElementById('language-toggle').addEventListener('click', () => {
+            this.toggleLanguage();
         });
     }
 
