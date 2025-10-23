@@ -31,6 +31,10 @@ from core.models import db, init_db
 from core.auth import init_auth, login_required_api, admin_required
 from routes.auth import auth_bp
 
+# v3.0.0 新增：异步任务
+from core.celery_app import init_celery
+from routes.tasks import tasks_bp
+
 # 创建 Flask 应用
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-secret-key-change-this-in-production')
@@ -67,8 +71,12 @@ def init_app():
     init_db(app)
     init_auth(app)
     
-    # 注册认证路由
+    # v3.0.0: 初始化 Celery
+    init_celery(app)
+    
+    # 注册路由
     app.register_blueprint(auth_bp)
+    app.register_blueprint(tasks_bp)
     
     # 初始化核心组件
     processor = SmartBatchProcessor(
@@ -91,6 +99,7 @@ def init_app():
     print("✓ Web UI v3.0.0 初始化完成")
     print("✓ 数据库已初始化")
     print("✓ 认证系统已启用")
+    print("✓ 异步任务系统已启用")
 
 
 def on_batch_start(event):
