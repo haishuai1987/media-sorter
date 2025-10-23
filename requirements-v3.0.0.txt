@@ -1,0 +1,27 @@
+# Media Renamer v3.0.0 新增依赖
+
+# 用户认证
+Flask-Login==0.6.3
+Flask-JWT-Extended==4.5.3
+bcrypt==4.1.1
+
+# 数据库
+Flask-SQLAlchemy==3.1.1
+SQLAlchemy==2.0.23
+alembic==1.12.1
+
+# PostgreSQL 支持
+psycopg2-binary==2.9.9
+
+# MySQL 支持
+PyMySQL==1.1.0
+
+# 异步任务
+celery==5.3.4
+
+# 缓存
+redis==5.0.1
+Flask-Caching==2.1.0
+
+# 其他
+python-dotenv==1.0.0
