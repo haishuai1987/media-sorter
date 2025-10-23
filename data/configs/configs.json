@@ -1,0 +1,16 @@
+[
+  {
+    "name": "测试配置",
+    "description": "这是一个测试配置",
+    "template": "movie_default",
+    "priority": 5,
+    "use_queue": true,
+    "settings": {
+      "auto_rename": true,
+      "backup_original": false
+    },
+    "id": "config_1761151366655",
+    "created_at": "2025-10-23T00:42:46.655132",
+    "updated_at": "2025-10-23T00:42:46.655132"
+  }
+]
