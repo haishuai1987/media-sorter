@@ -6,16 +6,171 @@ class MediaRenamerApp {
         this.statusInterval = null;
         this.historyOffset = 0;
         this.editResults = null;
+        this.shortcuts = this.initShortcuts();
         this.init();
+    }
+
+    // 初始化快捷键配置
+    initShortcuts() {
+        return {
+            'ctrl+s': { action: 'saveConfig', description: '保存配置' },
+            'ctrl+p': { action: 'preview', description: '预览结果' },
+            'ctrl+enter': { action: 'process', description: '开始处理' },
+            'ctrl+k': { action: 'clear', description: '清空内容' },
+            'ctrl+t': { action: 'toggleTheme', description: '切换主题' },
+            'ctrl+h': { action: 'showHistory', description: '查看历史' },
+            'ctrl+/': { action: 'showHelp', description: '显示帮助' },
+            'escape': { action: 'closeModal', description: '关闭弹窗' }
+        };
     }
 
     init() {
         this.loadTheme();
         this.bindEvents();
+        this.bindShortcuts();
         this.loadSystemInfo();
         this.loadTemplates();
         this.loadCustomWords();
         this.loadStats();
+    }
+
+    // 绑定快捷键
+    bindShortcuts() {
+        document.addEventListener('keydown', (e) => {
+            // 忽略在输入框中的快捷键（除了 Escape）
+            if ((e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') && e.key !== 'Escape') {
+                return;
+            }
+
+            const key = this.getShortcutKey(e);
+            const shortcut = this.shortcuts[key];
+
+            if (shortcut) {
+                e.preventDefault();
+                this.executeShortcut(shortcut.action);
+            }
+        });
+    }
+
+    // 获取快捷键字符串
+    getShortcutKey(e) {
+        const parts = [];
+        
+        if (e.ctrlKey || e.metaKey) parts.push('ctrl');
+        if (e.altKey) parts.push('alt');
+        if (e.shiftKey) parts.push('shift');
+        
+        const key = e.key.toLowerCase();
+        if (key !== 'control' && key !== 'alt' && key !== 'shift' && key !== 'meta') {
+            parts.push(key);
+        }
+        
+        return parts.join('+');
+    }
+
+    // 执行快捷键动作
+    executeShortcut(action) {
+        const actions = {
+            'saveConfig': () => {
+                const addConfigBtn = document.getElementById('add-config-btn');
+                if (addConfigBtn && !addConfigBtn.disabled) {
+                    this.addConfig();
+                }
+            },
+            'preview': () => {
+                const activeTab = document.querySelector('.tab-content.active');
+                if (activeTab.id === 'process-tab') {
+                    this.previewProcessing();
+                } else if (activeTab.id === 'batch-edit-tab') {
+                    this.previewBatchEdit();
+                }
+            },
+            'process': () => {
+                const processBtn = document.getElementById('process-btn');
+                if (processBtn && !processBtn.disabled) {
+                    this.startProcessing();
+                }
+            },
+            'clear': () => {
+                const activeTab = document.querySelector('.tab-content.active');
+                if (activeTab.id === 'process-tab') {
+                    document.getElementById('file-list').value = '';
+                    this.hideResults();
+                } else if (activeTab.id === 'batch-edit-tab') {
+                    document.getElementById('edit-file-list').value = '';
+                }
+            },
+            'toggleTheme': () => {
+                this.toggleTheme();
+            },
+            'showHistory': () => {
+                this.switchTab('history');
+            },
+            'showHelp': () => {
+                this.showShortcutHelp();
+            },
+            'closeModal': () => {
+                this.closeModals();
+            }
+        };
+
+        const actionFn = actions[action];
+        if (actionFn) {
+            actionFn();
+        }
+    }
+
+    // 显示快捷键帮助
+    showShortcutHelp() {
+        const helpContent = Object.entries(this.shortcuts)
+            .map(([key, config]) => {
+                const displayKey = key
+                    .replace('ctrl', '⌘/Ctrl')
+                    .replace('alt', 'Alt')
+                    .replace('shift', 'Shift')
+                    .replace('enter', 'Enter')
+                    .replace('escape', 'Esc')
+                    .replace('+', ' + ')
+                    .toUpperCase();
+                return `<div class="shortcut-item">
+                    <span class="shortcut-key">${displayKey}</span>
+                    <span class="shortcut-desc">${config.description}</span>
+                </div>`;
+            })
+            .join('');
+
+        const modal = document.createElement('div');
+        modal.className = 'modal-overlay';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>⌨️ 快捷键帮助</h3>
+                    <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">×</button>
+                </div>
+                <div class="modal-body">
+                    ${helpContent}
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">关闭</button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+        
+        // 点击背景关闭
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.remove();
+            }
+        });
+    }
+
+    // 关闭所有模态框
+    closeModals() {
+        document.querySelectorAll('.modal-overlay').forEach(modal => {
+            modal.remove();
+        });
     }
 
     bindEvents() {
@@ -112,6 +267,11 @@ class MediaRenamerApp {
         // 主题切换
         document.getElementById('theme-toggle').addEventListener('click', () => {
             this.toggleTheme();
+        });
+
+        // 快捷键帮助
+        document.getElementById('shortcut-help').addEventListener('click', () => {
+            this.showShortcutHelp();
         });
     }
 
