@@ -7,6 +7,7 @@ class MediaRenamerApp {
         this.historyOffset = 0;
         this.editResults = null;
         this.shortcuts = this.initShortcuts();
+        this.socket = null;
         this.init();
     }
 
@@ -28,6 +29,7 @@ class MediaRenamerApp {
         this.loadTheme();
         this.setupSystemThemeListener();
         this.loadLanguage();
+        this.setupWebSocket();
         this.bindEvents();
         this.bindShortcuts();
         this.loadSystemInfo();
@@ -1875,6 +1877,76 @@ class MediaRenamerApp {
                 toast.parentNode.removeChild(toast);
             }
         }, 3000);
+    }
+
+    // ==================== WebSocket 相关方法 ====================
+
+    setupWebSocket() {
+        // 连接到 WebSocket 服务器
+        this.socket = io();
+
+        // 连接成功
+        this.socket.on('connected', (data) => {
+            console.log('WebSocket 已连接:', data.message);
+        });
+
+        // 接收进度更新
+        this.socket.on('progress_update', (data) => {
+            this.updateProgress(data);
+        });
+
+        // 连接错误
+        this.socket.on('connect_error', (error) => {
+            console.error('WebSocket 连接错误:', error);
+        });
+
+        // 断开连接
+        this.socket.on('disconnect', () => {
+            console.log('WebSocket 已断开');
+        });
+    }
+
+    updateProgress(data) {
+        const container = document.getElementById('progress-container');
+        const bar = document.getElementById('progress-bar');
+        const message = document.getElementById('progress-message');
+        const percentage = document.getElementById('progress-percentage');
+        const currentFile = document.getElementById('progress-current-file');
+        const count = document.getElementById('progress-count');
+
+        // 显示进度容器
+        if (container.style.display === 'none') {
+            container.style.display = 'block';
+        }
+
+        // 更新进度条
+        bar.style.width = `${data.percentage}%`;
+
+        // 更新文本信息
+        message.textContent = data.message || '处理中...';
+        percentage.textContent = `${data.percentage}%`;
+        currentFile.textContent = data.current_file || '';
+        count.textContent = `${data.current}/${data.total}`;
+
+        // 完成时的处理
+        if (data.percentage === 100) {
+            container.classList.add('completed');
+            setTimeout(() => {
+                container.style.display = 'none';
+                container.classList.remove('completed');
+                bar.style.width = '0%';
+            }, 3000);
+        }
+    }
+
+    showProgress() {
+        const container = document.getElementById('progress-container');
+        container.style.display = 'block';
+    }
+
+    hideProgress() {
+        const container = document.getElementById('progress-container');
+        container.style.display = 'none';
     }
 }
 

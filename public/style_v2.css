@@ -741,3 +741,129 @@ body {
     font-size: 0.875rem;
     color: var(--text-light);
 }
+
+
+/* ==================== 进度条样式 ==================== */
+
+.progress-container {
+    margin: 20px 0;
+    padding: 20px;
+    background: var(--card-bg);
+    border: 2px solid var(--primary-color);
+    border-radius: 8px;
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.progress-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    font-size: 14px;
+}
+
+#progress-message {
+    font-weight: 500;
+    color: var(--text-color);
+}
+
+#progress-percentage {
+    font-weight: 600;
+    color: var(--primary-color);
+    font-size: 16px;
+}
+
+.progress-bar-wrapper {
+    width: 100%;
+    height: 24px;
+    background: var(--bg-secondary);
+    border-radius: 12px;
+    overflow: hidden;
+    position: relative;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary-color), var(--success-color));
+    border-radius: 12px;
+    transition: width 0.3s ease-out;
+    position: relative;
+    overflow: hidden;
+}
+
+.progress-bar::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.3),
+        transparent
+    );
+    animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+    0% {
+        transform: translateX(-100%);
+    }
+    100% {
+        transform: translateX(100%);
+    }
+}
+
+.progress-details {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 10px;
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+#progress-current-file {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin-right: 10px;
+}
+
+#progress-count {
+    font-weight: 500;
+    color: var(--text-color);
+}
+
+/* 进度条完成状态 */
+.progress-container.completed .progress-bar {
+    background: linear-gradient(90deg, var(--success-color), #27ae60);
+}
+
+.progress-container.completed #progress-message {
+    color: var(--success-color);
+}
+
+/* 进度条错误状态 */
+.progress-container.error .progress-bar {
+    background: linear-gradient(90deg, var(--error-color), #c0392b);
+}
+
+.progress-container.error #progress-message {
+    color: var(--error-color);
+}

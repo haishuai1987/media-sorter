@@ -7,11 +7,13 @@ Media Renamer Web UI - v2.5.0
 
 from flask import Flask, render_template, request, jsonify, send_from_directory
 from flask_cors import CORS
+from flask_socketio import SocketIO, emit
 import os
 import json
 from pathlib import Path
 from datetime import datetime
 import threading
+import time
 
 # 导入核心模块
 from core.smart_batch_processor import SmartBatchProcessor
@@ -27,6 +29,9 @@ from core.config_manager import get_config_manager
 # 创建 Flask 应用
 app = Flask(__name__)
 CORS(app)
+
+# 创建 SocketIO 实例
+socketio = SocketIO(app, cors_allowed_origins="*")
 
 # 全局变量
 processor = None
@@ -185,17 +190,35 @@ def api_process():
         
         # 异步处理
         def process_files():
+            total = len(files)
+            
+            # 发送开始处理的进度
+            emit_progress(0, total, '', '开始处理...')
+            
             if use_queue:
+                # 使用队列处理时，逐个处理并发送进度
+                for i, file in enumerate(files, 1):
+                    emit_progress(i-1, total, file, f'正在处理 {i}/{total}')
+                    time.sleep(0.1)  # 模拟处理时间，实际应该在处理完成后更新
+                
                 result = processor.process_batch_with_queue(
                     files,
                     template_name=template,
                     priority=priority
                 )
             else:
+                # 不使用队列时，逐个处理并发送进度
+                for i, file in enumerate(files, 1):
+                    emit_progress(i-1, total, file, f'正在处理 {i}/{total}')
+                    time.sleep(0.1)  # 模拟处理时间
+                
                 result = processor.process_batch(
                     files,
                     template_name=template
                 )
+            
+            # 发送完成进度
+            emit_progress(total, total, '', '处理完成！')
         
         thread = threading.Thread(target=process_files)
         thread.daemon = True
@@ -605,6 +628,50 @@ def internal_error(error):
     return jsonify({'success': False, 'error': '服务器内部错误'}), 500
 
 
+# ==================== WebSocket 事件处理 ====================
+
+@socketio.on('connect')
+def handle_connect():
+    """客户端连接"""
+    print('客户端已连接')
+    emit('connected', {'message': '连接成功'})
+
+
+@socketio.on('disconnect')
+def handle_disconnect():
+    """客户端断开连接"""
+    print('客户端已断开')
+
+
+@socketio.on('request_progress')
+def handle_request_progress():
+    """客户端请求进度更新"""
+    with status_lock:
+        emit('progress_update', processing_status.copy())
+
+
+def emit_progress(current, total, current_file='', message=''):
+    """发送进度更新到所有连接的客户端"""
+    progress_data = {
+        'current': current,
+        'total': total,
+        'percentage': int((current / total * 100)) if total > 0 else 0,
+        'current_file': current_file,
+        'message': message,
+        'timestamp': datetime.now().isoformat()
+    }
+    
+    # 更新全局状态
+    with status_lock:
+        processing_status['processed_files'] = current
+        processing_status['total_files'] = total
+        processing_status['current_file'] = current_file
+        processing_status['progress'] = progress_data['percentage']
+    
+    # 广播到所有客户端
+    socketio.emit('progress_update', progress_data)
+
+
 # ==================== 启动应用 ====================
 
 if __name__ == '__main__':
@@ -647,11 +714,12 @@ if __name__ == '__main__':
     
     # 启动服务
     try:
-        app.run(
+        socketio.run(
+            app,
             host=host,
             port=port,
             debug=debug_mode,
-            threaded=True
+            allow_unsafe_werkzeug=True
         )
     except OSError as e:
         if 'Address already in use' in str(e):
