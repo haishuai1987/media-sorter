@@ -1,0 +1,213 @@
+version: '3.8'
+
+services:
+  # 服务发现 - Consul
+  consul:
+    image: consul:latest
+    container_name: media-renamer-consul
+    ports:
+      - "8500:8500"
+      - "8600:8600/udp"
+    command: agent -server -ui -bootstrap-expect=1 -client=0.0.0.0
+    networks:
+      - media-renamer-network
+    healthcheck:
+      test: ["CMD", "consul", "members"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # 缓存 - Redis
+  redis:
+    image: redis:7-alpine
+    container_name: media-renamer-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    networks:
+      - media-renamer-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # 数据库 - PostgreSQL
+  postgres:
+    image: postgres:14-alpine
+    container_name: media-renamer-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-media_renamer}
+      POSTGRES_USER: ${POSTGRES_USER:-admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - media-renamer-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-admin}"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # API 网关
+  gateway:
+    build:
+      context: .
+      dockerfile: gateway/Dockerfile
+    container_name: media-renamer-gateway
+    ports:
+      - "8000:8000"
+    environment:
+      - CONSUL_HOST=consul
+      - REDIS_URL=redis://redis:6379
+      - SECRET_KEY=${SECRET_KEY:-gateway-secret-key}
+    depends_on:
+      consul:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - media-renamer-network
+    restart: unless-stopped
+
+  # 认证服务
+  auth-service:
+    build:
+      context: .
+      dockerfile: services/auth/Dockerfile
+    container_name: media-renamer-auth
+    ports:
+      - "8001:8001"
+    environment:
+      - CONSUL_HOST=consul
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-admin}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-media_renamer}
+      - SECRET_KEY=${SECRET_KEY:-auth-secret-key}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-jwt-secret-key}
+      - AUTH_SERVICE_HOST=auth-service
+      - AUTH_SERVICE_PORT=8001
+    depends_on:
+      consul:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    networks:
+      - media-renamer-network
+    restart: unless-stopped
+
+  # 处理服务
+  processing-service:
+    build:
+      context: .
+      dockerfile: services/processing/Dockerfile
+    container_name: media-renamer-processing
+    ports:
+      - "8002:8002"
+    environment:
+      - CONSUL_HOST=consul
+      - REDIS_URL=redis://redis:6379
+      - SECRET_KEY=${SECRET_KEY:-processing-secret-key}
+      - PROCESSING_SERVICE_HOST=processing-service
+      - PROCESSING_SERVICE_PORT=8002
+    depends_on:
+      consul:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - media-renamer-network
+    restart: unless-stopped
+    volumes:
+      - ./data:/app/data
+
+  # AI 服务
+  ai-service:
+    build:
+      context: .
+      dockerfile: services/ai/Dockerfile
+    container_name: media-renamer-ai
+    ports:
+      - "8003:8003"
+    environment:
+      - CONSUL_HOST=consul
+      - SECRET_KEY=${SECRET_KEY:-ai-secret-key}
+      - AI_SERVICE_HOST=ai-service
+      - AI_SERVICE_PORT=8003
+    depends_on:
+      consul:
+        condition: service_healthy
+    networks:
+      - media-renamer-network
+    restart: unless-stopped
+    volumes:
+      - ./data:/app/data
+
+  # 存储服务
+  storage-service:
+    build:
+      context: .
+      dockerfile: services/storage/Dockerfile
+    container_name: media-renamer-storage
+    ports:
+      - "8004:8004"
+    environment:
+      - CONSUL_HOST=consul
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-admin}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-media_renamer}
+      - SECRET_KEY=${SECRET_KEY:-storage-secret-key}
+      - STORAGE_SERVICE_HOST=storage-service
+      - STORAGE_SERVICE_PORT=8004
+      # 云存储配置
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-}
+      - AWS_REGION=${AWS_REGION:-us-east-1}
+      - ALIYUN_ACCESS_KEY_ID=${ALIYUN_ACCESS_KEY_ID:-}
+      - ALIYUN_ACCESS_KEY_SECRET=${ALIYUN_ACCESS_KEY_SECRET:-}
+      - ALIYUN_REGION=${ALIYUN_REGION:-oss-cn-hangzhou}
+      - TENCENT_SECRET_ID=${TENCENT_SECRET_ID:-}
+      - TENCENT_SECRET_KEY=${TENCENT_SECRET_KEY:-}
+      - TENCENT_REGION=${TENCENT_REGION:-ap-guangzhou}
+    depends_on:
+      consul:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    networks:
+      - media-renamer-network
+    restart: unless-stopped
+    volumes:
+      - ./data:/app/data
+      - storage-data:/app/storage
+
+  # Celery Worker (用于异步任务)
+  celery-worker:
+    build:
+      context: .
+      dockerfile: services/processing/Dockerfile
+    container_name: media-renamer-celery
+    command: celery -A services.processing.tasks worker --loglevel=info --concurrency=4
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-admin}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-media_renamer}
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    networks:
+      - media-renamer-network
+    restart: unless-stopped
+    volumes:
+      - ./data:/app/data
+
+networks:
+  media-renamer-network:
+    driver: bridge
+
+volumes:
+  redis-data:
+  postgres-data:
+  storage-data:
