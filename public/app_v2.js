@@ -26,6 +26,7 @@ class MediaRenamerApp {
 
     init() {
         this.loadTheme();
+        this.setupSystemThemeListener();
         this.loadLanguage();
         this.bindEvents();
         this.bindShortcuts();
@@ -307,8 +308,15 @@ class MediaRenamerApp {
         });
 
         // 主题切换
-        document.getElementById('theme-toggle').addEventListener('click', () => {
+        const themeToggle = document.getElementById('theme-toggle');
+        themeToggle.addEventListener('click', () => {
             this.toggleTheme();
+        });
+        
+        // 右键点击启用自动跟随系统主题
+        themeToggle.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            this.enableAutoTheme();
         });
 
         // 快捷键帮助
@@ -1745,14 +1753,57 @@ class MediaRenamerApp {
 
     // 加载主题
     loadTheme() {
-        const savedTheme = localStorage.getItem('theme') || 'light';
-        this.setTheme(savedTheme);
+        // 检查是否启用自动跟随系统主题
+        const autoTheme = localStorage.getItem('autoTheme') !== 'false'; // 默认启用
+        
+        if (autoTheme) {
+            // 自动跟随系统主题
+            const systemTheme = this.getSystemTheme();
+            this.setTheme(systemTheme, true);
+        } else {
+            // 使用保存的主题
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            this.setTheme(savedTheme, false);
+        }
+    }
+
+    // 获取系统主题
+    getSystemTheme() {
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            return 'dark';
+        }
+        return 'light';
+    }
+
+    // 设置系统主题监听器
+    setupSystemThemeListener() {
+        if (!window.matchMedia) return;
+        
+        const darkModeQuery = window.matchMedia('(prefers-color-scheme: dark)');
+        
+        // 监听系统主题变化
+        darkModeQuery.addEventListener('change', (e) => {
+            const autoTheme = localStorage.getItem('autoTheme') !== 'false';
+            if (autoTheme) {
+                const newTheme = e.matches ? 'dark' : 'light';
+                this.setTheme(newTheme, true);
+                this.showToast(`系统主题已变更为${newTheme === 'dark' ? '暗色' : '亮色'}模式`, 'info');
+            }
+        });
     }
 
     // 设置主题
-    setTheme(theme) {
+    setTheme(theme, isAuto = false) {
         document.documentElement.setAttribute('data-theme', theme);
-        localStorage.setItem('theme', theme);
+        
+        if (!isAuto) {
+            // 手动设置时保存主题并禁用自动跟随
+            localStorage.setItem('theme', theme);
+            localStorage.setItem('autoTheme', 'false');
+        } else {
+            // 自动跟随时只更新当前主题
+            localStorage.setItem('autoTheme', 'true');
+        }
         
         // 更新按钮图标
         const themeToggle = document.getElementById('theme-toggle');
@@ -1762,6 +1813,10 @@ class MediaRenamerApp {
             'high-contrast': '🎨'
         };
         themeToggle.textContent = icons[theme] || '🌙';
+        
+        // 更新按钮标题提示
+        const autoStatus = localStorage.getItem('autoTheme') !== 'false' ? ' (自动)' : '';
+        themeToggle.title = `当前主题: ${theme}${autoStatus}`;
         
         this.currentTheme = theme;
     }
@@ -1773,7 +1828,8 @@ class MediaRenamerApp {
         const nextIndex = (currentIndex + 1) % themes.length;
         const nextTheme = themes[nextIndex];
         
-        this.setTheme(nextTheme);
+        // 手动切换时禁用自动跟随
+        this.setTheme(nextTheme, false);
         
         const themeNames = {
             'light': '亮色主题',
@@ -1781,7 +1837,15 @@ class MediaRenamerApp {
             'high-contrast': '高对比度'
         };
         
-        this.showToast(`已切换到${themeNames[nextTheme]}`, 'success');
+        this.showToast(`已切换到${themeNames[nextTheme]} (手动模式)`, 'success');
+    }
+
+    // 启用自动跟随系统主题
+    enableAutoTheme() {
+        localStorage.setItem('autoTheme', 'true');
+        const systemTheme = this.getSystemTheme();
+        this.setTheme(systemTheme, true);
+        this.showToast('已启用自动跟随系统主题', 'success');
     }
 
     // 显示 Toast 通知
