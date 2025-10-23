@@ -330,6 +330,11 @@ class MediaRenamerApp {
         document.getElementById('language-toggle').addEventListener('click', () => {
             this.toggleLanguage();
         });
+
+        // 视图切换
+        document.getElementById('toggle-view-btn').addEventListener('click', () => {
+            this.toggleFileListView();
+        });
     }
 
     // 初始化拖拽上传
@@ -1947,6 +1952,151 @@ class MediaRenamerApp {
     hideProgress() {
         const container = document.getElementById('progress-container');
         container.style.display = 'none';
+    }
+
+    // ==================== 文件列表视图和拖拽排序 ====================
+
+    toggleFileListView() {
+        const textarea = document.getElementById('file-list');
+        const listView = document.getElementById('file-list-view');
+        
+        if (textarea.style.display === 'none') {
+            // 切换到文本模式
+            this.syncListToTextarea();
+            textarea.style.display = 'block';
+            listView.style.display = 'none';
+        } else {
+            // 切换到列表模式
+            this.syncTextareaToList();
+            textarea.style.display = 'none';
+            listView.style.display = 'block';
+        }
+    }
+
+    syncTextareaToList() {
+        const textarea = document.getElementById('file-list');
+        const listView = document.getElementById('file-list-view');
+        const files = textarea.value.split('\n').filter(f => f.trim());
+        
+        if (files.length === 0) {
+            listView.innerHTML = `
+                <div class="file-list-empty">
+                    <p>📝 暂无文件</p>
+                    <p class="hint">在上方文本框输入文件名，或拖拽文件到此处</p>
+                </div>
+            `;
+            return;
+        }
+        
+        listView.innerHTML = '';
+        files.forEach((file, index) => {
+            const item = this.createFileListItem(file, index);
+            listView.appendChild(item);
+        });
+        
+        this.initDragSort();
+    }
+
+    syncListToTextarea() {
+        const textarea = document.getElementById('file-list');
+        const listView = document.getElementById('file-list-view');
+        const items = listView.querySelectorAll('.file-list-item');
+        
+        const files = Array.from(items).map(item => 
+            item.querySelector('.file-list-item-name').textContent
+        );
+        
+        textarea.value = files.join('\n');
+    }
+
+    createFileListItem(filename, index) {
+        const item = document.createElement('div');
+        item.className = 'file-list-item';
+        item.draggable = true;
+        item.dataset.filename = filename;
+        
+        item.innerHTML = `
+            <div class="file-list-item-drag-handle">⋮⋮</div>
+            <div class="file-list-item-index">${index + 1}</div>
+            <div class="file-list-item-name">${filename}</div>
+            <div class="file-list-item-actions">
+                <button class="file-list-item-btn delete" onclick="app.removeFileItem(this)">
+                    🗑️ 删除
+                </button>
+            </div>
+        `;
+        
+        return item;
+    }
+
+    removeFileItem(button) {
+        const item = button.closest('.file-list-item');
+        item.remove();
+        this.updateFileIndices();
+        this.syncListToTextarea();
+    }
+
+    updateFileIndices() {
+        const listView = document.getElementById('file-list-view');
+        const items = listView.querySelectorAll('.file-list-item');
+        
+        items.forEach((item, index) => {
+            const indexEl = item.querySelector('.file-list-item-index');
+            indexEl.textContent = index + 1;
+        });
+    }
+
+    initDragSort() {
+        const listView = document.getElementById('file-list-view');
+        const items = listView.querySelectorAll('.file-list-item');
+        
+        let draggedItem = null;
+        
+        items.forEach(item => {
+            item.addEventListener('dragstart', (e) => {
+                draggedItem = item;
+                item.classList.add('dragging');
+                e.dataTransfer.effectAllowed = 'move';
+            });
+            
+            item.addEventListener('dragend', (e) => {
+                item.classList.remove('dragging');
+                draggedItem = null;
+                this.updateFileIndices();
+                this.syncListToTextarea();
+            });
+            
+            item.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                
+                if (draggedItem && draggedItem !== item) {
+                    const rect = item.getBoundingClientRect();
+                    const midpoint = rect.top + rect.height / 2;
+                    
+                    if (e.clientY < midpoint) {
+                        item.parentNode.insertBefore(draggedItem, item);
+                    } else {
+                        item.parentNode.insertBefore(draggedItem, item.nextSibling);
+                    }
+                }
+            });
+            
+            item.addEventListener('dragenter', (e) => {
+                if (draggedItem && draggedItem !== item) {
+                    item.classList.add('drag-over');
+                }
+            });
+            
+            item.addEventListener('dragleave', (e) => {
+                item.classList.remove('drag-over');
+            });
+            
+            item.addEventListener('drop', (e) => {
+                e.preventDefault();
+                item.classList.remove('drag-over');
+            });
+        });
     }
 }
 

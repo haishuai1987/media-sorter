@@ -867,3 +867,163 @@ body {
 .progress-container.error #progress-message {
     color: var(--error-color);
 }
+
+
+/* ==================== 文件列表视图样式 ==================== */
+
+.file-list-view {
+    min-height: 300px;
+    max-height: 500px;
+    overflow-y: auto;
+    border: 2px dashed var(--border-color);
+    border-radius: 8px;
+    padding: 10px;
+    background: var(--bg-secondary);
+}
+
+.file-list-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 280px;
+    color: var(--text-secondary);
+}
+
+.file-list-empty p {
+    margin: 5px 0;
+}
+
+.file-list-empty .hint {
+    font-size: 13px;
+    opacity: 0.7;
+}
+
+.file-list-item {
+    display: flex;
+    align-items: center;
+    padding: 12px;
+    margin-bottom: 8px;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    cursor: move;
+    transition: all 0.2s ease;
+    user-select: none;
+}
+
+.file-list-item:hover {
+    background: var(--bg-hover);
+    border-color: var(--primary-color);
+    transform: translateX(5px);
+}
+
+.file-list-item.dragging {
+    opacity: 0.5;
+    transform: scale(0.95);
+}
+
+.file-list-item.drag-over {
+    border-color: var(--primary-color);
+    border-style: solid;
+    border-width: 2px;
+    background: var(--primary-color-alpha);
+}
+
+.file-list-item-drag-handle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    margin-right: 12px;
+    color: var(--text-secondary);
+    font-size: 18px;
+    cursor: grab;
+}
+
+.file-list-item-drag-handle:active {
+    cursor: grabbing;
+}
+
+.file-list-item-index {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    margin-right: 12px;
+    background: var(--primary-color);
+    color: white;
+    border-radius: 50%;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.file-list-item-name {
+    flex: 1;
+    font-size: 14px;
+    color: var(--text-color);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.file-list-item-actions {
+    display: flex;
+    gap: 8px;
+    margin-left: 12px;
+}
+
+.file-list-item-btn {
+    padding: 5px 10px;
+    background: transparent;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.2s ease;
+}
+
+.file-list-item-btn:hover {
+    background: var(--bg-hover);
+    border-color: var(--primary-color);
+}
+
+.file-list-item-btn.delete {
+    color: var(--error-color);
+}
+
+.file-list-item-btn.delete:hover {
+    background: var(--error-color);
+    color: white;
+    border-color: var(--error-color);
+}
+
+/* 拖拽占位符 */
+.file-list-placeholder {
+    height: 54px;
+    margin-bottom: 8px;
+    border: 2px dashed var(--primary-color);
+    border-radius: 6px;
+    background: var(--primary-color-alpha);
+}
+
+/* 滚动条样式 */
+.file-list-view::-webkit-scrollbar {
+    width: 8px;
+}
+
+.file-list-view::-webkit-scrollbar-track {
+    background: var(--bg-secondary);
+    border-radius: 4px;
+}
+
+.file-list-view::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 4px;
+}
+
+.file-list-view::-webkit-scrollbar-thumb:hover {
+    background: var(--primary-color);
+}
